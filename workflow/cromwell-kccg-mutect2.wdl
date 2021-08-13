@@ -68,17 +68,17 @@ version 1.0
 ## pertaining to the included programs.
 
 # import modules
-import "../modules/cram2bam.wdl" as Cram2Bam
-import "../modules/split_intervals.wdl" as SplitIntervals
-import "../modules/mutect2.wdl" as M2
-import "../modules/learn_rom.wdl" as LearnROM
-import "../modules/merge_vcfs.wdl" as MergeVCFs
-import "../modules/merge_bam_outs.wdl" as MergeBamOuts
-import "../modules/merge_stats.wdl" as MergeStats
-import "../modules/merge_pileup.wdl" as MergePileupSummaries
-import "../modules/calc_contam.wdl" as CalculateContamination
-import "../modules/filter.wdl" as Filter
-import "../modules/runtime.wdl" as RT
+import "modules/cram2bam.wdl" as Mod_Cram2Bam
+import "modules/split_intervals.wdl" as Mod_SplitIntervals
+import "modules/mutect2.wdl" as Mod_M2
+import "modules/learn_rom.wdl" as Mod_LearnROM
+import "modules/merge_vcfs.wdl" as Mod_MergeVCFs
+import "modules/merge_bam_outs.wdl" as Mod_MergeBamOuts
+import "modules/merge_stats.wdl" as Mod_MergeStats
+import "modules/merge_pileup.wdl" as Mod_MergePileupSummaries
+import "modules/calc_contam.wdl" as Mod_CalculateContamination
+import "modules/filter.wdl" as Mod_Filter
+import "modules/runtime.wdl" as Mod_RT
 
 workflow Mutect2 {
     input {
@@ -161,13 +161,13 @@ workflow Mutect2 {
     Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
     Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
 
-    Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries_or_default, "preemptible": preemptible_or_default, "cpu": small_task_cpu,
-            "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-            "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
+    # Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
+    #         "max_retries": max_retries_or_default, "preemptible": preemptible_or_default, "cpu": small_task_cpu,
+    #         "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
+    #         "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
 
     if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
-        call Cram2Bam.CramToBam as TumorCramToBam {
+        call Mod_Cram2Bam.CramToBam as TumorCramToBam {
             input:
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -182,7 +182,7 @@ workflow Mutect2 {
     String normal_or_empty = select_first([normal_reads, ""])
     if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
         String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
-        call Cram2Bam.CramToBam as NormalCramToBam {
+        call Mod_Cram2Bam.CramToBam as NormalCramToBam {
             input:
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -206,7 +206,7 @@ workflow Mutect2 {
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
     Int m2_per_scatter_size = (tumor_bam_size + normal_bam_size) + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
 
-    call SplitIntervals.SplitIntervals {
+    call Mod_SplitIntervals.SplitIntervals {
         input:
             intervals = intervals,
             ref_fasta = ref_fasta,
@@ -214,150 +214,157 @@ workflow Mutect2 {
             ref_dict = ref_dict,
             scatter_count = scatter_count,
             split_intervals_extra_args = split_intervals_extra_args,
-            runtime_params = standard_runtime
+            # runtime_params = standard_runtime
     }
 
-    scatter (subintervals in SplitIntervals.interval_files ) {
-        call M2.M2 {
-            input:
-                intervals = subintervals,
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
-                normal_bam = normal_bam,
-                normal_bai = normal_bai,
-                pon = pon,
-                pon_idx = pon_idx,
-                gnomad = gnomad,
-                gnomad_idx = gnomad_idx,
-                preemptible = preemptible,
-                max_retries = max_retries,
-                m2_extra_args = m2_extra_args,
-                variants_for_contamination = variants_for_contamination,
-                variants_for_contamination_idx = variants_for_contamination_idx,
-                make_bamout = make_bamout_or_default,
-                run_ob_filter = run_ob_filter,
-                compress = compress,
-                gga_vcf = gga_vcf,
-                gga_vcf_idx = gga_vcf_idx,
-                gatk_override = gatk_override,
-                gatk_docker = gatk_docker,
-                disk_space = m2_per_scatter_size
-        }
-    }
-
-    Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
-    Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
-
-    if (run_ob_filter) {
-        call LearnROM.LearnReadOrientationModel {
-            input:
-                f1r2_tar_gz = M2.f1r2_counts,
-                runtime_params = standard_runtime,
-                mem = learn_read_orientation_mem
-        }
-    }
-
-    call MergeVCFs.MergeVCFs {
-        input:
-            input_vcfs = M2.unfiltered_vcf,
-            input_vcf_indices = M2.unfiltered_vcf_idx,
-            output_name = unfiltered_name,
-            compress = compress,
-            runtime_params = standard_runtime
-    }
-
-    if (make_bamout_or_default) {
-        call MergeBamOuts.MergeBamOuts {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                bam_outs = M2.output_bamOut,
-                output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
-                runtime_params = standard_runtime,
-                disk_space = ceil(merged_bamout_size * large_input_to_output_multiplier) + disk_pad,
-        }
-    }
-
-    call MergeStats.MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
-
-    if (defined(variants_for_contamination)) {
-        call MergePileupSummaries.MergePileupSummaries as MergeTumorPileups {
-            input:
-                input_tables = flatten(M2.tumor_pileups),
-                output_name = output_basename,
-                ref_dict = ref_dict,
-                runtime_params = standard_runtime
-        }
-
-        if (defined(normal_bam)){
-            call MergePileupSummaries.MergePileupSummaries as MergeNormalPileups {
-                input:
-                    input_tables = flatten(M2.normal_pileups),
-                    output_name = output_basename,
-                    ref_dict = ref_dict,
-                    runtime_params = standard_runtime
-            }
-        }
-
-        call CalculateContamination.CalculateContamination {
-            input:
-                tumor_pileups = MergeTumorPileups.merged_table,
-                normal_pileups = MergeNormalPileups.merged_table,
-                runtime_params = standard_runtime
-        }
-    }
-
-    call Filter.Filter {
-        input:
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
-            intervals = intervals,
-            unfiltered_vcf = MergeVCFs.merged_vcf,
-            unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
-            output_name = filtered_name,
-            compress = compress,
-            mutect_stats = MergeStats.merged_stats,
-            contamination_table = CalculateContamination.contamination_table,
-            maf_segments = CalculateContamination.maf_segments,
-            artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
-            m2_extra_filtering_args = m2_extra_filtering_args,
-            runtime_params = standard_runtime,
-            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
-    }
-
-    if (defined(realignment_index_bundle)) {
-        call Filter.FilterAlignmentArtifacts {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                bam = tumor_bam,
-                bai = tumor_bai,
-                realignment_index_bundle = select_first([realignment_index_bundle]),
-                realignment_extra_args = realignment_extra_args,
-                compress = compress,
-                output_name = filtered_name,
-                input_vcf = Filter.filtered_vcf,
-                input_vcf_idx = Filter.filtered_vcf_idx,
-                runtime_params = standard_runtime,
-                mem = filter_alignment_artifacts_mem
-        }
-    }
-
+    # Test output
     output {
-        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
-        File filtering_stats = Filter.filtering_stats
-        File mutect_stats = MergeStats.merged_stats
-        File? contamination_table = CalculateContamination.contamination_table
-        File? bamout = MergeBamOuts.merged_bam_out
-        File? bamout_index = MergeBamOuts.merged_bam_out_index
-        File? maf_segments = CalculateContamination.maf_segments
-        File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
+        File out_tumor_bam = tumor_bam
+        File out_tumor_bai = tumor_bai
+        Array[File] out_interval_files = SplitIntervals.interval_files
     }
+
+    # scatter (subintervals in SplitIntervals.interval_files ) {
+    #     call Mod_M2.M2 {
+    #         input:
+    #             intervals = subintervals,
+    #             ref_fasta = ref_fasta,
+    #             ref_fai = ref_fai,
+    #             ref_dict = ref_dict,
+    #             tumor_bam = tumor_bam,
+    #             tumor_bai = tumor_bai,
+    #             normal_bam = normal_bam,
+    #             normal_bai = normal_bai,
+    #             pon = pon,
+    #             pon_idx = pon_idx,
+    #             gnomad = gnomad,
+    #             gnomad_idx = gnomad_idx,
+    #             preemptible = preemptible,
+    #             max_retries = max_retries,
+    #             m2_extra_args = m2_extra_args,
+    #             variants_for_contamination = variants_for_contamination,
+    #             variants_for_contamination_idx = variants_for_contamination_idx,
+    #             make_bamout = make_bamout_or_default,
+    #             run_ob_filter = run_ob_filter,
+    #             compress = compress,
+    #             gga_vcf = gga_vcf,
+    #             gga_vcf_idx = gga_vcf_idx,
+    #             gatk_override = gatk_override,
+    #             gatk_docker = gatk_docker,
+    #             disk_space = m2_per_scatter_size
+    #     }
+    # }
+
+    # Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
+    # Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
+
+    # if (run_ob_filter) {
+    #     call Mod_LearnROM.LearnReadOrientationModel {
+    #         input:
+    #             f1r2_tar_gz = M2.f1r2_counts,
+    #             runtime_params = standard_runtime,
+    #             mem = learn_read_orientation_mem
+    #     }
+    # }
+
+    # call Mod_MergeVCFs.MergeVCFs {
+    #     input:
+    #         input_vcfs = M2.unfiltered_vcf,
+    #         input_vcf_indices = M2.unfiltered_vcf_idx,
+    #         output_name = unfiltered_name,
+    #         compress = compress,
+    #         runtime_params = standard_runtime
+    # }
+
+    # if (make_bamout_or_default) {
+    #     call Mod_MergeBamOuts.MergeBamOuts {
+    #         input:
+    #             ref_fasta = ref_fasta,
+    #             ref_fai = ref_fai,
+    #             ref_dict = ref_dict,
+    #             bam_outs = M2.output_bamOut,
+    #             output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
+    #             runtime_params = standard_runtime,
+    #             disk_space = ceil(merged_bamout_size * large_input_to_output_multiplier) + disk_pad,
+    #     }
+    # }
+
+    # call Mod_MergeStats.MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
+
+    # if (defined(variants_for_contamination)) {
+    #     call Mod_MergePileupSummaries.MergePileupSummaries as MergeTumorPileups {
+    #         input:
+    #             input_tables = flatten(M2.tumor_pileups),
+    #             output_name = output_basename,
+    #             ref_dict = ref_dict,
+    #             runtime_params = standard_runtime
+    #     }
+
+    #     if (defined(normal_bam)){
+    #         call Mod_MergePileupSummaries.MergePileupSummaries as MergeNormalPileups {
+    #             input:
+    #                 input_tables = flatten(M2.normal_pileups),
+    #                 output_name = output_basename,
+    #                 ref_dict = ref_dict,
+    #                 runtime_params = standard_runtime
+    #         }
+    #     }
+
+    #     call Mod_CalculateContamination.CalculateContamination {
+    #         input:
+    #             tumor_pileups = MergeTumorPileups.merged_table,
+    #             normal_pileups = MergeNormalPileups.merged_table,
+    #             runtime_params = standard_runtime
+    #     }
+    # }
+
+    # call Mod_Filter.Filter {
+    #     input:
+    #         ref_fasta = ref_fasta,
+    #         ref_fai = ref_fai,
+    #         ref_dict = ref_dict,
+    #         intervals = intervals,
+    #         unfiltered_vcf = MergeVCFs.merged_vcf,
+    #         unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
+    #         output_name = filtered_name,
+    #         compress = compress,
+    #         mutect_stats = MergeStats.merged_stats,
+    #         contamination_table = CalculateContamination.contamination_table,
+    #         maf_segments = CalculateContamination.maf_segments,
+    #         artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
+    #         m2_extra_filtering_args = m2_extra_filtering_args,
+    #         runtime_params = standard_runtime,
+    #         disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
+    # }
+
+    # if (defined(realignment_index_bundle)) {
+    #     call Mod_Filter.FilterAlignmentArtifacts {
+    #         input:
+    #             ref_fasta = ref_fasta,
+    #             ref_fai = ref_fai,
+    #             ref_dict = ref_dict,
+    #             bam = tumor_bam,
+    #             bai = tumor_bai,
+    #             realignment_index_bundle = select_first([realignment_index_bundle]),
+    #             realignment_extra_args = realignment_extra_args,
+    #             compress = compress,
+    #             output_name = filtered_name,
+    #             input_vcf = Filter.filtered_vcf,
+    #             input_vcf_idx = Filter.filtered_vcf_idx,
+    #             runtime_params = standard_runtime,
+    #             mem = filter_alignment_artifacts_mem
+    #     }
+    # }
+
+    # output {
+    #     File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+    #     File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
+    #     File filtering_stats = Filter.filtering_stats
+    #     File mutect_stats = MergeStats.merged_stats
+    #     File? contamination_table = CalculateContamination.contamination_table
+    #     File? bamout = MergeBamOuts.merged_bam_out
+    #     File? bamout_index = MergeBamOuts.merged_bam_out_index
+    #     File? maf_segments = CalculateContamination.maf_segments
+    #     File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
+    # }
 }

@@ -1,23 +1,22 @@
 version 1.0
 
-import "./runtime.wdl" as RT
+import "runtime.wdl" as RT
 
-task MergePileupSummaries {
+task CalculateContamination {
     input {
-      Array[File] input_tables
-      String output_name
-      File ref_dict
+      String? intervals
+      File tumor_pileups
+      File? normal_pileups
       Runtime runtime_params
     }
 
     command {
         set -e
+
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
-        --sequence-dictionary ~{ref_dict} \
-        -I ~{sep=' -I ' input_tables} \
-        -O ~{output_name}.tsv
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
+        -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups}
     }
 
     runtime {
@@ -31,6 +30,7 @@ task MergePileupSummaries {
     }
 
     output {
-        File merged_table = "~{output_name}.tsv"
+        File contamination_table = "contamination.table"
+        File maf_segments = "segments.table"
     }
 }

@@ -1,6 +1,6 @@
 version 1.0
 
-import "./runtime.wdl" as RT
+import "runtime.wdl" as RT
 
 # Learning step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task LearnReadOrientationModel {

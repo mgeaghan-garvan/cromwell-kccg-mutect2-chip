@@ -1,10 +1,12 @@
 version 1.0
 
-import "./runtime.wdl" as RT
+import "runtime.wdl" as RT
 
-task MergeStats {
+task MergePileupSummaries {
     input {
-      Array[File]+ stats
+      Array[File] input_tables
+      String output_name
+      File ref_dict
       Runtime runtime_params
     }
 
@@ -12,9 +14,10 @@ task MergeStats {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
-            -stats ~{sep=" -stats " stats} -O merged.stats
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+        --sequence-dictionary ~{ref_dict} \
+        -I ~{sep=' -I ' input_tables} \
+        -O ~{output_name}.tsv
     }
 
     runtime {
@@ -28,6 +31,6 @@ task MergeStats {
     }
 
     output {
-        File merged_stats = "merged.stats"
+        File merged_table = "~{output_name}.tsv"
     }
 }

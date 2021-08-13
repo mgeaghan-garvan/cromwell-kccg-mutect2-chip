@@ -1,6 +1,6 @@
 version 1.0
 
-import "./runtime.wdl" as RT
+import "runtime.wdl" as RT
 
 task MergeBamOuts {
     input {
