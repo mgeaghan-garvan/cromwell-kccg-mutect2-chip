@@ -5,19 +5,17 @@ task CramToBam {
       File ref_fasta
       File ref_fai
       File ref_dict
-      #cram and crai must be optional since Normal cram is optional
+      # cram and crai must be optional since Normal cram is optional
       File? cram
       File? crai
       String name
-      Int disk_size
-      Int? mem
+      Int disk_size_gb
+      Int mem_mb = 6000
     }
 
-    Int machine_mem = if defined(mem) then mem * 1000 else 6000
-
-    #Calls samtools view to do the conversion
+    # Calls samtools view to do the conversion
     command {
-        #Set -e and -o says if any command I run fails in this script, make sure to return a failure
+        # Set -e and -o says if any command I run fails in this script, make sure to return a failure
         set -e
         set -o pipefail
 
@@ -29,8 +27,8 @@ task CramToBam {
 
     runtime {
         docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
-        memory: machine_mem + " MB"
-        disks: "local-disk " + disk_size + " HDD"
+        mem_mb: mem_mb
+        disks: "local-disk " + disk_size_gb + " HDD"
     }
 
     output {

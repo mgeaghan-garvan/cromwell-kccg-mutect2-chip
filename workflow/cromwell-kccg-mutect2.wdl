@@ -161,10 +161,17 @@ workflow Mutect2 {
     Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
     Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
 
-    # Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-    #         "max_retries": max_retries_or_default, "preemptible": preemptible_or_default, "cpu": small_task_cpu,
-    #         "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-    #         "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
+    Runtime standard_runtime = {
+        "gatk_docker": gatk_docker,
+        "gatk_override": gatk_override,
+        "max_retries": max_retries_or_default,
+        "preemptible": preemptible_or_default,
+        "cpu": small_task_cpu,
+        "machine_mem": small_task_mem * 1000,
+        "command_mem": small_task_mem * 1000 - 500,
+        "disk": small_task_disk + disk_pad,
+        "boot_disk_size": boot_disk_size
+    }
 
     if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
         call Mod_Cram2Bam.CramToBam as TumorCramToBam {
@@ -175,31 +182,33 @@ workflow Mutect2 {
                 cram = tumor_reads,
                 crai = tumor_reads_index,
                 name = output_basename,
-                disk_size = tumor_cram_to_bam_disk
+                disk_size_gb = tumor_cram_to_bam_disk
         }
     }
 
-    String normal_or_empty = select_first([normal_reads, ""])
-    if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
-        String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
-        call Mod_Cram2Bam.CramToBam as NormalCramToBam {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                cram = normal_reads,
-                crai = normal_reads_index,
-                name = normal_basename,
-                disk_size = normal_cram_to_bam_disk
+    if (defined(normal_reads)) {
+        String normal_or_empty = select_first([normal_reads, ""])
+        if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
+            String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
+            call Mod_Cram2Bam.CramToBam as NormalCramToBam {
+                input:
+                    ref_fasta = ref_fasta,
+                    ref_fai = ref_fai,
+                    ref_dict = ref_dict,
+                    cram = normal_reads,
+                    crai = normal_reads_index,
+                    name = normal_basename,
+                    disk_size_gb = normal_cram_to_bam_disk
+            }
         }
     }
 
     File tumor_bam = select_first([TumorCramToBam.output_bam, tumor_reads])
     File tumor_bai = select_first([TumorCramToBam.output_bai, tumor_reads_index])
+    Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
+
     File? normal_bam = if defined(normal_reads) then select_first([NormalCramToBam.output_bam, normal_reads]) else normal_reads
     File? normal_bai = if defined(normal_reads) then select_first([NormalCramToBam.output_bai, normal_reads_index]) else normal_reads_index
-
-    Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
     Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
 
     Int m2_output_size = tumor_bam_size / scatter_count
@@ -214,7 +223,7 @@ workflow Mutect2 {
             ref_dict = ref_dict,
             scatter_count = scatter_count,
             split_intervals_extra_args = split_intervals_extra_args,
-            # runtime_params = standard_runtime
+            runtime_params = standard_runtime
     }
 
     # Test output

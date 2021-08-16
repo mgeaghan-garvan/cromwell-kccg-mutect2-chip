@@ -17,7 +17,7 @@ task SplitIntervals {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         mkdir interval-files
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
@@ -32,7 +32,7 @@ task SplitIntervals {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
+        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
