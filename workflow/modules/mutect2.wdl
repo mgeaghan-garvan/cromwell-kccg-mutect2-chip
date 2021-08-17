@@ -22,12 +22,10 @@ task M2 {
       File? gga_vcf_idx
       File? variants_for_contamination
       File? variants_for_contamination_idx
-
       File? gatk_override
-
       # runtime
       String gatk_docker
-      Int? mem
+      Int mem_mb = 3500
       Int? preemptible
       Int? max_retries
       Int? disk_space
@@ -40,9 +38,8 @@ task M2 {
 
     String output_stats = output_vcf + ".stats"
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 3500
-    Int command_mem = machine_mem - 500
+    Int machine_mem = mem_mb
+    Int command_mem = machine_mem - 1000
 
     parameter_meta{
       intervals: {localization_optional: true}
@@ -66,7 +63,7 @@ task M2 {
     command <<<
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" gatk_override}
 
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
@@ -121,11 +118,11 @@ task M2 {
     runtime {
         docker: gatk_docker
         bootDiskSizeGb: 12
-        memory: machine_mem + " MB"
+        mem_mb: machine_mem
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible, 10])
         maxRetries: select_first([max_retries, 0])
-        cpu: select_first([cpu, 1])
+        cpu: select_first([cpu, 2])
     }
 
     output {

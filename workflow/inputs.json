@@ -12,5 +12,8 @@
     "Mutect2.gnomad_idx": "/home/micgea/somatic-test/data/af-only-gnomad.hg38.vcf.gz.tbi",
     "Mutect2.variants_for_contamination": "/home/micgea/somatic-test/data/small_exac_common_3.hg38.vcf.gz",
     "Mutect2.variants_for_contamination_idx": "/home/micgea/somatic-test/data/small_exac_common_3.hg38.vcf.gz.tbi",
-    "Mutect2.gatk_docker": "broadinstitute/gatk:4.2.1.0"
+    "Mutect2.gatk_docker": "broadinstitute/gatk:4.2.1.0",
+    "Mutect2.run_orientation_bias_mixture_model_filter": true,
+    "Mutect2.make_bamout": true,
+    "Mutect2.compress_vcfs": true
 }

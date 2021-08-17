@@ -34,7 +34,7 @@ task Filter {
     command {
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
             -R ~{ref_fasta} \
@@ -50,7 +50,7 @@ task Filter {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
+        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -78,13 +78,13 @@ task FilterAlignmentArtifacts {
       File realignment_index_bundle
       String? realignment_extra_args
       Runtime runtime_params
-      Int mem
+      Int mem_mb
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
 
-    Int machine_mem = mem
+    Int machine_mem = mem_mb
     Int command_mem = machine_mem - 500
 
     parameter_meta{
@@ -100,7 +100,7 @@ task FilterAlignmentArtifacts {
     command {
         set -e
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
             -R ~{ref_fasta} \
@@ -114,7 +114,7 @@ task FilterAlignmentArtifacts {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: machine_mem + " MB"
+        mem_mb: machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
