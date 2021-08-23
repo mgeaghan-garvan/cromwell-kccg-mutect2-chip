@@ -376,10 +376,10 @@ workflow Mutect2 {
 
         call Mod_VEP.VEP {
             input:
-                input_vcf = vep_input_vcf
-                input_vcf_idx = vep_input_vcf_idx
-                species = vep_species
-                assembly = vep_assembly
+                input_vcf = vep_input_vcf,
+                input_vcf_idx = vep_input_vcf_idx,
+                species = vep_species,
+                assembly = vep_assembly,
                 cache_dir = vep_cache_dir
         }
     }
