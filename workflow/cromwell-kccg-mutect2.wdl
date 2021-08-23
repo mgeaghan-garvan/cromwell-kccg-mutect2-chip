@@ -79,58 +79,65 @@ import "modules/merge_pileup.wdl" as Mod_MergePileupSummaries
 import "modules/calc_contam.wdl" as Mod_CalculateContamination
 import "modules/filter.wdl" as Mod_Filter
 import "modules/runtime.wdl" as Mod_RT
+import "modules/vep.wdl" as Mod_VEP
 
 workflow Mutect2 {
     input {
-      # Mutect2 inputs
-      File? intervals
-      File ref_fasta
-      File ref_fai
-      File ref_dict
-      File tumor_reads
-      File tumor_reads_index
-      File? normal_reads
-      File? normal_reads_index
-      File? pon
-      File? pon_idx
-      Int scatter_count
-      File? gnomad
-      File? gnomad_idx
-      File? variants_for_contamination
-      File? variants_for_contamination_idx
-      File? realignment_index_bundle
-      String? realignment_extra_args
-      Boolean? run_orientation_bias_mixture_model_filter
-      String? m2_extra_args
-      String? m2_extra_filtering_args
-      String? split_intervals_extra_args
-      Boolean? make_bamout
-      Boolean? compress_vcfs
-      File? gga_vcf
-      File? gga_vcf_idx
+        # Mutect2 inputs
+        File? intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        File tumor_reads
+        File tumor_reads_index
+        File? normal_reads
+        File? normal_reads_index
+        File? pon
+        File? pon_idx
+        Int scatter_count
+        File? gnomad
+        File? gnomad_idx
+        File? variants_for_contamination
+        File? variants_for_contamination_idx
+        File? realignment_index_bundle
+        String? realignment_extra_args
+        Boolean? run_orientation_bias_mixture_model_filter
+        String? m2_extra_args
+        String? m2_extra_filtering_args
+        String? split_intervals_extra_args
+        Boolean? make_bamout
+        Boolean? compress_vcfs
+        File? gga_vcf
+        File? gga_vcf_idx
+        
+        # VEP settings
+        Boolean vep = true
+        String vep_species = "homo_sapiens"
+        String vep_assembly = "GRCh38"
+        File vep_cache_dir = "${HOME}/.vep/"
 
-      # runtime options
-      String gatk_docker
-      File? gatk_override
-      String basic_bash_docker = "ubuntu:16.04"
-      Int? preemptible
-      Int? max_retries
-      Int small_task_cpu = 2
-      Int small_task_mem = 4
-      Int small_task_disk = 100
-      Int boot_disk_size = 12
-      Int learn_read_orientation_mem = 8000
-      Int filter_alignment_artifacts_mem = 9000
+        # Runtime options
+        String gatk_docker
+        File? gatk_override
+        String basic_bash_docker = "ubuntu:16.04"
+        Int? preemptible
+        Int? max_retries
+        Int small_task_cpu = 2
+        Int small_task_mem = 4
+        Int small_task_disk = 100
+        Int boot_disk_size = 12
+        Int learn_read_orientation_mem = 8000
+        Int filter_alignment_artifacts_mem = 9000
 
-      # Use as a last resort to increase the disk given to every task in case of ill behaving data
-      Int? emergency_extra_disk
+        # Use as a last resort to increase the disk given to every task in case of ill behaving data
+        Int? emergency_extra_disk
 
-      # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
-      # Large is for Bams/WGS vcfs
-      # Small is for metrics/other vcfs
-      Float large_input_to_output_multiplier = 2.25
-      Float small_input_to_output_multiplier = 2.0
-      Float cram_to_bam_multiplier = 6.0
+        # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
+        # Large is for Bams/WGS vcfs
+        # Small is for metrics/other vcfs
+        Float large_input_to_output_multiplier = 2.25
+        Float small_input_to_output_multiplier = 2.0
+        Float cram_to_bam_multiplier = 6.0
     }
 
     Int preemptible_or_default = select_first([preemptible, 2])
@@ -363,6 +370,20 @@ workflow Mutect2 {
         }
     }
 
+    if (vep) {
+        File vep_input_vcf = if (defined(FilterAlignmentArtifacts.filtered_vcf)) then FilterAlignmentArtifacts.filtered_vcf else Filter.filtered_vcf
+        File vep_input_vcf_idx = if (defined(FilterAlignmentArtifacts.filtered_vcf)) then FilterAlignmentArtifacts.filtered_vcf_idx else Filter.filtered_vcf_idx
+
+        call Mod_VEP.VEP {
+            input:
+                input_vcf = vep_input_vcf
+                input_vcf_idx = vep_input_vcf_idx
+                species = vep_species
+                assembly = vep_assembly
+                cache_dir = vep_cache_dir
+        }
+    }
+
     # Test output
     output {
         # Cram2Bam
@@ -411,6 +432,9 @@ workflow Mutect2 {
         # FilterAlignmentArtifacts
         File? out_faa_filtered_vcf = FilterAlignmentArtifacts.filtered_vcf
         File? out_faa_filtered_vcf_idx = FilterAlignmentArtifacts.filtered_vcf_idx
+        # VEP
+        File? out_vep_vcf = VEP.output_vcf
+        File? out_vep_tab = VEP.output_tab
     }
 
     # output {

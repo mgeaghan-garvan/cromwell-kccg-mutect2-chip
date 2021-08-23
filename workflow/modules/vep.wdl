@@ -3,12 +3,14 @@ version 1.0
 task VEP {
     input {
         File input_vcf
+        File input_vcf_idx
         String species = "homo_sapiens"
         String assembly = "GRCh38"
         Boolean vcf_out = true
         File cache_dir = "${HOME}/.vep/"
         Boolean offline = true
         Int cpus = 4
+        Int mem_mb = 6000
     }
 
     String output_options = if vcf_out then "--vcf --no_stats" else "--tab"
@@ -39,7 +41,7 @@ task VEP {
 
     runtime {
         docker: "ensemblorg/ensembl-vep:release_103.1"
-        mem_mb: runtime_params.machine_mem
+        mem_mb: mem_mb
         cpu: cpus
     }
 
