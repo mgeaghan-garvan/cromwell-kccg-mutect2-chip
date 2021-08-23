@@ -371,8 +371,8 @@ workflow Mutect2 {
     }
 
     if (vep) {
-        File vep_input_vcf = if (defined(FilterAlignmentArtifacts.filtered_vcf)) then FilterAlignmentArtifacts.filtered_vcf else Filter.filtered_vcf
-        File vep_input_vcf_idx = if (defined(FilterAlignmentArtifacts.filtered_vcf)) then FilterAlignmentArtifacts.filtered_vcf_idx else Filter.filtered_vcf_idx
+        File vep_input_vcf = if (defined(FilterAlignmentArtifacts.filtered_vcf) && defined(FilterAlignmentArtifacts.filtered_vcf_idx)) then FilterAlignmentArtifacts.filtered_vcf else Filter.filtered_vcf
+        File vep_input_vcf_idx = if (defined(FilterAlignmentArtifacts.filtered_vcf) && defined(FilterAlignmentArtifacts.filtered_vcf_idx)) then FilterAlignmentArtifacts.filtered_vcf_idx else Filter.filtered_vcf_idx
 
         call Mod_VEP.VEP {
             input:
