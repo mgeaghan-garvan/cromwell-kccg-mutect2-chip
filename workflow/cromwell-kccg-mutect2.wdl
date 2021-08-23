@@ -114,7 +114,7 @@ workflow Mutect2 {
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
-        File vep_cache_dir = "${HOME}/.vep/"
+        File vep_cache_dir
 
         # Runtime options
         String gatk_docker

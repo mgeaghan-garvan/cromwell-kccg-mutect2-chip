@@ -7,7 +7,7 @@ task VEP {
         String species = "homo_sapiens"
         String assembly = "GRCh38"
         Boolean vcf_out = true
-        File cache_dir = "${HOME}/.vep/"
+        File cache_dir
         Boolean offline = true
         Int cpus = 4
         Int mem_mb = 6000
