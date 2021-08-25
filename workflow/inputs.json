@@ -16,5 +16,5 @@
     "Mutect2.run_orientation_bias_mixture_model_filter": true,
     "Mutect2.make_bamout": true,
     "Mutect2.compress_vcfs": true,
-    "Mutect2.vep_cache": "/share/ClusterShare/software/contrib/mathob/ensembl-vep/cache"
+    "Mutect2.vep_cache_dir": "/home/micgea/.vep/cache"
 }

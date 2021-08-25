@@ -114,7 +114,7 @@ workflow Mutect2 {
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
-        File vep_cache_dir
+        String vep_cache_dir
 
         # Runtime options
         String gatk_docker
@@ -126,8 +126,8 @@ workflow Mutect2 {
         Int small_task_mem = 4
         Int small_task_disk = 100
         Int boot_disk_size = 12
-        Int learn_read_orientation_mem = 8000
-        Int filter_alignment_artifacts_mem = 9000
+        Int learn_read_orientation_mem = 7000
+        Int filter_alignment_artifacts_mem = 7000
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -261,7 +261,7 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
-                mem_mb = 10000
+                mem_mb = 5000
         }
     }
 
@@ -371,8 +371,8 @@ workflow Mutect2 {
     }
 
     if (vep) {
-        File vep_input_vcf = if (defined(FilterAlignmentArtifacts.filtered_vcf) && defined(FilterAlignmentArtifacts.filtered_vcf_idx)) then FilterAlignmentArtifacts.filtered_vcf else Filter.filtered_vcf
-        File vep_input_vcf_idx = if (defined(FilterAlignmentArtifacts.filtered_vcf) && defined(FilterAlignmentArtifacts.filtered_vcf_idx)) then FilterAlignmentArtifacts.filtered_vcf_idx else Filter.filtered_vcf_idx
+        File vep_input_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+        File vep_input_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
 
         call Mod_VEP.VEP {
             input:

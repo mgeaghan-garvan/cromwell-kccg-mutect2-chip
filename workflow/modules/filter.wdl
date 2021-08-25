@@ -85,7 +85,7 @@ task FilterAlignmentArtifacts {
     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
 
     Int machine_mem = mem_mb
-    Int command_mem = machine_mem - 500
+    Int command_mem = machine_mem - 1000
 
     parameter_meta{
       ref_fasta: {localization_optional: true}

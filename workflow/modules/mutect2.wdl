@@ -25,7 +25,7 @@ task M2 {
       File? gatk_override
       # runtime
       String gatk_docker
-      Int mem_mb = 3500
+      Int mem_mb = 5000
       Int? preemptible
       Int? max_retries
       Int? disk_space
