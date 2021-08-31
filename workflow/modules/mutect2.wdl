@@ -39,7 +39,7 @@ task M2 {
     String output_stats = output_vcf + ".stats"
 
     Int machine_mem = mem_mb
-    Int command_mem = machine_mem - 1000
+    Int command_mem = machine_mem - 500
 
     parameter_meta{
       intervals: {localization_optional: true}

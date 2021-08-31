@@ -7,11 +7,11 @@ task LearnReadOrientationModel {
     input {
       Array[File] f1r2_tar_gz
       Runtime runtime_params
-      Int? mem_mb  #override memory
+      Int mem_mb = 5000
     }
 
-    Int machine_mem = select_first([mem_mb, runtime_params.machine_mem])
-    Int command_mem = machine_mem - 1000
+    Int machine_mem = mem_mb
+    Int command_mem = machine_mem - 500
 
     command {
         set -e

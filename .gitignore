@@ -2,3 +2,7 @@
 .java-version
 *.jar
 workflow/modules.zip
+workflow/test_*
+workflow/test_*
+workflow/test_*
+configure_cromwell.py
