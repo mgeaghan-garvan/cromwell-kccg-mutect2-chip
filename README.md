@@ -63,3 +63,9 @@ You can check on the state of the run by re-attaching the Cromwell screen sessio
 ```bash
 screen -r "CromwellPort${CROMWELL_PORT}"
 ```
+
+Once finished, you can run gather_outputs.sh to move all the relevant output files into workflow_out
+
+```bash
+./gather_outputs.sh
+```
