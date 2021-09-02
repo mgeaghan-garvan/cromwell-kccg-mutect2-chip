@@ -109,6 +109,9 @@ workflow Mutect2 {
         File? gga_vcf_idx
         
         # VEP settings
+        String vep_docker = "ensemblorg/ensembl-vep:release_103.1"
+        String loftee_docker = ""
+        String loftee_singularity = "/share/ClusterShare/software/contrib/micgea/singularity/vep_loftee.sif"
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
@@ -118,6 +121,9 @@ workflow Mutect2 {
         File? vep_loftee_ancestor_fai
         File? vep_loftee_ancestor_gzi
         File? vep_loftee_conservation_sql
+
+        # Samtools settings
+        String samtools_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
 
         # Runtime options
         String gatk_docker = "broadinstitute/gatk:4.2.1.0"
@@ -196,6 +202,7 @@ workflow Mutect2 {
                 cram = tumor_reads,
                 crai = tumor_reads_index,
                 name = output_basename,
+                samtools_docker = samtools_docker,
                 disk_size_gb = tumor_cram_to_bam_disk,
                 mem_mb = c2b_mem
         }
@@ -213,6 +220,7 @@ workflow Mutect2 {
                     cram = normal_reads,
                     crai = normal_reads_index,
                     name = normal_basename,
+                    samtools_docker = samtools_docker,
                     disk_size_gb = normal_cram_to_bam_disk,
                     mem_mb = c2b_mem
             }
@@ -360,6 +368,11 @@ workflow Mutect2 {
             disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
+    # FilterAlignmentArtifacts is experimental and not recommended for production use
+    # There is also a bug causing issues when running on the Garvan HPC
+    # This may be an issue with the underlying C library, and may be hardware-specific, as the error is similar to https://gatk.broadinstitute.org/hc/en-us/community/posts/360062334692-FilterAlignmentArtifacts-error
+    # More testing is required.
+    # TODO: Figure out why this isn't working. Low priority - experimental feature.
     if (defined(realignment_index_bundle)) {
         call FilterAlignmentArtifacts {
             input:
@@ -391,6 +404,9 @@ workflow Mutect2 {
                 species = vep_species,
                 assembly = vep_assembly,
                 cache_dir = vep_cache_dir,
+                vep_docker = vep_docker,
+                loftee_docker = loftee_docker,
+                loftee_singularity = loftee_singularity,
                 loftee = loftee,
                 loftee_ancestor_fa = vep_loftee_ancestor_fa,
                 loftee_ancestor_fai = vep_loftee_ancestor_fai,
@@ -401,69 +417,71 @@ workflow Mutect2 {
         }
     }
 
-    # Test output
     output {
-        # Cram2Bam
-        File out_tumor_bam = tumor_bam
-        File out_tumor_bai = tumor_bai
-        Int out_tumor_bam_size = tumor_bam_size
-        File? out_normal_bam = normal_bam
-        File? out_normal_bai = normal_bai
-        Int? out_normal_size = normal_bam_size
-        Int out_m2_output_size = m2_output_size
-        Int out_m2_per_scatter_size = m2_per_scatter_size
-        # SplitIntervals
-        Array[File] out_interval_files = SplitIntervals.interval_files
-        # M2
-        Array[File] out_unfiltered_vcf = M2.unfiltered_vcf
-        Array[File] out_unfiltered_vcf_idx = M2.unfiltered_vcf_idx
-        Array[File] out_output_bamOut = M2.output_bamOut
-        Array[String] out_tumor_sample = M2.tumor_sample
-        Array[String] out_normal_sample = M2.normal_sample
-        Array[File] out_stats = M2.stats
-        Array[File] out_f1r2_counts = M2.f1r2_counts
-        Array[Array[File]] out_tumor_pileups = M2.tumor_pileups
-        Array[Array[File]] out_normal_pileups = M2.normal_pileups
-        Int out_merged_vcf_size = merged_vcf_size
-        Int out_merged_bamout_size = merged_bamout_size
-        # LearnReadOrientationModel
-        File? out_artifact_prior_table = LearnReadOrientationModel.artifact_prior_table
-        # MergeVCFs
-        File out_merged_vcf = MergeVCFs.merged_vcf
-        File out_merged_vcf_idx = MergeVCFs.merged_vcf_idx
-        # MergeBamOuts
-        File? out_merged_bam_out = MergeBamOuts.merged_bam_out
-        File? out_merged_bam_out_index = MergeBamOuts.merged_bam_out_index
-        # MergeStats
-        File out_merged_stats = MergeStats.merged_stats
-        # MergePileupSummaries
-        File? out_tumor_merged_table = MergeTumorPileups.merged_table
-        File? out_normal_merged_table = MergeNormalPileups.merged_table
-        # CalculateContamination
-        File? out_contamination_table = CalculateContamination.contamination_table
-        File? out_maf_segments = CalculateContamination.maf_segments
-        # Filter
-        File out_filtered_vcf = Filter.filtered_vcf
-        File out_filtered_vcf_idx = Filter.filtered_vcf_idx
-        File out_filtering_stats = Filter.filtering_stats
-        # FilterAlignmentArtifacts
-        File? out_faa_filtered_vcf = FilterAlignmentArtifacts.filtered_vcf
-        File? out_faa_filtered_vcf_idx = FilterAlignmentArtifacts.filtered_vcf_idx
-        # VEP
+        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
+        File filtering_stats = Filter.filtering_stats
+        File mutect_stats = MergeStats.merged_stats
+        File? contamination_table = CalculateContamination.contamination_table
+        File? bamout = MergeBamOuts.merged_bam_out
+        File? bamout_index = MergeBamOuts.merged_bam_out_index
+        File? maf_segments = CalculateContamination.maf_segments
+        File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? out_vep_vcf = VEP.output_vcf
         File? out_vep_tab = VEP.output_tab
     }
 
+    # # Test output
     # output {
-    #     File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-    #     File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
-    #     File filtering_stats = Filter.filtering_stats
-    #     File mutect_stats = MergeStats.merged_stats
-    #     File? contamination_table = CalculateContamination.contamination_table
-    #     File? bamout = MergeBamOuts.merged_bam_out
-    #     File? bamout_index = MergeBamOuts.merged_bam_out_index
-    #     File? maf_segments = CalculateContamination.maf_segments
-    #     File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
+    #     # Cram2Bam
+    #     File out_tumor_bam = tumor_bam
+    #     File out_tumor_bai = tumor_bai
+    #     Int out_tumor_bam_size = tumor_bam_size
+    #     File? out_normal_bam = normal_bam
+    #     File? out_normal_bai = normal_bai
+    #     Int? out_normal_size = normal_bam_size
+    #     Int out_m2_output_size = m2_output_size
+    #     Int out_m2_per_scatter_size = m2_per_scatter_size
+    #     # SplitIntervals
+    #     Array[File] out_interval_files = SplitIntervals.interval_files
+    #     # M2
+    #     Array[File] out_unfiltered_vcf = M2.unfiltered_vcf
+    #     Array[File] out_unfiltered_vcf_idx = M2.unfiltered_vcf_idx
+    #     Array[File] out_output_bamOut = M2.output_bamOut
+    #     Array[String] out_tumor_sample = M2.tumor_sample
+    #     Array[String] out_normal_sample = M2.normal_sample
+    #     Array[File] out_stats = M2.stats
+    #     Array[File] out_f1r2_counts = M2.f1r2_counts
+    #     Array[Array[File]] out_tumor_pileups = M2.tumor_pileups
+    #     Array[Array[File]] out_normal_pileups = M2.normal_pileups
+    #     Int out_merged_vcf_size = merged_vcf_size
+    #     Int out_merged_bamout_size = merged_bamout_size
+    #     # LearnReadOrientationModel
+    #     File? out_artifact_prior_table = LearnReadOrientationModel.artifact_prior_table
+    #     # MergeVCFs
+    #     File out_merged_vcf = MergeVCFs.merged_vcf
+    #     File out_merged_vcf_idx = MergeVCFs.merged_vcf_idx
+    #     # MergeBamOuts
+    #     File? out_merged_bam_out = MergeBamOuts.merged_bam_out
+    #     File? out_merged_bam_out_index = MergeBamOuts.merged_bam_out_index
+    #     # MergeStats
+    #     File out_merged_stats = MergeStats.merged_stats
+    #     # MergePileupSummaries
+    #     File? out_tumor_merged_table = MergeTumorPileups.merged_table
+    #     File? out_normal_merged_table = MergeNormalPileups.merged_table
+    #     # CalculateContamination
+    #     File? out_contamination_table = CalculateContamination.contamination_table
+    #     File? out_maf_segments = CalculateContamination.maf_segments
+    #     # Filter
+    #     File out_filtered_vcf = Filter.filtered_vcf
+    #     File out_filtered_vcf_idx = Filter.filtered_vcf_idx
+    #     File out_filtering_stats = Filter.filtering_stats
+    #     # FilterAlignmentArtifacts
+    #     File? out_faa_filtered_vcf = FilterAlignmentArtifacts.filtered_vcf
+    #     File? out_faa_filtered_vcf_idx = FilterAlignmentArtifacts.filtered_vcf_idx
+    #     # VEP
+    #     File? out_vep_vcf = VEP.output_vcf
+    #     File? out_vep_tab = VEP.output_tab
     # }
 }
 
@@ -480,6 +498,7 @@ task CramToBam {
       File? cram
       File? crai
       String name
+      String samtools_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
       Int disk_size_gb
       Int mem_mb = 6000
     }
@@ -497,7 +516,7 @@ task CramToBam {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
+        docker: samtools_docker
         mem_mb: mem_mb
         disks: "local-disk " + disk_size_gb + " HDD"
     }
@@ -1034,6 +1053,9 @@ task VEP {
         String assembly = "GRCh38"
         Boolean vcf_out = true
         String cache_dir
+        String vep_docker = "ensemblorg/ensembl-vep:release_103.1"
+        String loftee_docker = ""  # TODO: add this
+        String loftee_singularity = ""  # Overrides vep_docker/loftee_docker; TODO: remove once only using docker images
         Boolean loftee = true
         File? loftee_ancestor_fa
         File? loftee_ancestor_fai
@@ -1077,9 +1099,11 @@ task VEP {
 
     String cache_dir_bind = "--bind ~{cache_dir}:/cache"
 
+    # TODO: create docker image and upload to docker hub; remove singularity_local parameter; update backend accordingly
+    String docker_to_use = if (loftee && loftee_docker != "") then loftee_docker else vep_docker
     runtime {
-        docker: "ensemblorg/ensembl-vep:release_103.1"
-        singularity_local: "/home/micgea/singularity/vep_loftee.sif"
+        docker: docker_to_use
+        singularity_local: loftee_singularity  # TODO: remove once only using docker images
         mem_mb: mem_mb
         cpu: cpus
         bind_cmd: cache_dir_bind
