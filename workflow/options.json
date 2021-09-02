@@ -1,0 +1,5 @@
+{
+    "final_workflow_outputs_dir": "PWD_TO_SED/workflow_out",
+    "final_workflow_log_dir": "PWD_TO_SED/workflow_logs",
+    "final_call_logs_dir": "PWD_TO_SED/workflow_call_logs"
+}

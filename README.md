@@ -12,7 +12,7 @@ git pull https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2.git
 cd cromwell-kccg-mutect2
 
 # Configure environment variables
-MYSQL_HOST=localhost
+MYSQL_HOST="0.0.0.0"  # Need to use '0.0.0.0' rather than 'localhost'
 MYSQL_PORT=40008
 ${PROJECT_NAME}="project_name"
 CROMWELL_PORT=8000
@@ -24,7 +24,17 @@ CROMWELL_PORT=8000
 ### Running Cromwell server
 
 ```bash
-screen -S ${PROJECT_NAME}
+# Create a screen session
+screen -S "CromwellPort${CROMWELL_PORT}"
+
+# Ensure that Java 8/v1.8 is the active Java version
+java -version
+# If it isn't check the currently active modules
+module list
+# If an older version of Java is loaded, unload it. This should return the default Java version to 8/v1.8
+module unload centos6.10/ccg/java/1.7.0_25
+
+# Start the Cromwell server
 ./start_cromwell.sh
 ```
 
@@ -39,11 +49,17 @@ Edit ./workflow/inputs.json in your favourite text editor. The input file is a s
 Once everything is set up and configured, run the workflow as follows:
 
 ```bash
+# Create a screen session for the run
+screen -S ${PROJECT_NAME}
+
+# Submit the workflow to Cromwell
 ./run.sh
 ```
+
+Once running, you can detatch the session with Ctrl + A, then D.
 
 You can check on the state of the run by re-attaching the Cromwell screen session:
 
 ```bash
-screen -r ${PROJECT_NAME}
+screen -r "CromwellPort${CROMWELL_PORT}"
 ```
