@@ -109,7 +109,7 @@ workflow Mutect2 {
         File? gga_vcf_idx
         
         # VEP settings
-        String vep_docker = "ensemblorg/ensembl-vep:release_103.1"
+        String vep_docker = "ensemblorg/ensembl-vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221"  # :release_103.1
         String loftee_docker = ""
         String loftee_singularity = "/share/ClusterShare/software/contrib/micgea/singularity/vep_loftee.sif"
         Boolean vep = true
@@ -123,12 +123,12 @@ workflow Mutect2 {
         File? vep_loftee_conservation_sql
 
         # Samtools settings
-        String samtools_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
+        String samtools_docker = "broadinstitute/genomes-in-the-cloud@sha256:4fca8ca945c17fd86e31eeef1c02983e091d4f2cb437199e74b164d177d5b2d1"  # :2.3.1-1512499786
+        # String samtools_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud"  # :2.3.3-1513176735
 
         # Runtime options
-        String gatk_docker = "broadinstitute/gatk:4.2.1.0"
+        String gatk_docker = "broadinstitute/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
         File? gatk_override
-        String basic_bash_docker = "ubuntu:16.04"
         Int? preemptible
         Int? max_retries
         Int small_task_cpu = 2
@@ -404,6 +404,7 @@ workflow Mutect2 {
                 species = vep_species,
                 assembly = vep_assembly,
                 cache_dir = vep_cache_dir,
+                fasta = ref_fasta,
                 vep_docker = vep_docker,
                 loftee_docker = loftee_docker,
                 loftee_singularity = loftee_singularity,
@@ -498,7 +499,7 @@ task CramToBam {
       File? cram
       File? crai
       String name
-      String samtools_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
+      String samtools_docker
       Int disk_size_gb
       Int mem_mb = 6000
     }
@@ -1053,7 +1054,8 @@ task VEP {
         String assembly = "GRCh38"
         Boolean vcf_out = true
         String cache_dir
-        String vep_docker = "ensemblorg/ensembl-vep:release_103.1"
+        File fasta
+        String vep_docker
         String loftee_docker = ""  # TODO: add this
         String loftee_singularity = ""  # Overrides vep_docker/loftee_docker; TODO: remove once only using docker images
         Boolean loftee = true
@@ -1087,6 +1089,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
+            --fasta ~{fasta} \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
