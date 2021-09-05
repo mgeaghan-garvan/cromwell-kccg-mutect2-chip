@@ -110,8 +110,8 @@ workflow Mutect2 {
         
         # VEP settings
         String vep_docker = "ensemblorg/ensembl-vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221"  # :release_103.1
-        String loftee_docker = ""
-        String loftee_singularity = "/share/ClusterShare/software/contrib/micgea/singularity/vep_loftee.sif"
+        String loftee_docker = "mgeaghan/vep_loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # :vep_103.1_loftee_1.0.3
+        # String loftee_singularity = "/share/ClusterShare/software/contrib/micgea/singularity/vep_loftee.sif"
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
@@ -407,7 +407,6 @@ workflow Mutect2 {
                 fasta = ref_fasta,
                 vep_docker = vep_docker,
                 loftee_docker = loftee_docker,
-                loftee_singularity = loftee_singularity,
                 loftee = loftee,
                 loftee_ancestor_fa = vep_loftee_ancestor_fa,
                 loftee_ancestor_fai = vep_loftee_ancestor_fai,
@@ -1056,8 +1055,7 @@ task VEP {
         String cache_dir
         File fasta
         String vep_docker
-        String loftee_docker = ""  # TODO: add this
-        String loftee_singularity = ""  # Overrides vep_docker/loftee_docker; TODO: remove once only using docker images
+        String loftee_docker
         Boolean loftee = true
         File? loftee_ancestor_fa
         File? loftee_ancestor_fai
@@ -1102,11 +1100,9 @@ task VEP {
 
     String cache_dir_bind = "--bind ~{cache_dir}:/cache"
 
-    # TODO: create docker image and upload to docker hub; remove singularity_local parameter; update backend accordingly
     String docker_to_use = if (loftee && loftee_docker != "") then loftee_docker else vep_docker
     runtime {
         docker: docker_to_use
-        singularity_local: loftee_singularity  # TODO: remove once only using docker images
         mem_mb: mem_mb
         cpu: cpus
         bind_cmd: cache_dir_bind
