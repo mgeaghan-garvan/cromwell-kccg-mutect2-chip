@@ -111,7 +111,6 @@ workflow Mutect2 {
         # VEP settings
         String vep_docker = "ensemblorg/ensembl-vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221"  # :release_103.1
         String loftee_docker = "mgeaghan/vep_loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # :vep_103.1_loftee_1.0.3
-        # String loftee_singularity = "/share/ClusterShare/software/contrib/micgea/singularity/vep_loftee.sif"
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
@@ -123,8 +122,7 @@ workflow Mutect2 {
         File? vep_loftee_conservation_sql
 
         # Samtools settings
-        String samtools_docker = "broadinstitute/genomes-in-the-cloud@sha256:4fca8ca945c17fd86e31eeef1c02983e091d4f2cb437199e74b164d177d5b2d1"  # :2.3.1-1512499786
-        # String samtools_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud"  # :2.3.3-1513176735
+        String samtools_docker = "mgeaghan/vep_loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
 
         # Runtime options
         String gatk_docker = "broadinstitute/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0

@@ -27,12 +27,14 @@ CROMWELL_PORT=8000
 # Create a screen session
 screen -S "CromwellPort${CROMWELL_PORT}"
 
-# Ensure that Java 8/v1.8 is the active Java version
+# Ensure that Java 11 is the active Java version
 java -version
 # If it isn't check the currently active modules
 module list
 # If an older version of Java is loaded, unload it. This should return the default Java version to 8/v1.8
 module unload centos6.10/ccg/java/1.7.0_25
+# Now load Java 11
+module load centos6.10/shacar/java/jdk-11.0.2
 
 # Start the Cromwell server
 ./start_cromwell.sh

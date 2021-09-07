@@ -5,7 +5,8 @@ set -x
 # Hardcoded environment variables for MySQL directories
 MYSQL=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
 MYSQL_RUNDIR=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-CROMWELL=/share/ClusterShare/software/contrib/evaben7/cromwell/38/prebuilt/cromwell-38.jar
+# CROMWELL=/share/ClusterShare/software/contrib/micgea/cromwell/38/cromwell-38.jar  # requires java 8/1.8
+CROMWELL=/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar  # requires java 11
 CROMWELL_BN="$(basename ${CROMWELL})"
 
 # Arguments
