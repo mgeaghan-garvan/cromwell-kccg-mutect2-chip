@@ -15,6 +15,8 @@ db_port="$2"
 db_name="$3"
 crom_port="$4"
 
+# TODO: allow user to choose GCP
+
 # Configure mutect2.conf
 # Set the MySQL hostname, port, and database name
 sed -i -e "s/DBHOST_TO_SED/${db_host}/g" \
@@ -23,16 +25,20 @@ sed -i -e "s/DBHOST_TO_SED/${db_host}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${crom_port}/g" \
     ./workflow/mutect2.conf
 
-# Configure options.json
+# Configure options files
 # '#' delimiters are used to enable path substitution
 sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.json
+sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.google.json
 # Set up output directories
 mkdir -p workflow_out
 mkdir -p workflow_logs
 mkdir -p workflow_call_logs
+mkdir -p gcp_logs  # TODO: only do this if user chooses GCP
+
 
 # Configure run.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${crom_port}/g" ./run.sh
+# TODO: substitute options.google.json for options.json when user chooses GCP
 
 # Configure start_cromwell.sh
 ln -s ${CROMWELL}

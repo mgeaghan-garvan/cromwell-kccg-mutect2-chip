@@ -1,4 +1,9 @@
 {
+    "backend": "SGE",
+    "workflow_failure_mode": "ContinueWhilePossible",
+    "write_to_cache": true,
+    "read_from_cache": true,
+    "use_relative_output_paths": true,
     "final_workflow_outputs_dir": "PWD_TO_SED/workflow_out",
     "final_workflow_log_dir": "PWD_TO_SED/workflow_logs",
     "final_call_logs_dir": "PWD_TO_SED/workflow_call_logs"
