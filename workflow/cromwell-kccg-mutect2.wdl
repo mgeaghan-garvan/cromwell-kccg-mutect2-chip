@@ -1,19 +1,34 @@
 version 1.0
 
 # =============================================================== #
-# cromwell-kccg-mutect2                                           #
+# cromwell-kccg-mutect2-chip                                      #
 #                                                                 #
-# This workflow runs the GATK4 Mutect2 somatic variant calling    #
-# pipeline.                                                       #
+# This workflow detects mutations associated with CHIP            #
+# (clonal haematopoiesis of indeterminate potential) using the    #
+# GATK4 Mutect2 somatic variant calling pipeline and the          #
+# Cromwell workflow engine.                                       #
 #                                                                 #
-# It has been adapted from the Broad Institute's pipeline for use #
-# by the Kinghorn Centre for Clinical Genomics and the Garvan     #
-# Institute for Medical Research.                                 #
+# This workflow has been adapted from the CHIP-detection-Mutect2  #
+# workflow developed by Alex Bick. The Mutect2 somatic variant    #
+# calling stage is adapted from the GATK best practices workflow, #
+# and the CHIP detection stage is adapted from the                #
+# Annovar Whitelist Filter developed by Charlie Condon.           #
+#                                                                 #
+# This pipeline has been developer for use by the Kinghorn        #
+# Centre for Clinical Genomics and the Garvan Institute for       # 
+# Medical Research.                                               #
 #                                                                 #
 # Author: Michael Geaghan (micgea)                                #
 # Created: 2021/08/13                                             #
 # =============================================================== #
 
+# ========== LINKS ========== #
+# CHIP-Detection-Mutect2 (Alex Bick): https://app.terra.bio/#workspaces/terra-outreach/CHIP-Detection-Mutect2
+# Somatic variant calling best practices pipeline (Broad Institute): https://github.com/broadinstitute/gatk/blob/4.1.6.0/scripts/mutect2_wdl/mutect2.wdl
+# Annovar Whitelist Filter (Charlie Condon): https://github.com/charliecondon/Annovar_Whitelist_Filter_WDL/tree/main
+# =========================== #
+
+# ========== Mutect2 ========== #
 ## Copyright Broad Institute, 2017
 ##
 ## This WDL workflow runs GATK4 Mutect 2 on a single tumor-normal pair or on a single tumor sample,
@@ -67,6 +82,57 @@ version 1.0
 ## pages at https://hub.docker.com/r/broadinstitute/* for detailed licensing information
 ## pertaining to the included programs.
 
+# ========== Annovar Whitelist Filter ========== #
+## Version 8-2-2021
+##
+## This WDL workflow runs Annovar and a Whitelist Filter on the ouput VCFs from the Mutect2 Workflow.
+##
+##
+## ** ANNOVAR **
+## Annovar functionally annotates genetic variants detected from diverse genomes.
+## Given a list of variants with chromosome, start position, end position, reference nucleotide
+## and observed nucleotides, Annovar can perform gene-based annotation, region-based annotation,
+## filter-based annotation, and more.
+##
+## See ANNOVAR documentation to fully understand functionality:
+## https://annovar.openbioinformatics.org/en/latest/user-guide/startup/
+##
+## annovar_zip: the zipped folder with all of the needed files to run Annovar
+##              NOTE: This file path is set on Terra - The file must be in the Workspace's bucket
+## annovar_vcf_input: the Tables/sample column containing the vcf output files from a run of Mutect2
+##                    NOTE: This is set on Terra (ex. this.filtered_vcf)
+## annovar_protocols: the specificed protocols needed to run annovar (default = refGene,cosmic70)
+##                    NOTE: You must add the needed file paths to annovar_data_sources
+## annovar_operation: the specified operations needed to run annovar (default = g,f)
+##                    NOTE: They must match up with annovar_protocols
+## ref_name: the reference name needed for annovar to run (default = hg38)
+## annovar_docker: the docker image to be used in the Annovar task
+##
+## ** WHITELIST_FILTER **
+## WhitelistFilter filters annovar's output based on only relevant data to our lab's whitelist.
+##
+## You can find the R script code with comments on github: https://github.com/charliecondon/Annovar_Whitelist_Filter_WDL
+##
+## run_whitelist: if true, the WhitelistFilter task is run
+## sample_id: set to the corresponding sample id for a given run
+##			  NOTE: This is set on Terra (ex. this.sample_id)
+## whitelist_filter_zip: the zipped folder with all of the files needed to run WhitelistFilter
+##                       NOTE: This file path is set on Terra - The file must be in the Workspace's bucket
+## txt_input: the txt input file that was an output of annovar
+## whitelist_filter_docker: the docker image to be used in the Annovar task
+##
+## ** WDL OUTPUTS **
+##  Four CSV files:
+## 		- one with the whitelist filter applied
+##		- one ready for manual review
+##		- one with variant count information for debugging
+##		- one with all the pre-whitelist variants listed
+##
+##
+## Distributed under terms of the MIT License
+## Copyright (c) 2021 Charlie Condon
+## Contact <ccondon@vols.utk.edu>
+
 struct Runtime {
     String gatk_docker
     File? gatk_override
@@ -79,7 +145,7 @@ struct Runtime {
     Int boot_disk_size
 }
 
-workflow Mutect2 {
+workflow Mutect2CHIP {
     input {
         # Mutect2 inputs
         File? intervals
@@ -120,6 +186,16 @@ workflow Mutect2 {
         File? vep_loftee_ancestor_fai
         File? vep_loftee_ancestor_gzi
         File? vep_loftee_conservation_sql
+
+        # Annovar Whitelist Filter settings
+        Boolean run_chip_detection = true
+        File annovar_dir
+        File whitelist_filter_dir
+        String annovar_assembly = "hg38"
+        # TODO: change these docker images
+        String annovar_docker = "perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
+        String whitelist_filter_docker = "ccondon/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
+        File whitelist_r_script = "workflow/whitelist_filter_rscript.R"  # Not ideal: set full path in inputs.json instead
 
         # Samtools settings
         String samtools_docker = "mgeaghan/vep_loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
@@ -390,9 +466,13 @@ workflow Mutect2 {
         }
     }
 
+    File filter_output_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+    File filter_output_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
+
+
     if (vep) {
-        File vep_input_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File vep_input_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
+        File vep_input_vcf = filter_output_vcf  # select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+        File vep_input_vcf_idx = filter_output_vcf_idx  # select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         Int n_vep_cpus = if loftee then 1 else vep_cpu
 
         call VEP {
@@ -415,9 +495,40 @@ workflow Mutect2 {
         }
     }
 
+    # Run annovar and CHIP whitelist filter
+    # TODO: change mem_mb, *_disk_space, and cpu to workflow input parameters
+    if (run_chip_detection) {
+        String sample_id = basename(basename(filter_output_vcf, ".gz"), ".vcf")
+        call Annovar {
+            input:
+                mem_mb = 4000,
+                annovar_disk_space = 300,
+                cpu = 1,
+                annovar_docker = annovar_docker,
+                sample_id = sample_id,
+                vcf_input = filter_output_vcf,
+                annovar_dir = annovar_dir,
+                ref_name = annovar_assembly,
+                runtime_params = standard_runtime
+        }
+
+        call WhitelistFilter {
+            input:
+                mem_mb = 10000,
+                whitelist_filter_disk_space = 300,
+                cpu = 1,
+                whitelist_filter_docker = whitelist_filter_docker,
+                txt_input = Annovar.annovar_output_file_table,
+                ref_name = annovar_assembly,
+                whitelist_filter_dir = whitelist_filter_dir,
+                whitelist_r_script = whitelist_r_script,
+                runtime_params = standard_runtime
+        }
+    }
+
     output {
-        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
+        File filtered_vcf = filter_output_vcf  # select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
+        File filtered_vcf_idx = filter_output_vcf_idx  # select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         File filtering_stats = Filter.filtering_stats
         File mutect_stats = MergeStats.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
@@ -427,6 +538,12 @@ workflow Mutect2 {
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? out_vep_vcf = VEP.output_vcf
         File? out_vep_tab = VEP.output_tab
+        File? out_annovar_vcf = Annovar.annovar_output_file_vcf
+        File? out_annovar_table = Annovar.annovar_output_file_table
+        File? out_whitelist_count = WhitelistFilter.whitelist_filter_output_varcount_csv
+        File? out_whitelist_all_variants = WhitelistFilter.whitelist_filter_output_allvariants_csv
+        File? out_whitelist = WhitelistFilter.whitelist_filter_output_wl_csv
+        File? out_whitelist_manual_review = WhitelistFilter.whitelist_filter_output_manual_review_csv
     }
 
     # # Test output
@@ -1255,4 +1372,100 @@ task Funcotate {
          File funcotated_output_file = "~{output_file}"
          File funcotated_output_file_index = "~{output_file_index}"
      }
+}
+
+task Annovar {
+    input {
+      Int mem_mb = 4000
+      Int annovar_disk_space = 300
+      Int cpu = 1
+      String annovar_docker
+
+      String sample_id
+      File vcf_input
+      File annovar_dir
+
+      String ref_name = "hg38"
+      String annovar_protocols = "refGene,cosmic70"
+      String annovar_operation = "g,f"
+      Runtime runtime_params
+    }
+
+    String file_prefix = sample_id + ".annovar_out"
+
+    command {
+      set -euo pipefail
+
+      chmod +x ~{annovar_dir}/convert2annovar.pl
+      chmod +x ~{annovar_dir}/table_annovar.pl
+      chmod +x ~{annovar_dir}/annotate_variation.pl
+      chmod +x ~{annovar_dir}/coding_change.pl
+      chmod +x ~{annovar_dir}/retrieve_seq_from_fasta.pl
+      chmod +x ~{annovar_dir}/variants_reduction.pl
+
+      perl ~{annovar_dir}/table_annovar.pl ${vcf_input} ~{annovar_dir} \
+        -buildver ${default="hg38" ref_name} \
+        -out ${file_prefix} \
+        -remove \
+        -protocol ${default="refGene,cosmic70" annovar_protocols} \
+        -operation ${default="g,f" annovar_operation} \
+        -nastring . -vcfinput
+    }
+
+    runtime {
+      docker: annovar_docker
+      bootDiskSizeGb: runtime_params.boot_disk_size
+      memory: mem_mb + " MB"
+      mem_mb: mem_mb
+      disks: "local-disk " + annovar_disk_space + " HDD"
+      preemptible: runtime_params.preemptible
+      maxRetries: runtime_params.max_retries
+      cpu: cpu
+    }
+
+    output {
+      File annovar_output_file_vcf = file_prefix + ".hg38_multianno.vcf"
+      File annovar_output_file_table = file_prefix + ".hg38_multianno.txt"
+    }
+}
+
+task WhitelistFilter {
+    input {
+      Int mem_mb = 10000
+      Int whitelist_filter_disk_space = 300
+      Int cpu = 1
+      String whitelist_filter_docker
+
+      File txt_input
+      String ref_name
+      File whitelist_filter_dir
+      File whitelist_r_script = "./whitelist_filter_rscript.R"
+      Runtime runtime_params
+    }
+
+    String file_prefix = basename(txt_input, "_multianno.txt")
+
+    command {
+      set -euo pipefail
+
+      Rscript ~{whitelist_r_script} --args ~{txt_input} ~{ref_name} ~{whitelist_filter_dir}
+    }
+
+    runtime {
+      docker: whitelist_filter_docker
+      bootDiskSizeGb: runtime_params.boot_disk_size
+      memory: mem_mb + " MB"
+      mem_mb: mem_mb
+      disks: "local-disk " + whitelist_filter_disk_space + " HDD"
+      preemptible: runtime_params.preemptible
+      maxRetries: runtime_params.max_retries
+      cpu: cpu
+    }
+
+    output {
+      File? whitelist_filter_output_varcount_csv = file_prefix + ".varsOI.varcount.csv"
+      File? whitelist_filter_output_allvariants_csv = file_prefix + ".varsOI.allvariants.csv"
+      File? whitelist_filter_output_wl_csv = file_prefix + ".varsOI.wl.csv"
+      File? whitelist_filter_output_manual_review_csv = file_prefix + ".varsOI.manualreview.csv"
+    }
 }

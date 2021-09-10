@@ -5,16 +5,17 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-H DB_HOSTNAME] [-P DB_PORT] [-n DB_NAME] [-p CROMWELL_PORT] [-f PLATFORM] [-M MYSQL_DIR] [-R MYSQL_RUN_DIR] [-c CROMWELL_JAR]"
+    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun]"
     echo -e "Display this help message: $0 -h\n"
-    echo -e "\tDB_HOSTNAME:   Hostname where MySQL server is running.   (Default: '0.0.0.0')"
-    echo -e "\tDB_PORT:       Port for MySQL server on host.            (Default: '40008')"
-    echo -e "\tDB_NAME:       Name for MySQL database.                  (Default: 'cromwell')."
-    echo -e "\tCROMWELL_PORT: Port where Cromwell should run.           (Default: '8007')"
-    echo -e "\tPLATFORM:      Platform on which workflow should be run. (Options: 'HPC', 'GCP'. Default: 'HPC')"
-    echo -e "\tMYSQL_DIR:     Root directory for MySQL installation.    (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
-    echo -e "\tMYSQL_RUN_DIR: Run directory for MySQL.                  (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
-    echo -e "\tCROMWELL_JAR:  Location of Cromwell JAR file.            (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar')"
+    echo -e "\tDB_HOSTNAME:   Hostname where MySQL server is running.            (Default: '0.0.0.0')"
+    echo -e "\tDB_PORT:       Port for MySQL server on host.                     (Default: '40008')"
+    echo -e "\tDB_NAME:       Name for MySQL database.                           (Default: 'cromwell')."
+    echo -e "\tCROMWELL_PORT: Port where Cromwell should run.                    (Default: '8007')"
+    echo -e "\tPLATFORM:      Platform on which workflow should be run.          (Options: 'HPC', 'GCP'. Default: 'HPC')"
+    echo -e "\tMYSQL_DIR:     Root directory for MySQL installation.             (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
+    echo -e "\tMYSQL_RUN_DIR: Run directory for MySQL.                           (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
+    echo -e "\tCROMWELL_JAR:  Location of Cromwell JAR file.                     (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar')"
+    echo -e "\t[-d|--dryrun]: Print settings to screen without making changes.   (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar')"
 }
 
 # Display help message if there are no arguments
@@ -38,6 +39,7 @@ DBPORT="40008"
 DBNAME="cromwell"
 CROMPORT="8007"
 PLATFORM="HPC"
+DRYRUN="0"
 
 # Arguments
 POSITIONAL=()
@@ -100,6 +102,10 @@ while [[ $# -gt 0 ]]; do
                         shift
                         shift
                         ;;
+                -d|--dryrun)
+                        DRYRUN="1"
+                        shift
+                        ;;
                 *)
                         POSITIONAL+=("$1")
                         shift
@@ -122,8 +128,10 @@ if [[ -n $1 ]]; then
         echo "$@"
 fi
 
-# DEBUGGING
-# exit 0
+if [ "${DRYRUN}" == "1" ]
+then
+        exit 0
+fi
 
 # Set cromwell basename variable
 CROMWELL_BN="$(basename ${CROMWELL})"
