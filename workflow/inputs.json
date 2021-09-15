@@ -21,7 +21,7 @@
     "Mutect2CHIP.vep": true,
     "Mutect2CHIP.loftee": true,
     "Mutect2CHIP.vep_species": "homo_sapiens",
-    "Mutect2CHIP.vep_assembly": "CRCh38",
+    "Mutect2CHIP.vep_assembly": "GRCh38",
     "Mutect2CHIP.vep_cache_dir": "/share/ScratchGeneral/micgea/.vep/cache",
     "Mutect2CHIP.vep_loftee_ancestor_fa": "/share/ScratchGeneral/micgea/.vep/cache/Plugins/loftee_data/human_ancestor.fa.gz",
     "Mutect2CHIP.vep_loftee_ancestor_fai": "/share/ScratchGeneral/micgea/.vep/cache/Plugins/loftee_data/human_ancestor.fa.gz.fai",

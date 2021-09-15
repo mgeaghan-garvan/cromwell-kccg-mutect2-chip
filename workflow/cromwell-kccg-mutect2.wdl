@@ -506,7 +506,7 @@ workflow Mutect2CHIP {
                 cpu = 1,
                 annovar_docker = annovar_docker,
                 sample_id = sample_id,
-                vcf_input = filter_output_vcf,
+                vcf_input = select_first([VEP.output_vcf, filter_output_vcf]),
                 annovar_dir = annovar_dir,
                 ref_name = annovar_assembly,
                 runtime_params = standard_runtime
