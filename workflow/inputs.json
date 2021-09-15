@@ -15,6 +15,7 @@
     "Mutect2CHIP.variants_for_contamination": "/share/ScratchGeneral/micgea/somvarpipe/data/small_exac_common_3.hg38.vcf.gz",
     "Mutect2CHIP.variants_for_contamination_idx": "/share/ScratchGeneral/micgea/somvarpipe/data/small_exac_common_3.hg38.vcf.gz.tbi",
     "Mutect2CHIP.gatk_docker": "broadinstitute/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b",
+    "Mutect2CHIP.m2_extra_args": "--downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6",
     "Mutect2CHIP.run_orientation_bias_mixture_model_filter": true,
     "Mutect2CHIP.make_bamout": true,
     "Mutect2CHIP.compress_vcfs": true,

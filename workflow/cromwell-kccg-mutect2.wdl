@@ -180,7 +180,7 @@ workflow Mutect2CHIP {
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
-        String vep_cache_dir
+        File vep_cache_dir
         Boolean loftee = true
         File? vep_loftee_ancestor_fa
         File? vep_loftee_ancestor_fai
@@ -1178,7 +1178,7 @@ task VEP {
         String species = "homo_sapiens"
         String assembly = "GRCh38"
         Boolean vcf_out = true
-        String cache_dir
+        File cache_dir
         File fasta
         String vep_docker
         String loftee_docker
@@ -1203,7 +1203,7 @@ task VEP {
 
     command {
         vep \
-            --dir_cache /cache \
+            --dir_cache ~{cache_dir} \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1224,7 +1224,7 @@ task VEP {
             ~{if loftee then "--plugin LoF,loftee_path:/plugins/loftee-1.0.3,human_ancestor_fa:" + loftee_ancestor_fa + ",conservation_file:" + loftee_conservation_sql else ""}
     }
 
-    String cache_dir_bind = "--bind ~{cache_dir}:/cache"
+    # String cache_dir_bind = "--bind ~{cache_dir}:/cache"
 
     String docker_to_use = if (loftee && loftee_docker != "") then loftee_docker else vep_docker
     runtime {
@@ -1232,7 +1232,6 @@ task VEP {
         memory: mem_mb + " MB"
         mem_mb: mem_mb
         cpu: cpus
-        bind_cmd: cache_dir_bind
     }
 
     output {
