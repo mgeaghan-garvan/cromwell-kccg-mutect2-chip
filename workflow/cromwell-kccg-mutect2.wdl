@@ -14,7 +14,7 @@ version 1.0
 # and the CHIP detection stage is adapted from the                #
 # Annovar Whitelist Filter developed by Charlie Condon.           #
 #                                                                 #
-# This pipeline has been developer for use by the Kinghorn        #
+# This pipeline has been developed for use by the Kinghorn        #
 # Centre for Clinical Genomics and the Garvan Institute for       # 
 # Medical Research.                                               #
 #                                                                 #
@@ -180,7 +180,7 @@ workflow Mutect2CHIP {
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
-        File vep_cache_dir
+        File vep_cache_archive
         Boolean loftee = true
         File? vep_loftee_ancestor_fa
         File? vep_loftee_ancestor_fai
@@ -189,13 +189,12 @@ workflow Mutect2CHIP {
 
         # Annovar Whitelist Filter settings
         Boolean run_chip_detection = true
-        File annovar_dir
-        File whitelist_filter_dir
+        File annovar_archive
+        File whitelist_filter_archive
         String annovar_assembly = "hg38"
         # TODO: change these docker images
         String annovar_docker = "perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String whitelist_filter_docker = "ccondon/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
-        File whitelist_r_script = "workflow/whitelist_filter_rscript.R"  # Not ideal: set full path in inputs.json instead
 
         # Samtools settings
         String samtools_docker = "mgeaghan/vep_loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
@@ -364,6 +363,7 @@ workflow Mutect2CHIP {
             input:
                 f1r2_tar_gz = M2.f1r2_counts,
                 runtime_params = standard_runtime,
+                output_name = output_basename,
                 mem_mb = learn_read_orientation_mem
         }
     }
@@ -393,6 +393,7 @@ workflow Mutect2CHIP {
     call MergeStats {
         input:
             stats = M2.stats,
+            output_name = output_basename,
             runtime_params = standard_runtime
     }
 
@@ -419,6 +420,7 @@ workflow Mutect2CHIP {
             input:
                 tumor_pileups = MergeTumorPileups.merged_table,
                 normal_pileups = MergeNormalPileups.merged_table,
+                output_name = output_basename,
                 runtime_params = standard_runtime
         }
     }
@@ -481,7 +483,7 @@ workflow Mutect2CHIP {
                 input_vcf_idx = vep_input_vcf_idx,
                 species = vep_species,
                 assembly = vep_assembly,
-                cache_dir = vep_cache_dir,
+                cache_archive = vep_cache_archive,
                 fasta = ref_fasta,
                 vep_docker = vep_docker,
                 loftee_docker = loftee_docker,
@@ -491,7 +493,8 @@ workflow Mutect2CHIP {
                 loftee_ancestor_gzi = vep_loftee_ancestor_gzi,
                 loftee_conservation_sql = vep_loftee_conservation_sql,
                 mem_mb = vep_mem,
-                cpus = n_vep_cpus
+                cpus = n_vep_cpus,
+                runtime_params = standard_runtime
         }
     }
 
@@ -507,7 +510,7 @@ workflow Mutect2CHIP {
                 annovar_docker = annovar_docker,
                 sample_id = sample_id,
                 vcf_input = select_first([VEP.output_vcf, filter_output_vcf]),
-                annovar_dir = annovar_dir,
+                annovar_archive = annovar_archive,
                 ref_name = annovar_assembly,
                 runtime_params = standard_runtime
         }
@@ -520,8 +523,7 @@ workflow Mutect2CHIP {
                 whitelist_filter_docker = whitelist_filter_docker,
                 txt_input = Annovar.annovar_output_file_table,
                 ref_name = annovar_assembly,
-                whitelist_filter_dir = whitelist_filter_dir,
-                whitelist_r_script = whitelist_r_script,
+                whitelist_filter_archive = whitelist_filter_archive,
                 runtime_params = standard_runtime
         }
     }
@@ -537,7 +539,6 @@ workflow Mutect2CHIP {
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? out_vep_vcf = VEP.output_vcf
-        File? out_vep_tab = VEP.output_tab
         File? out_annovar_vcf = Annovar.annovar_output_file_vcf
         File? out_annovar_table = Annovar.annovar_output_file_table
         File? out_whitelist_count = WhitelistFilter.whitelist_filter_output_varcount_csv
@@ -545,59 +546,6 @@ workflow Mutect2CHIP {
         File? out_whitelist = WhitelistFilter.whitelist_filter_output_wl_csv
         File? out_whitelist_manual_review = WhitelistFilter.whitelist_filter_output_manual_review_csv
     }
-
-    # # Test output
-    # output {
-    #     # Cram2Bam
-    #     File out_tumor_bam = tumor_bam
-    #     File out_tumor_bai = tumor_bai
-    #     Int out_tumor_bam_size = tumor_bam_size
-    #     File? out_normal_bam = normal_bam
-    #     File? out_normal_bai = normal_bai
-    #     Int? out_normal_size = normal_bam_size
-    #     Int out_m2_output_size = m2_output_size
-    #     Int out_m2_per_scatter_size = m2_per_scatter_size
-    #     # SplitIntervals
-    #     Array[File] out_interval_files = SplitIntervals.interval_files
-    #     # M2
-    #     Array[File] out_unfiltered_vcf = M2.unfiltered_vcf
-    #     Array[File] out_unfiltered_vcf_idx = M2.unfiltered_vcf_idx
-    #     Array[File] out_output_bamOut = M2.output_bamOut
-    #     Array[String] out_tumor_sample = M2.tumor_sample
-    #     Array[String] out_normal_sample = M2.normal_sample
-    #     Array[File] out_stats = M2.stats
-    #     Array[File] out_f1r2_counts = M2.f1r2_counts
-    #     Array[Array[File]] out_tumor_pileups = M2.tumor_pileups
-    #     Array[Array[File]] out_normal_pileups = M2.normal_pileups
-    #     Int out_merged_vcf_size = merged_vcf_size
-    #     Int out_merged_bamout_size = merged_bamout_size
-    #     # LearnReadOrientationModel
-    #     File? out_artifact_prior_table = LearnReadOrientationModel.artifact_prior_table
-    #     # MergeVCFs
-    #     File out_merged_vcf = MergeVCFs.merged_vcf
-    #     File out_merged_vcf_idx = MergeVCFs.merged_vcf_idx
-    #     # MergeBamOuts
-    #     File? out_merged_bam_out = MergeBamOuts.merged_bam_out
-    #     File? out_merged_bam_out_index = MergeBamOuts.merged_bam_out_index
-    #     # MergeStats
-    #     File out_merged_stats = MergeStats.merged_stats
-    #     # MergePileupSummaries
-    #     File? out_tumor_merged_table = MergeTumorPileups.merged_table
-    #     File? out_normal_merged_table = MergeNormalPileups.merged_table
-    #     # CalculateContamination
-    #     File? out_contamination_table = CalculateContamination.contamination_table
-    #     File? out_maf_segments = CalculateContamination.maf_segments
-    #     # Filter
-    #     File out_filtered_vcf = Filter.filtered_vcf
-    #     File out_filtered_vcf_idx = Filter.filtered_vcf_idx
-    #     File out_filtering_stats = Filter.filtering_stats
-    #     # FilterAlignmentArtifacts
-    #     File? out_faa_filtered_vcf = FilterAlignmentArtifacts.filtered_vcf
-    #     File? out_faa_filtered_vcf_idx = FilterAlignmentArtifacts.filtered_vcf_idx
-    #     # VEP
-    #     File? out_vep_vcf = VEP.output_vcf
-    #     File? out_vep_tab = VEP.output_tab
-    # }
 }
 
 # ================ #
@@ -830,6 +778,7 @@ task LearnReadOrientationModel {
     input {
       Array[File] f1r2_tar_gz
       Runtime runtime_params
+      String output_name
       Int mem_mb = 5000
     }
 
@@ -842,7 +791,7 @@ task LearnReadOrientationModel {
 
         gatk --java-options "-Xmx~{command_mem}m" LearnReadOrientationModel \
             -I ~{sep=" -I " f1r2_tar_gz} \
-            -O "artifact-priors.tar.gz"
+            -O "~{output_name}-artifact-priors.tar.gz"
     }
 
     runtime {
@@ -857,7 +806,7 @@ task LearnReadOrientationModel {
     }
 
     output {
-        File artifact_prior_table = "artifact-priors.tar.gz"
+        File artifact_prior_table = "~{output_name}-artifact-priors.tar.gz"
     }
 
 }
@@ -947,6 +896,7 @@ task MergeBamOuts {
 task MergeStats {
     input {
       Array[File]+ stats
+      String output_name
       Runtime runtime_params
     }
 
@@ -956,7 +906,7 @@ task MergeStats {
 
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
-            -stats ~{sep=" -stats " stats} -O merged.stats
+            -stats ~{sep=" -stats " stats} -O "~{output_name}-merged.stats"
     }
 
     runtime {
@@ -971,7 +921,7 @@ task MergeStats {
     }
 
     output {
-        File merged_stats = "merged.stats"
+        File merged_stats = "~{output_name}-merged.stats"
     }
 }
 
@@ -1014,6 +964,7 @@ task CalculateContamination {
       String? intervals
       File tumor_pileups
       File? normal_pileups
+      String output_name
       Runtime runtime_params
     }
 
@@ -1023,7 +974,7 @@ task CalculateContamination {
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
-        -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups}
+        -O "~{output_name}-contamination.table" --tumor-segmentation "~{output_name}-segments.table" ~{"-matched " + normal_pileups}
     }
 
     runtime {
@@ -1038,8 +989,8 @@ task CalculateContamination {
     }
 
     output {
-        File contamination_table = "contamination.table"
-        File maf_segments = "segments.table"
+        File contamination_table = "~{output_name}-contamination.table"
+        File maf_segments = "~{output_name}-segments.table"
     }
 }
 
@@ -1084,7 +1035,7 @@ task Filter {
             ~{"--tumor-segmentation " + maf_segments} \
             ~{"--ob-priors " + artifact_priors_tar_gz} \
             ~{"-stats " + mutect_stats} \
-            --filtering-stats filtering.stats \
+            --filtering-stats "~{output_name}.filtering.stats" \
             ~{m2_extra_filtering_args}
     }
 
@@ -1102,7 +1053,7 @@ task Filter {
     output {
         File filtered_vcf = "~{output_vcf}"
         File filtered_vcf_idx = "~{output_vcf_idx}"
-        File filtering_stats = "filtering.stats"
+        File filtering_stats = "~{output_name}.filtering.stats"
     }
 }
 
@@ -1177,8 +1128,7 @@ task VEP {
         File input_vcf_idx
         String species = "homo_sapiens"
         String assembly = "GRCh38"
-        Boolean vcf_out = true
-        File cache_dir
+        File cache_archive
         File fasta
         String vep_docker
         String loftee_docker
@@ -1192,18 +1142,23 @@ task VEP {
         Int mem_mb = 32000
         Int? buffer_size
         Int loftee_buffer_size = 1
+        Runtime runtime_params
     }
 
-    String output_options = if vcf_out then "--vcf --no_stats" else "--tab"
+    String output_options = "--vcf --no_stats"
     String input_basename = basename(basename(input_vcf, ".gz"), ".vcf")
-    String output_suffix = if vcf_out then ".vep.vcf" else ".vep.txt"
+    String output_suffix = ".vep.vcf"
     String output_file = input_basename + output_suffix
     String stats_file = input_basename + ".vep.html"
     String offline_options = if offline then "--offline" else ""
 
     command {
+        tar -xzvf ~{cache_archive}
+        # this seems necessary on GCP - running into permissions errors.
+        # TODO: find a better solution
+        cp ~{fasta} ./ref_fasta.fasta
         vep \
-            --dir_cache ~{cache_dir} \
+            --dir_cache ./.vep/cache \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1213,7 +1168,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
-            --fasta ~{fasta} \
+            --fasta ./ref_fasta.fasta \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
@@ -1224,19 +1179,20 @@ task VEP {
             ~{if loftee then "--plugin LoF,loftee_path:/plugins/loftee-1.0.3,human_ancestor_fa:" + loftee_ancestor_fa + ",conservation_file:" + loftee_conservation_sql else ""}
     }
 
-    # String cache_dir_bind = "--bind ~{cache_dir}:/cache"
-
     String docker_to_use = if (loftee && loftee_docker != "") then loftee_docker else vep_docker
     runtime {
         docker: docker_to_use
+        bootDiskSizeGb: runtime_params.boot_disk_size
         memory: mem_mb + " MB"
         mem_mb: mem_mb
+        disks: "local-disk " + runtime_params.disk + " HDD"
+        preemptible: runtime_params.preemptible
+        maxRetries: runtime_params.max_retries
         cpu: cpus
     }
 
     output {
         File? output_vcf = "~{input_basename}.vep.vcf"
-        File? output_tab = "~{input_basename}.vep.txt"
     }
 }
 
@@ -1382,7 +1338,7 @@ task Annovar {
 
       String sample_id
       File vcf_input
-      File annovar_dir
+      File annovar_archive
 
       String ref_name = "hg38"
       String annovar_protocols = "refGene,cosmic70"
@@ -1395,14 +1351,16 @@ task Annovar {
     command {
       set -euo pipefail
 
-      chmod +x ~{annovar_dir}/convert2annovar.pl
-      chmod +x ~{annovar_dir}/table_annovar.pl
-      chmod +x ~{annovar_dir}/annotate_variation.pl
-      chmod +x ~{annovar_dir}/coding_change.pl
-      chmod +x ~{annovar_dir}/retrieve_seq_from_fasta.pl
-      chmod +x ~{annovar_dir}/variants_reduction.pl
+      tar -xzvf ~{annovar_archive}
 
-      perl ~{annovar_dir}/table_annovar.pl ${vcf_input} ~{annovar_dir} \
+      chmod +x ./annovar_files/convert2annovar.pl
+      chmod +x ./annovar_files/table_annovar.pl
+      chmod +x ./annovar_files/annotate_variation.pl
+      chmod +x ./annovar_files/coding_change.pl
+      chmod +x ./annovar_files/retrieve_seq_from_fasta.pl
+      chmod +x ./annovar_files/variants_reduction.pl
+
+      perl annovar_files/table_annovar.pl ${vcf_input} annovar_files \
         -buildver ${default="hg38" ref_name} \
         -out ${file_prefix} \
         -remove \
@@ -1437,8 +1395,7 @@ task WhitelistFilter {
 
       File txt_input
       String ref_name
-      File whitelist_filter_dir
-      File whitelist_r_script = "./whitelist_filter_rscript.R"
+      File whitelist_filter_archive
       Runtime runtime_params
     }
 
@@ -1447,7 +1404,9 @@ task WhitelistFilter {
     command {
       set -euo pipefail
 
-      Rscript ~{whitelist_r_script} --args ~{txt_input} ~{ref_name} ~{whitelist_filter_dir}
+      tar -xzvf ~{whitelist_filter_archive}
+
+      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R --args ~{txt_input} ~{ref_name} ./whitelist_filter_files
     }
 
     runtime {

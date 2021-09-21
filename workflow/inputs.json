@@ -23,14 +23,13 @@
     "Mutect2CHIP.loftee": true,
     "Mutect2CHIP.vep_species": "homo_sapiens",
     "Mutect2CHIP.vep_assembly": "GRCh38",
-    "Mutect2CHIP.vep_cache_dir": "/share/ScratchGeneral/micgea/.vep/cache",
+    "Mutect2CHIP.vep_cache_archive": "/share/ScratchGeneral/micgea/somvarpipe/data/vep.tar.gz",
     "Mutect2CHIP.vep_loftee_ancestor_fa": "/share/ScratchGeneral/micgea/.vep/cache/Plugins/loftee_data/human_ancestor.fa.gz",
     "Mutect2CHIP.vep_loftee_ancestor_fai": "/share/ScratchGeneral/micgea/.vep/cache/Plugins/loftee_data/human_ancestor.fa.gz.fai",
     "Mutect2CHIP.vep_loftee_ancestor_gzi": "/share/ScratchGeneral/micgea/.vep/cache/Plugins/loftee_data/human_ancestor.fa.gz.gzi",
     "Mutect2CHIP.vep_loftee_conservation_sql": "/share/ScratchGeneral/micgea/.vep/cache/Plugins/loftee_data/phylocsf_gerp.sql",
     "Mutect2CHIP.run_chip_detection": true,
-    "Mutect2CHIP.annovar_dir": "/share/ScratchGeneral/micgea/somvarpipe/data/annovar_files",
-    "Mutect2CHIP.whitelist_filter_dir": "/share/ScratchGeneral/micgea/somvarpipe/data/whitelist_filter_files",
-    "Mutect2CHIP.annovar_assembly": "hg38",
-    "Mutect2CHIP.whitelist_r_script": "/share/ScratchGeneral/micgea/somvarpipe/data/whitelist_filter_files/whitelist_filter_rscript.R"
+    "Mutect2CHIP.annovar_archive": "/share/ScratchGeneral/micgea/somvarpipe/data/annovar_files.tar.gz",
+    "Mutect2CHIP.whitelist_filter_archive": "/share/ScratchGeneral/micgea/somvarpipe/data/whitelist_filter_files.tar.gz",
+    "Mutect2CHIP.annovar_assembly": "hg38"
 }
