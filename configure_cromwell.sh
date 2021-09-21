@@ -39,6 +39,7 @@ DBPORT="40008"
 DBNAME="cromwell"
 CROMPORT="8007"
 PLATFORM="HPC"
+MULTI="FALSE"
 DRYRUN="0"
 
 # Arguments
@@ -102,6 +103,10 @@ while [[ $# -gt 0 ]]; do
                         shift
                         shift
                         ;;
+                -m|--multi)
+                        MULTI="TRUE"
+                        shift
+                        ;;
                 -d|--dryrun)
                         DRYRUN="1"
                         shift
@@ -120,6 +125,7 @@ echo "Database port       = ${DBPORT}"
 echo "Database name       = ${DBNAME}"
 echo "Cromwell port       = ${CROMPORT}"
 echo "Platform            = ${PLATFORM}"
+echo "Multi-sample mode   = ${MULTI}"
 echo "MySQL directory     = ${MYSQL}"
 echo "MySQL run directory = ${MYSQL_RUNDIR}"
 echo "Cromwell location   = ${CROMWELL}"
@@ -160,10 +166,16 @@ fi
 
 # Configure run.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./create_pon.sh
 if [ "${PLATFORM}" == "GCP" ]
 then
     sed -i -e "s/options\.json/options\.google\.json/g" ./run.sh
+    sed -i -e "s/options\.json/options\.google\.json/g" ./create_pon.sh
 fi
+sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run.sh
+cd workflow
+zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl
+cd ..
 
 # Configure start_cromwell.sh
 ln -s ${CROMWELL}

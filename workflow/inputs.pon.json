@@ -1,0 +1,14 @@
+{
+    "Mutect2CHIP.intervals": "/share/ScratchGeneral/micgea/somvarpipe/data/exome_evaluation_regions.v1.interval_list",
+    "Mutect2CHIP.ref_fasta": "/share/ScratchGeneral/micgea/somvarpipe/data/Homo_sapiens_assembly38.fasta",
+    "Mutect2CHIP.ref_fai": "/share/ScratchGeneral/micgea/somvarpipe/data/Homo_sapiens_assembly38.fasta.fai",
+    "Mutect2CHIP.ref_dict": "/share/ScratchGeneral/micgea/somvarpipe/data/Homo_sapiens_assembly38.dict",
+    "Mutect2CHIP.bam_bai_list": "./inputFiles.tsv",
+    "Mutect2CHIP.scatter_count": 10,
+    "Mutect2CHIP.gnomad": "/share/ScratchGeneral/micgea/somvarpipe/data/af-only-gnomad.hg38.vcf.gz",
+    "Mutect2CHIP.gnomad_idx": "/share/ScratchGeneral/micgea/somvarpipe/data/af-only-gnomad.hg38.vcf.gz.tbi",
+    "Mutect2CHIP.m2_extra_args": "--downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6",
+    "Mutect2CHIP.compress": true,
+    "Mutect2CHIP.pon_name": "CHIP_PoN",
+    "Mutect2CHIP.gatk_docker": "broadinstitute/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"
+}

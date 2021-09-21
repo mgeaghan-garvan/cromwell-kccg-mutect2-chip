@@ -1,0 +1,6 @@
+# inputFiles.tsv: a tab-separated table with no header.
+# For matched tumor-normal pairs, four columns are required (TUMOR_BAM, TUMOR_BAI, NORMAL_BAM, NORMAL_BAI).
+# In tumor-only mode, or when creating a PoN, only two columns are required (BAM, BAI). 
+# Example:
+TUMOR_1_BAM TUMOR_1_bai NORMAL_1_BAM    NORMAL_1_bai
+TUMOR_2_BAM TUMOR_2_bai NORMAL_2_BAM    NORMAL_2_bai
