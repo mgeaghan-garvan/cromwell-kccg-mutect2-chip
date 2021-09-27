@@ -59,10 +59,10 @@ workflow Mutect2CHIP_Panel {
     Int? create_panel_scatter_count
 
     # Samtools settings
-    String samtools_docker = "mgeaghan/vep_loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
+    String samtools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
 
     # Runtime options
-    String gatk_docker = "broadinstitute/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
+    String gatk_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
     File? gatk_override
     Int? preemptible
     Int? max_retries
@@ -101,9 +101,9 @@ workflow Mutect2CHIP_Panel {
 
     # scatter (normal_bam in zip(normal_bams, normal_bais)) {
     scatter (row in bam_bai_pairs) {
-        normal_bam = row[0]
-        normal_bai = row[1]
-        call m2.Mutect2 {
+        File normal_bam = row[0]
+        File normal_bai = row[1]
+        call m2.Mutect2CHIP {
             input:
                 intervals = intervals,
                 ref_fasta = ref_fasta,
@@ -114,7 +114,7 @@ workflow Mutect2CHIP_Panel {
                 scatter_count = scatter_count,
                 gnomad = gnomad,
                 gnomad_idx = gnomad_idx,
-                m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
+                m2_extra_args = select_first([m2_extra_args, ""]) + " --max-mnp-distance 0",
                 compress_vcfs = select_first([compress, false]),
                 vep = false,
                 loftee = false,
@@ -146,7 +146,8 @@ workflow Mutect2CHIP_Panel {
     scatter (subintervals in SplitIntervals.interval_files ) {
             call CreatePanel {
                 input:
-                    input_vcfs = Mutect2.filtered_vcf,
+                    input_vcfs = Mutect2CHIP.filtered_vcf,
+                    input_vcfs_idx = Mutect2CHIP.filtered_vcf_idx,
                     intervals = subintervals,
                     ref_fasta = ref_fasta,
                     ref_fai = ref_fai,
@@ -171,15 +172,16 @@ workflow Mutect2CHIP_Panel {
     output {
         File pon = MergeVCFs.merged_vcf
         File pon_idx = MergeVCFs.merged_vcf_idx
-        Array[File] normal_calls = Mutect2.filtered_vcf
-        Array[File] normal_calls_idx = Mutect2.filtered_vcf_idx
+        Array[File] normal_calls = Mutect2CHIP.filtered_vcf
+        Array[File] normal_calls_idx = Mutect2CHIP.filtered_vcf_idx
     }
 }
 
 task CreatePanel {
     input {
       File intervals
-      Array[String] input_vcfs
+      Array[File] input_vcfs
+      Array[File] input_vcfs_idx
       File ref_fasta
       File ref_fai
       File ref_dict
@@ -202,7 +204,7 @@ task CreatePanel {
 
     command {
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         gatk GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
 

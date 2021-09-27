@@ -14,8 +14,8 @@ helpmsg() {
     echo -e "\tPLATFORM:      Platform on which workflow should be run.          (Options: 'HPC', 'GCP'. Default: 'HPC')"
     echo -e "\tMYSQL_DIR:     Root directory for MySQL installation.             (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
     echo -e "\tMYSQL_RUN_DIR: Run directory for MySQL.                           (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
-    echo -e "\tCROMWELL_JAR:  Location of Cromwell JAR file.                     (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar')"
-    echo -e "\t[-d|--dryrun]: Print settings to screen without making changes.   (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar')"
+    echo -e "\tCROMWELL_JAR:  Location of Cromwell JAR file.                     (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar')"
+    echo -e "\t[-d|--dryrun]: Print settings to screen without making changes."
 }
 
 # Display help message if there are no arguments
@@ -32,7 +32,7 @@ MYSQL=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
 MYSQL_RUNDIR=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
 # Cromwell location
 # CROMWELL=/share/ClusterShare/software/contrib/micgea/cromwell/38/cromwell-38.jar  # requires java 8/1.8
-CROMWELL=/share/ClusterShare/software/contrib/micgea/cromwell/63/cromwell-63.jar  # requires java 11
+CROMWELL=/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar  # requires java 11
 # Host, port, database and platform defaults
 DBHOST="0.0.0.0"
 DBPORT="40008"
