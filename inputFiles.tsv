@@ -1,6 +1,20 @@
 # inputFiles.tsv: a tab-separated table with no header.
 # For matched tumor-normal pairs, four columns are required (TUMOR_BAM, TUMOR_BAI, NORMAL_BAM, NORMAL_BAI).
 # In tumor-only mode, or when creating a PoN, only two columns are required (BAM, BAI). 
-# Example:
-TUMOR_1_BAM TUMOR_1_bai NORMAL_1_BAM    NORMAL_1_bai
-TUMOR_2_BAM TUMOR_2_bai NORMAL_2_BAM    NORMAL_2_bai
+# For CHIP-only runs, only one column is required (one VCF input file per line).
+#
+# REMOVE THESE COMMENTS AND EXAMPLES BEFORE RUNNING
+#
+# Examples:
+
+# Tumor-normal pairs
+TUMOR_1_BAM TUMOR_1_BAI NORMAL_1_BAM    NORMAL_1_BAI
+TUMOR_2_BAM TUMOR_2_BAI NORMAL_2_BAM    NORMAL_2_BAI
+
+# Tumor-only mode
+TUMOR_ONLY_1_BAM    TUMOR_ONLY_1_BAI
+TUMOR_ONLY_2_BAM    TUMOR_ONLY_2_BAI
+
+# CHIP-only run
+CHIP_ONLY_1
+CHIP_ONLY_2

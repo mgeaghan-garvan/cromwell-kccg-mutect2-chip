@@ -194,8 +194,8 @@ task CreatePanel {
       Runtime runtime_params
     }
 
-    Int machine_mem = 8000
-    Int command_mem = machine_mem - 1000
+    Int machine_mem = 5000
+    Int command_mem = machine_mem - 500
 
         parameter_meta{
           gnomad: {localization_optional: true}
@@ -206,9 +206,9 @@ task CreatePanel {
         set -e
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
+        gatk --java-options "-Xmx~{command_mem}m" GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
 
-        gatk --java-options "-Xmx~{command_mem}g"  CreateSomaticPanelOfNormals -R ~{ref_fasta} --germline-resource ~{gnomad} \
+        gatk --java-options "-Xmx~{command_mem}m" CreateSomaticPanelOfNormals -R ~{ref_fasta} --germline-resource ~{gnomad} \
             -V gendb://pon_db -O ~{output_vcf_name}.vcf ~{create_pon_extra_args}
     }
 

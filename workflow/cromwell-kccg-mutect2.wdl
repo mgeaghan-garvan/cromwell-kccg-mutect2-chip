@@ -1156,7 +1156,8 @@ task VEP {
     String offline_options = if offline then "--offline" else ""
 
     command {
-        tar -xzvf ~{cache_archive}
+        mkdir -p .vep/cache
+        tar -xzvf ~{cache_archive} -C .vep/cache/
         # this seems necessary on GCP - running into permissions errors.
         # TODO: find a better solution
         cp ~{fasta} ./ref_fasta.fasta
