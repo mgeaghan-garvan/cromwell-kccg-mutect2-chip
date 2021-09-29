@@ -101,8 +101,22 @@ Inside the workflow directory are several JSON files that describe the input fil
     CHIP detection-only, single input mode:        inputs.chip.json
     CHIP detection-only, batch/multi-sample mode:  inputs.chip.multi.json
 
-Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED" and "OPTIONAL" for required and optional fields, respectively. If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
- 
+Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
+
+#### Prerequisite files
+
+The following files are required to run parts of the pipeline.
+
+| Parameter(s) | Description | Example |
+| ------------ | ----------- | ------- |
+| gnomad, gnomad_idx | Germline reference VCF and index containing common and rare variant population allele frequencies | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
+| variants_for_contamination, variants_for_contamination_idx | VCF and index containing common variants and allele frequencies for calculating contamination | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
+| vep_cache_archive | TAR.GZ archive file containing a VEP cache for annotating variants offline | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
+| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | FASTA file and index for running VEP + LOFTEE | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
+| vep_loftee_conservation_sql | PhyloCSF database for conservation filters in VEP + LOFTEE | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
+| annovar_archive | TAR.GZ archive file containing the necessary files to run ANNOVAR | /share/ClusterShare/software/contrib/micgea/chip/data/annovar_files.tar.gz |
+| whitelist_archive, whitelist_filter_archive | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | /share/ClusterShare/software/contrib/micgea/chip/data/whitelist_filter_files.tar.gz |
+
 #### Batch/multi-sample mode
 
 If running the pipeline in batch/multi-sample mode, you will need to supply a file to the pipeline describing each sample. A template is provided in inputFile.tsv
