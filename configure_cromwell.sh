@@ -153,7 +153,7 @@ sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
 # Configure options files
 # '#' delimiters are used to enable path substitution
 sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.json
-sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.google.json
+sed -i -e "s#PWD_TO_SED#${PWD}#g" -e "s/ID_TO_SED/${DBNAME}/g" ./workflow/options.google.json
 
 # Set up output directories
 mkdir -p workflow_out
