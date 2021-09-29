@@ -1,0 +1,6 @@
+{
+    "Mutect2CHIP_CHIP_Multi.input_vcf_list": "./inputFiles.tsv",
+    "Mutect2CHIP_CHIP_Multi.annovar_archive": "/home/micgea/somvarpipe/data/annovar_files.tar.gz",
+    "Mutect2CHIP_CHIP_Multi.whitelist_archive": "/home/micgea/somvarpipe/data/whitelist_filter_files.tar.gz",
+    "Mutect2CHIP_CHIP_Multi.ref_name": "hg38"
+}

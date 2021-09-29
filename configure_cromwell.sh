@@ -166,15 +166,18 @@ fi
 
 # Configure run.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run_chip_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./create_pon.sh
 if [ "${PLATFORM}" == "GCP" ]
 then
     sed -i -e "s/options\.json/options\.google\.json/g" ./run.sh
+    sed -i -e "s/options\.json/options\.google\.json/g" ./run_chip_only.sh
     sed -i -e "s/options\.json/options\.google\.json/g" ./create_pon.sh
 fi
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run.sh
+sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run_chip_only.sh
 cd workflow
-zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl
+zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl cromwell-kccg-mutect2.chip.wdl
 cd ..
 
 # Configure start_cromwell.sh
