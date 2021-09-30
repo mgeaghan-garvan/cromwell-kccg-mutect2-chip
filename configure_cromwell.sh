@@ -149,6 +149,19 @@ sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBNAME_TO_SED/${DBNAME}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
     ./workflow/mutect2.conf
+# Set the GCP service account details
+# Requires a service account email on the first line of .service_account.email.txt
+# Requires a service account key supplied in .service_account.key.pem
+if [ -f .service_account.email.txt ] && [ -f .service_account.key.pem ]
+then
+    EMAIL=$(awk 'NR==1' .service_account.email.txt | tr -d '\n')
+    sed -i -e "s#ROOT_PATH_TO_SED#${PWD}#g" \
+        -e "s/GCP_SA_EMAIL_TO_SED/${EMAIL}/g" \
+        ./workflow/mutect2.conf
+else
+    echo "NO GCP SERVICE ACCOUNT DETAILS PROVIDED!"
+    exit 0
+fi
 
 # Configure options files
 # '#' delimiters are used to enable path substitution
