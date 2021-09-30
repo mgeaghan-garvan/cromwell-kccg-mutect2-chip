@@ -149,18 +149,26 @@ sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBNAME_TO_SED/${DBNAME}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
     ./workflow/mutect2.conf
-# Set the GCP service account details
-# Requires a service account email on the first line of .service_account.email.txt
-# Requires a service account key supplied in .service_account.key.pem
-if [ -f .service_account.email.txt ] && [ -f .service_account.key.pem ]
+sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
+    -e "s/DBPORT_TO_SED/${DBPORT}/g" \
+    -e "s/DBNAME_TO_SED/${DBNAME}/g" \
+    -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
+    ./workflow/mutect2.google.conf
+if [ "${PLATFORM}" == "GCP" ]
 then
-    EMAIL=$(awk 'NR==1' .service_account.email.txt | tr -d '\n')
-    sed -i -e "s#ROOT_PATH_TO_SED#${PWD}#g" \
-        -e "s/GCP_SA_EMAIL_TO_SED/${EMAIL}/g" \
-        ./workflow/mutect2.conf
-else
-    echo "NO GCP SERVICE ACCOUNT DETAILS PROVIDED!"
-    exit 0
+    # Set the GCP service account details
+    # Requires a service account email on the first line of .service_account.email.txt
+    # Requires a service account key supplied in .service_account.key.pem
+    if [ -f .service_account.email.txt ] && [ -f .service_account.key.pem ]
+    then
+        EMAIL=$(awk 'NR==1' .service_account.email.txt | tr -d '\n')
+        sed -i -e "s#ROOT_PATH_TO_SED#${PWD}#g" \
+            -e "s/GCP_SA_EMAIL_TO_SED/${EMAIL}/g" \
+            ./workflow/mutect2.google.conf
+    else
+        echo "NO GCP SERVICE ACCOUNT DETAILS PROVIDED!"
+        exit 0
+    fi
 fi
 
 # Configure options files
@@ -196,6 +204,10 @@ cd ..
 # Configure start_cromwell.sh
 ln -s ${CROMWELL}
 sed -i -e "s/CROMWELL_JAR_TO_SED/${CROMWELL_BN}/g" ./start_cromwell.sh
+if [ "${PLATFORM}" == "GCP" ]
+then
+    sed -i -e "s/mutect2\.conf/mutect2.google.conf/g" ./start_cromwell.sh
+fi
 
 # Create the database for Cromwell
 echo 'CREATE DATABASE '"${DBNAME}"';
