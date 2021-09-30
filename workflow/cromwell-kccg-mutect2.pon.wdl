@@ -112,8 +112,6 @@ workflow Mutect2CHIP_Panel {
                 tumor_reads = normal_bam,
                 tumor_reads_index = normal_bai,
                 scatter_count = scatter_count,
-                gnomad = gnomad,
-                gnomad_idx = gnomad_idx,
                 m2_extra_args = select_first([m2_extra_args, ""]) + " --max-mnp-distance 0",
                 compress_vcfs = select_first([compress, false]),
                 vep = false,
