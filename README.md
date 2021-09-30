@@ -35,8 +35,6 @@ CREATE USER 'cromwell_user'@'%' IDENTIFIED BY '12345678!1aA';
 
 ### Configuring Cromwell server
 
-#### Using a Google Service Account
-
 First, clone the repository to a suitable location.
 
 ```bash
@@ -45,7 +43,9 @@ git pull https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2.git
 cd cromwell-kccg-mutect2
 ```
 
-Before configuring the Cromwell server, Google Service Account credentials are required. Set up a Compute Engine Service Account and an authentication key (https://console.cloud.google.com/apis/credentials). Add the Service Account email to the first line in a new file within the top-level run directory with the name '.service_account.email.txt'. Similarly, add the key to a file with the name '.service_account.key.pem'. These strings can be found in the JSON file downloaded from GCP when setting up the authentication key.
+#### Using a Google Service Account
+
+If running the pipeline on the Google Cloud Platform, before configuring the Cromwell server, Google Service Account credentials are required. Set up a Compute Engine Service Account and an authentication key (https://console.cloud.google.com/apis/credentials). Add the Service Account email to the first line in a new file within the top-level run directory with the name '.service_account.email.txt'. Similarly, add the key to a file with the name '.service_account.key.pem'. These strings can be found in the JSON file downloaded from GCP when setting up the authentication key.
 
 ```bash
 echo "<PROJECT_ID>-compute@developer.gserviceaccount.com" > .service_account.email.txt
