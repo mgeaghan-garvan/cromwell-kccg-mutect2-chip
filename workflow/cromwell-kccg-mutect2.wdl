@@ -470,7 +470,6 @@ workflow Mutect2CHIP {
     File filter_output_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
     File filter_output_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
 
-
     if (vep && defined(vep_cache_archive)) {
         File vep_cache_archive_file = select_first([vep_cache_archive, "CACHE_FILE_NOT_SUPPLIED"])
         File vep_input_vcf = filter_output_vcf  # select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
@@ -1230,12 +1229,12 @@ task Annovar {
       chmod +x ./annovar_files/retrieve_seq_from_fasta.pl
       chmod +x ./annovar_files/variants_reduction.pl
 
-      perl annovar_files/table_annovar.pl ${vcf_input} annovar_files \
-        -buildver ${default="hg38" ref_name} \
-        -out ${file_prefix} \
+      perl annovar_files/table_annovar.pl ~{vcf_input} annovar_files \
+        -buildver ~{default="hg38" ref_name} \
+        -out ~{file_prefix} \
         -remove \
-        -protocol ${default="refGene,cosmic70" annovar_protocols} \
-        -operation ${default="g,f" annovar_operation} \
+        -protocol ~{default="refGene,cosmic70" annovar_protocols} \
+        -operation ~{default="g,f" annovar_operation} \
         -nastring . -vcfinput
     }
 

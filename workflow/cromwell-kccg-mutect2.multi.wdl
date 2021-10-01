@@ -48,88 +48,88 @@ version 1.0
 import "cromwell-kccg-mutect2.wdl" as m2
 
 workflow Mutect2CHIP_Multi {
-  input {
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
+    input {
+        File? intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+    
+        File pair_list
+    
+        File? pon
+        File? pon_idx
+        Int scatter_count
+        File? gnomad
+        File? gnomad_idx
+        File? variants_for_contamination
+        File? variants_for_contamination_idx
+        File? realignment_index_bundle
+        String? realignment_extra_args
+        Boolean? run_orientation_bias_mixture_model_filter
+        String? m2_extra_args
+        String? m2_extra_filtering_args
+        String? split_intervals_extra_args
+        Boolean? make_bamout
+        Boolean? compress_vcfs
+        File? gga_vcf
+        File? gga_vcf_idx
+    
+        # VEP settings
+        String vep_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221"  # :release_103.1
+        String loftee_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # :vep_103.1_loftee_1.0.3
+        Boolean vep = true
+        String vep_species = "homo_sapiens"
+        String vep_assembly = "GRCh38"
+        File vep_cache_archive
+        Boolean loftee = true
+        File? vep_loftee_ancestor_fa
+        File? vep_loftee_ancestor_fai
+        File? vep_loftee_ancestor_gzi
+        File? vep_loftee_conservation_sql
+    
+        # Annovar Whitelist Filter settings
+        Boolean run_chip_detection = true
+        File annovar_archive
+        File whitelist_filter_archive
+        String annovar_assembly = "hg38"
+        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
+        String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
+    
+        # Samtools settings
+        String samtools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
+    
+        # Runtime options
+        String gatk_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
+        File? gatk_override
+        Int? preemptible
+        Int? max_retries
+        Int small_task_cpu = 2
+        Int small_task_mem = 4000
+        Int small_task_disk = 100
+        Int boot_disk_size = 12
+        Int c2b_mem = 6000
+        Int m2_mem = 5000
+        Int learn_read_orientation_mem = 5000
+        Int filter_alignment_artifacts_mem = 5000
+        Int vep_mem = 32000
+        Int vep_cpu = 4
+    
+        # Use as a last resort to increase the disk given to every task in case of ill behaving data
+        Int? emergency_extra_disk
+    
+        # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
+        # Large is for Bams/WGS vcfs
+        # Small is for metrics/other vcfs
+        Float large_input_to_output_multiplier = 2.25
+        Float small_input_to_output_multiplier = 2.0
+        Float cram_to_bam_multiplier = 6.0
+    }
+  
+    Array[Array[String]] pairs = read_tsv(pair_list)
 
-    File pair_list
-
-    File? pon
-    File? pon_idx
-    Int scatter_count
-    File? gnomad
-    File? gnomad_idx
-    File? variants_for_contamination
-    File? variants_for_contamination_idx
-    File? realignment_index_bundle
-    String? realignment_extra_args
-    Boolean? run_orientation_bias_mixture_model_filter
-    String? m2_extra_args
-    String? m2_extra_filtering_args
-    String? split_intervals_extra_args
-    Boolean? make_bamout
-    Boolean? compress_vcfs
-    File? gga_vcf
-    File? gga_vcf_idx
-
-    # VEP settings
-    String vep_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221"  # :release_103.1
-    String loftee_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # :vep_103.1_loftee_1.0.3
-    Boolean vep = true
-    String vep_species = "homo_sapiens"
-    String vep_assembly = "GRCh38"
-    File vep_cache_archive
-    Boolean loftee = true
-    File? vep_loftee_ancestor_fa
-    File? vep_loftee_ancestor_fai
-    File? vep_loftee_ancestor_gzi
-    File? vep_loftee_conservation_sql
-
-    # Annovar Whitelist Filter settings
-    Boolean run_chip_detection = true
-    File annovar_archive
-    File whitelist_filter_archive
-    String annovar_assembly = "hg38"
-    String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
-    String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
-
-    # Samtools settings
-    String samtools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
-
-    # Runtime options
-    String gatk_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
-    File? gatk_override
-    Int? preemptible
-    Int? max_retries
-    Int small_task_cpu = 2
-    Int small_task_mem = 4000
-    Int small_task_disk = 100
-    Int boot_disk_size = 12
-    Int c2b_mem = 6000
-    Int m2_mem = 5000
-    Int learn_read_orientation_mem = 5000
-    Int filter_alignment_artifacts_mem = 5000
-    Int vep_mem = 32000
-    Int vep_cpu = 4
-
-    # Use as a last resort to increase the disk given to every task in case of ill behaving data
-    Int? emergency_extra_disk
-
-    # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
-    # Large is for Bams/WGS vcfs
-    # Small is for metrics/other vcfs
-    Float large_input_to_output_multiplier = 2.25
-    Float small_input_to_output_multiplier = 2.0
-    Float cram_to_bam_multiplier = 6.0
-  }
-
-  Array[Array[String]] pairs = read_tsv(pair_list)
-
-	scatter( row in pairs ) {
-	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.
-	    #      Otherwise they are treated as null, which in WDL is equivalent to an empty optional
+    scatter( row in pairs ) {
+        #      If the condition is true, variables inside the 'if' block retain their values outside the block.
+        #      Otherwise they are treated as null, which in WDL is equivalent to an empty optional
         if(length(row) == 4) {
             File normal_bam = row[2]
             File normal_bai = row[3]
