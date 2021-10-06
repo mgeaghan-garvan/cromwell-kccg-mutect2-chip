@@ -48,7 +48,7 @@ workflow Mutect2CHIP_CHIP {
         File? gatk_override
         Int? preemptible
         Int? max_retries
-        Int small_task_cpu = 2
+        Int small_task_cpu = 4
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int boot_disk_size = 12

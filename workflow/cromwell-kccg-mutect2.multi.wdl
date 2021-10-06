@@ -103,12 +103,13 @@ workflow Mutect2CHIP_Multi {
         File? gatk_override
         Int? preemptible
         Int? max_retries
-        Int small_task_cpu = 2
+        Int small_task_cpu = 4
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
+        Int m2_cpu = 4
         Int learn_read_orientation_mem = 5000
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
@@ -190,6 +191,7 @@ workflow Mutect2CHIP_Multi {
                 boot_disk_size = boot_disk_size,
                 c2b_mem = c2b_mem,
                 m2_mem = m2_mem,
+                m2_cpu = m2_cpu,
                 learn_read_orientation_mem = learn_read_orientation_mem,
                 filter_alignment_artifacts_mem = filter_alignment_artifacts_mem,
                 vep_mem = vep_mem,

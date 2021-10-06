@@ -17,7 +17,7 @@
     "Mutect2CHIP_CHIP.gatk_override": "OPTIONAL_FILE",
     "Mutect2CHIP_CHIP.preemptible": 2,
     "Mutect2CHIP_CHIP.max_retries": 2,
-    "Mutect2CHIP_CHIP.small_task_cpu": 2,
+    "Mutect2CHIP_CHIP.small_task_cpu": 4,
     "Mutect2CHIP_CHIP.small_task_mem": 4000,
     "Mutect2CHIP_CHIP.small_task_disk": 100,
     "Mutect2CHIP_CHIP.boot_disk_size": 12,

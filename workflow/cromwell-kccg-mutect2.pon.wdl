@@ -66,12 +66,13 @@ workflow Mutect2CHIP_Panel {
     File? gatk_override
     Int? preemptible
     Int? max_retries
-    Int small_task_cpu = 2
+    Int small_task_cpu = 4
     Int small_task_mem = 4000
     Int small_task_disk = 100
     Int boot_disk_size = 12
     Int c2b_mem = 6000
     Int m2_mem = 5000
+    Int m2_cpu = 4
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
@@ -127,7 +128,8 @@ workflow Mutect2CHIP_Panel {
                 small_task_disk = small_task_disk,
                 boot_disk_size = boot_disk_size,
                 c2b_mem = c2b_mem,
-                m2_mem = m2_mem
+                m2_mem = m2_mem,
+                m2_cpu = m2_cpu
         }
     }
 

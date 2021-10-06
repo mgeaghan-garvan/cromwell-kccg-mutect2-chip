@@ -203,16 +203,17 @@ workflow Mutect2CHIP {
         File? gatk_override
         Int? preemptible
         Int? max_retries
-        Int small_task_cpu = 2
+        Int small_task_cpu = 4
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
+        Int m2_cpu = 4
         Int learn_read_orientation_mem = 5000
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
-        Int vep_cpu = 4
+        Int vep_cpu = 1
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -350,7 +351,8 @@ workflow Mutect2CHIP {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
-                mem_mb = m2_mem
+                mem_mb = m2_mem,
+                cpu = m2_cpu
         }
     }
 
@@ -758,7 +760,7 @@ task M2 {
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible, 10])
         maxRetries: select_first([max_retries, 0])
-        cpu: select_first([cpu, 2])
+        cpu: select_first([cpu, 4])
     }
 
     output {
