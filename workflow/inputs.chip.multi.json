@@ -20,6 +20,7 @@
     "Mutect2CHIP_CHIP_Multi.small_task_cpu": 4,
     "Mutect2CHIP_CHIP_Multi.small_task_mem": 4000,
     "Mutect2CHIP_CHIP_Multi.small_task_disk": 100,
+    "Mutect2CHIP_CHIP_Multi.command_mem_padding": 1000,
     "Mutect2CHIP_CHIP_Multi.boot_disk_size": 12,
     "Mutect2CHIP_CHIP_Multi.emergency_extra_disk": 0
 }

@@ -206,6 +206,8 @@ workflow Mutect2CHIP {
         Int small_task_cpu = 4
         Int small_task_mem = 4000
         Int small_task_disk = 100
+        Int command_mem_padding = 1000
+        Boolean mem_per_core = true
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
@@ -254,6 +256,9 @@ workflow Mutect2CHIP {
     Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
     Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
 
+    Int small_task_cpu_mult = if small_task_cpu > 1 then small_task_cpu - 1 else 1
+    Int cmd_mem = if mem_per_core then (small_task_mem * small_task_cpu_mult) - command_mem_padding else small_task_mem - command_mem_padding
+
     Runtime standard_runtime = {
         "gatk_docker": gatk_docker,
         "gatk_override": gatk_override,
@@ -261,7 +266,7 @@ workflow Mutect2CHIP {
         "preemptible": preemptible_or_default,
         "cpu": small_task_cpu,
         "machine_mem": small_task_mem,
-        "command_mem": small_task_mem - 500,
+        "command_mem": cmd_mem,
         "disk": small_task_disk + disk_pad,
         "boot_disk_size": boot_disk_size
     }
@@ -352,6 +357,8 @@ workflow Mutect2CHIP {
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
                 mem_mb = m2_mem,
+                mem_pad = command_mem_padding,
+                mem_per_core = mem_per_core,
                 cpu = m2_cpu
         }
     }
@@ -365,7 +372,9 @@ workflow Mutect2CHIP {
                 f1r2_tar_gz = M2.f1r2_counts,
                 runtime_params = standard_runtime,
                 output_name = output_basename,
-                mem_mb = learn_read_orientation_mem
+                mem_mb = learn_read_orientation_mem,
+                mem_pad = command_mem_padding,
+                mem_per_core = mem_per_core
         }
     }
 
@@ -465,7 +474,9 @@ workflow Mutect2CHIP {
                 input_vcf = Filter.filtered_vcf,
                 input_vcf_idx = Filter.filtered_vcf_idx,
                 runtime_params = standard_runtime,
-                mem_mb = filter_alignment_artifacts_mem
+                mem_mb = filter_alignment_artifacts_mem,
+                mem_pad = command_mem_padding,
+                mem_per_core = mem_per_core
         }
     }
 
@@ -612,7 +623,7 @@ task SplitIntervals {
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
         mkdir interval-files
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" SplitIntervals \
             -R ~{ref_fasta} \
             ~{"-L " + intervals} \
             -scatter ~{scatter_count} \
@@ -663,6 +674,8 @@ task M2 {
       # runtime
       String gatk_docker
       Int mem_mb = 5000
+      Int mem_pad = 1000
+      Boolean mem_per_core = true
       Int? preemptible
       Int? max_retries
       Int? disk_space
@@ -676,7 +689,8 @@ task M2 {
     String output_stats = output_vcf + ".stats"
 
     Int machine_mem = mem_mb
-    Int command_mem = machine_mem - 500
+    Int cpu_mult = if cpu > 1 then cpu - 1 else 1
+    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
     parameter_meta{
       intervals: {localization_optional: true}
@@ -707,15 +721,15 @@ task M2 {
         touch f1r2.tar.gz
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
+        gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
         tumor_command_line="-I ~{tumor_bam} -tumor `cat tumor_name.txt`"
 
         if [[ ! -z "~{normal_bam}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode
+            gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode
             normal_command_line="-I ~{normal_bam} -normal `cat normal_name.txt`"
         fi
 
-        gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
+        gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" Mutect2 \
             -R ~{ref_fasta} \
             $tumor_command_line \
             $normal_command_line \
@@ -739,11 +753,11 @@ task M2 {
         set +e
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+            gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                 -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
 
             if [[ ! -z "~{normal_bam}" ]]; then
-                gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                     -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
             fi
         fi
@@ -783,16 +797,19 @@ task LearnReadOrientationModel {
       Runtime runtime_params
       String output_name
       Int mem_mb = 5000
+      Int mem_pad = 1000
+      Boolean mem_per_core = true
     }
 
     Int machine_mem = mem_mb
-    Int command_mem = machine_mem - 500
+    Int cpu_mult = if runtime_params.cpu > 1 then runtime_params.cpu - 1 else 1
+    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{command_mem}m" LearnReadOrientationModel \
+        gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" LearnReadOrientationModel \
             -I ~{sep=" -I " f1r2_tar_gz} \
             -O "~{output_name}-artifact-priors.tar.gz"
     }
@@ -831,7 +848,7 @@ task MergeVCFs {
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
     }
 
     runtime {
@@ -867,16 +884,16 @@ task MergeBamOuts {
         #  Do not call this task if len(bam_outs) == 0
         set -e
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherBamFiles \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" GatherBamFiles \
             -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{ref_fasta}
 
         # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
         # overlapping bamouts
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" SortSam -I unsorted.out.bam \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" SortSam -I unsorted.out.bam \
             -O ~{output_vcf_name}.out.bam \
             --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" BuildBamIndex -I ~{output_vcf_name}.out.bam -VALIDATION_STRINGENCY LENIENT
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" BuildBamIndex -I ~{output_vcf_name}.out.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
@@ -908,7 +925,7 @@ task MergeStats {
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" MergeMutectStats \
             -stats ~{sep=" -stats " stats} -O "~{output_name}-merged.stats"
     }
 
@@ -940,7 +957,7 @@ task MergePileupSummaries {
         set -e
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" GatherPileupSummaries \
         --sequence-dictionary ~{ref_dict} \
         -I ~{sep=' -I ' input_tables} \
         -O ~{output_name}.tsv
@@ -976,7 +993,7 @@ task CalculateContamination {
 
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" CalculateContamination -I ~{tumor_pileups} \
         -O "~{output_name}-contamination.table" --tumor-segmentation "~{output_name}-segments.table" ~{"-matched " + normal_pileups}
     }
 
@@ -1031,7 +1048,7 @@ task Filter {
 
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m -Xms~{runtime_params.command_mem - 1000}m" FilterMutectCalls -V ~{unfiltered_vcf} \
             -R ~{ref_fasta} \
             -O ~{output_vcf} \
             ~{"--contamination-table " + contamination_table} \
@@ -1075,13 +1092,16 @@ task FilterAlignmentArtifacts {
       String? realignment_extra_args
       Runtime runtime_params
       Int mem_mb = 5000
+      Int mem_pad = 1000
+      Boolean mem_per_core = true
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
 
     Int machine_mem = mem_mb
-    Int command_mem = machine_mem - 500
+    Int cpu_mult = if runtime_params.cpu > 1 then runtime_params.cpu - 1 else 1
+    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
     parameter_meta{
       ref_fasta: {localization_optional: true}
@@ -1098,7 +1118,7 @@ task FilterAlignmentArtifacts {
 
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
+        gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" FilterAlignmentArtifacts \
             -R ~{ref_fasta} \
             -V ~{input_vcf} \
             -I ~{bam} \

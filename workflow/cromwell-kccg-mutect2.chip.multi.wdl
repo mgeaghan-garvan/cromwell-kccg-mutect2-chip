@@ -55,6 +55,7 @@ workflow Mutect2CHIP_CHIP_Multi {
         Int small_task_cpu = 4
         Int small_task_mem = 4000
         Int small_task_disk = 100
+        Int command_mem_padding = 1000
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -89,6 +90,7 @@ workflow Mutect2CHIP_CHIP_Multi {
                 small_task_cpu = small_task_cpu,
                 small_task_mem = small_task_mem,
                 small_task_disk = small_task_disk,
+                command_mem_padding = command_mem_padding,
                 boot_disk_size = boot_disk_size,
                 emergency_extra_disk = emergency_extra_disk
         }

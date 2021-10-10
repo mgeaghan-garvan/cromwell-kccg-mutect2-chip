@@ -69,10 +69,13 @@ workflow Mutect2CHIP_Panel {
     Int small_task_cpu = 4
     Int small_task_mem = 4000
     Int small_task_disk = 100
+    Int command_mem_padding = 1000
+    Boolean mem_per_core = true
     Int boot_disk_size = 12
     Int c2b_mem = 6000
     Int m2_mem = 5000
     Int m2_cpu = 4
+    Int pon_mem = 5000
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
@@ -86,6 +89,9 @@ workflow Mutect2CHIP_Panel {
   Int preemptible_or_default = select_first([preemptible, 2])
   Int max_retries_or_default = select_first([max_retries, 2])
 
+  Int small_task_cpu_mult = if small_task_cpu > 1 then small_task_cpu - 1 else 1
+  Int cmd_mem = if mem_per_core then (small_task_mem * small_task_cpu_mult) - command_mem_padding else small_task_mem - command_mem_padding
+
   Runtime standard_runtime = {
       "gatk_docker": gatk_docker,
       "gatk_override": gatk_override,
@@ -93,7 +99,7 @@ workflow Mutect2CHIP_Panel {
       "preemptible": preemptible_or_default,
       "cpu": small_task_cpu,
       "machine_mem": small_task_mem,
-      "command_mem": small_task_mem - 500,
+      "command_mem": cmd_mem,
       "disk": small_task_disk,
       "boot_disk_size": boot_disk_size
   }
@@ -126,6 +132,8 @@ workflow Mutect2CHIP_Panel {
                 small_task_cpu = small_task_cpu,
                 small_task_mem = small_task_mem,
                 small_task_disk = small_task_disk,
+                command_mem_padding = command_mem_padding,
+                mem_per_core = mem_per_core,
                 boot_disk_size = boot_disk_size,
                 c2b_mem = c2b_mem,
                 m2_mem = m2_mem,
@@ -156,6 +164,9 @@ workflow Mutect2CHIP_Panel {
                     gnomad_idx = gnomad_idx,
                     output_vcf_name = pon_name,
                     create_pon_extra_args = create_pon_extra_args,
+                    mem_mb = pon_mem,
+                    mem_pad = command_mem_padding,
+                    mem_per_core = mem_per_core,
                     runtime_params = standard_runtime
             }
     }
@@ -189,13 +200,17 @@ task CreatePanel {
       File gnomad
       File gnomad_idx
       String? create_pon_extra_args
+      Int mem_mb = 5000
+      Int mem_pad = 1000
+      Boolean mem_per_core = true
 
       # runtime
       Runtime runtime_params
     }
 
-    Int machine_mem = 5000
-    Int command_mem = machine_mem - 500
+    Int machine_mem = mem_mb
+    Int cpu_mult = if runtime_params.cpu > 1 then runtime_params.cpu - 1 else 1
+    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
         parameter_meta{
           gnomad: {localization_optional: true}
@@ -206,9 +221,9 @@ task CreatePanel {
         set -e
         export GATK_LOCAL_JAR=~{default="/gatk/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{command_mem}m" GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
+        gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
 
-        gatk --java-options "-Xmx~{command_mem}m" CreateSomaticPanelOfNormals -R ~{ref_fasta} --germline-resource ~{gnomad} \
+        gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" CreateSomaticPanelOfNormals -R ~{ref_fasta} --germline-resource ~{gnomad} \
             -V gendb://pon_db -O ~{output_vcf_name}.vcf ~{create_pon_extra_args}
     }
 
