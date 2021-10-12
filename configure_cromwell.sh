@@ -189,6 +189,7 @@ fi
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run_chip_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./create_pon.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./abort.sh
 if [ "${PLATFORM}" == "GCP" ]
 then
     sed -i -e "s/options\.json/options\.google\.json/g" ./run.sh

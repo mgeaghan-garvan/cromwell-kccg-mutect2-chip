@@ -120,6 +120,10 @@ Inside the workflow directory are several JSON files that describe the input fil
 
 Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
 
+#### Memory requirements
+
+In some cases, such as when running the workflow on the Garvan HPC, the requested memory will be multiplied by the requested number of cores. In other cases, such as when running on GCP, the requested memory will be the total memory allocated to a job. To ensure the proper amount of memory is being requested in each case, set the "mem_per_core" parameter in the input JSON file, i.e. for the local HPC, set "mem_per_core" to true, and for GCP set it to false.
+
 #### Prerequisite files
 
 The following files are required to run parts of the pipeline.
@@ -187,4 +191,22 @@ You can check on the state of the run by re-attaching the Cromwell screen sessio
 
 ```bash
 screen -r "CromwellPort${CROMWELL_PORT}"
+```
+
+### Aborting the workflow
+
+To abort the workflow, simply run the following:
+
+```bash
+python3 abort.py
+```
+
+Alternatively, you can directly run the abort script by passing it the run ID. This is the ID returned in JSON format when submitting the workflow. It can be found in run_id.txt.
+
+```bash
+cat run_id.txt
+
+    {"id":"3deb2054-445f-400a-afcd-465a50fc44ba","status":"Submitted"}
+
+./abort.sh "3deb2054-445f-400a-afcd-465a50fc44ba"
 ```
