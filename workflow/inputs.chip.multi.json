@@ -1,5 +1,5 @@
 {
-    "Mutect2CHIP_CHIP_Multi.input_vcf_list": "./inputFile.tsv",
+    "Mutect2CHIP_CHIP_Multi.input_vcf_list": "./inputFiles.tsv",
     "Mutect2CHIP_CHIP_Multi.annovar_mem_mb": 4000,
     "Mutect2CHIP_CHIP_Multi.annovar_disk_space": 300,
     "Mutect2CHIP_CHIP_Multi.annovar_cpu": 1,
