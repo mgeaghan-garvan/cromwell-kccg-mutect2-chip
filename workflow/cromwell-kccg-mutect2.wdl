@@ -1243,8 +1243,8 @@ task Annovar {
 
     String file_prefix = sample_id + ".annovar_out"
 
-    String default_annovar_protocols = "refGene,cosmic70"
-    String default_annovar_operation = "g,f"
+    String default_annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome,cosmic70"
+    String default_annovar_operation = "g,f,f,f"
     String annovar_protocols = if (additional_annovar_protocols == "") then default_annovar_protocols else default_annovar_protocols + "," + additional_annovar_protocols
     String annovar_operation = if (additional_annovar_operation == "") then default_annovar_operation else default_annovar_operation + "," + additional_annovar_operation
 
