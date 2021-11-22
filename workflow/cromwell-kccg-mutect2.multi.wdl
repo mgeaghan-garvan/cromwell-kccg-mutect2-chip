@@ -92,8 +92,6 @@ workflow Mutect2CHIP_Multi {
         File annovar_archive
         File whitelist_filter_archive
         String annovar_assembly = "hg38"
-        String additional_annovar_protocols = ""
-        String additional_annovar_operation = ""
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
     
@@ -182,8 +180,6 @@ workflow Mutect2CHIP_Multi {
                 annovar_archive = annovar_archive,
                 whitelist_filter_archive = whitelist_filter_archive,
                 annovar_assembly = annovar_assembly,
-                additional_annovar_protocols = additional_annovar_protocols,
-                additional_annovar_operation = additional_annovar_operation,
                 annovar_docker = annovar_docker,
                 whitelist_filter_docker = whitelist_filter_docker,
                 samtools_docker = samtools_docker,
@@ -222,8 +218,8 @@ workflow Mutect2CHIP_Multi {
         Array[File?] maf_segments = Mutect2CHIP.maf_segments 
         Array[File?] read_orientation_model_params = Mutect2CHIP.read_orientation_model_params 
         Array[File?] out_vep_vcf = Mutect2CHIP.out_vep_vcf 
-        Array[File?] out_annovar_vcf = Mutect2CHIP.out_annovar_vcf 
-        Array[File?] out_annovar_table = Mutect2CHIP.out_annovar_table 
+        Array[File?] out_whitelist_annovar_vcf = Mutect2CHIP.out_whitelist_annovar_vcf 
+        Array[File?] out_whitelist_annovar_table = Mutect2CHIP.out_whitelist_annovar_table 
         Array[File?] out_whitelist_count = Mutect2CHIP.out_whitelist_count 
         Array[File?] out_whitelist_all_variants = Mutect2CHIP.out_whitelist_all_variants 
         Array[File?] out_whitelist = Mutect2CHIP.out_whitelist 

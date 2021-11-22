@@ -37,8 +37,6 @@ workflow Mutect2CHIP_CHIP_Multi {
         Int annovar_cpu = 1
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         File annovar_archive
-        String additional_annovar_protocols = ""
-        String additional_annovar_operation = ""
         # whitelist settings
         Int whitelist_mem_mb = 10000
         Int whitelist_disk_space = 300
@@ -75,8 +73,6 @@ workflow Mutect2CHIP_CHIP_Multi {
                 annovar_cpu = annovar_cpu,
                 annovar_docker = annovar_docker,
                 annovar_archive = annovar_archive,
-                additional_annovar_protocols = additional_annovar_protocols,
-                additional_annovar_operation = additional_annovar_operation,
                 whitelist_mem_mb = whitelist_mem_mb,
                 whitelist_disk_space = whitelist_disk_space,
                 whitelist_cpu = whitelist_cpu,
@@ -97,8 +93,8 @@ workflow Mutect2CHIP_CHIP_Multi {
     }
 
     output {
-        Array[File] out_annovar_vcf = Mutect2CHIP_CHIP.out_annovar_vcf 
-        Array[File] out_annovar_table = Mutect2CHIP_CHIP.out_annovar_table 
+        Array[File] out_whitelist_annovar_vcf = Mutect2CHIP_CHIP.out_whitelist_annovar_vcf 
+        Array[File] out_whitelist_annovar_table = Mutect2CHIP_CHIP.out_whitelist_annovar_table 
         Array[File?] out_whitelist_count = Mutect2CHIP_CHIP.out_whitelist_count 
         Array[File?] out_whitelist_all_variants = Mutect2CHIP_CHIP.out_whitelist_all_variants 
         Array[File?] out_whitelist = Mutect2CHIP_CHIP.out_whitelist 

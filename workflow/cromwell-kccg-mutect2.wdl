@@ -192,8 +192,6 @@ workflow Mutect2CHIP {
         File? annovar_archive
         File? whitelist_filter_archive
         String annovar_assembly = "hg38"
-        String additional_annovar_protocols = ""
-        String additional_annovar_operation = ""
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
 
@@ -518,7 +516,7 @@ workflow Mutect2CHIP {
         File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
         String sample_id = basename(basename(filter_output_vcf, ".gz"), ".vcf")
-        call Annovar {
+        call Annovar as WhitelistAnnovar {
             input:
                 mem_mb = 4000,
                 annovar_disk_space = 300,
@@ -528,8 +526,8 @@ workflow Mutect2CHIP {
                 vcf_input = select_first([VEP.output_vcf, filter_output_vcf]),
                 annovar_archive = annovar_archive_file,
                 ref_name = annovar_assembly,
-                additional_annovar_protocols = additional_annovar_protocols,
-                additional_annovar_operation = additional_annovar_operation,
+                annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome",
+                annovar_operations = "g,f,f",
                 runtime_params = standard_runtime
         }
 
@@ -539,7 +537,8 @@ workflow Mutect2CHIP {
                 whitelist_filter_disk_space = 300,
                 cpu = 1,
                 whitelist_filter_docker = whitelist_filter_docker,
-                txt_input = Annovar.annovar_output_file_table,
+                txt_input = WhitelistAnnovar.annovar_output_file_table,
+                vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
                 ref_name = annovar_assembly,
                 whitelist_filter_archive = whitelist_filter_archive_file,
                 runtime_params = standard_runtime
@@ -557,8 +556,8 @@ workflow Mutect2CHIP {
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? out_vep_vcf = VEP.output_vcf
-        File? out_annovar_vcf = Annovar.annovar_output_file_vcf
-        File? out_annovar_table = Annovar.annovar_output_file_table
+        File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
+        File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
         File? out_whitelist_count = WhitelistFilter.whitelist_filter_output_varcount_csv
         File? out_whitelist_all_variants = WhitelistFilter.whitelist_filter_output_allvariants_csv
         File? out_whitelist = WhitelistFilter.whitelist_filter_output_wl_csv
@@ -1236,17 +1235,12 @@ task Annovar {
       File annovar_archive
 
       String ref_name = "hg38"
-      String additional_annovar_protocols = ""
-      String additional_annovar_operation = ""
+      String annovar_protocols = "cosmic70"
+      String annovar_operations = "f"
       Runtime runtime_params
     }
 
     String file_prefix = sample_id + ".annovar_out"
-
-    String default_annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome,cosmic70"
-    String default_annovar_operation = "g,f,f,f"
-    String annovar_protocols = if (additional_annovar_protocols == "") then default_annovar_protocols else default_annovar_protocols + "," + additional_annovar_protocols
-    String annovar_operation = if (additional_annovar_operation == "") then default_annovar_operation else default_annovar_operation + "," + additional_annovar_operation
 
     command {
       set -euo pipefail
@@ -1265,7 +1259,7 @@ task Annovar {
         -out ~{file_prefix} \
         -remove \
         -protocol ~{annovar_protocols} \
-        -operation ~{annovar_operation} \
+        -operation ~{annovar_operations} \
         -nastring . -vcfinput
     }
 
@@ -1294,6 +1288,7 @@ task WhitelistFilter {
       String whitelist_filter_docker
 
       File txt_input
+      File vcf_input
       String ref_name
       File whitelist_filter_archive
       Runtime runtime_params
@@ -1306,7 +1301,8 @@ task WhitelistFilter {
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R --args ~{txt_input} ~{ref_name} ./whitelist_filter_files
+      # TODO: fix this
+      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R --args ~{txt_input} ~{vcf_input} ~{ref_name} ./whitelist_filter_files
     }
 
     runtime {

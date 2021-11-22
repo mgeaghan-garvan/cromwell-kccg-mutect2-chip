@@ -5,8 +5,6 @@
     "Mutect2CHIP_CHIP_Multi.annovar_cpu": 1,
     "Mutect2CHIP_CHIP_Multi.annovar_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
     "Mutect2CHIP_CHIP_Multi.annovar_archive": "REQUIRED_FILE",
-    "Mutect2CHIP_CHIP_Multi.additional_annovar_protocols": "",
-    "Mutect2CHIP_CHIP_Multi.additional_annovar_operation": "",
     "Mutect2CHIP_CHIP_Multi.whitelist_mem_mb": 10000,
     "Mutect2CHIP_CHIP_Multi.whitelist_disk_space": 300,
     "Mutect2CHIP_CHIP_Multi.whitelist_cpu": 1,

@@ -35,8 +35,6 @@
     "Mutect2CHIP.vep_loftee_conservation_sql": "OPTIONAL_FILE",
     "Mutect2CHIP.run_chip_detection": true,
     "Mutect2CHIP.annovar_archive": "OPTIONAL_ZIP_FILE",
-    "Mutect2CHIP.additional_annovar_protocols": "",
-    "Mutect2CHIP.additional_annovar_operation": "",
     "Mutect2CHIP.whitelist_filter_archive": "OPTIONAL_ZIP_FILE",
     "Mutect2CHIP.annovar_assembly": "hg38",
     "Mutect2CHIP.annovar_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
