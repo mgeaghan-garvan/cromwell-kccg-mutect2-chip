@@ -192,6 +192,8 @@ workflow Mutect2CHIP {
         File? annovar_archive
         File? whitelist_filter_archive
         String annovar_assembly = "hg38"
+        String additional_annovar_protocols = ""
+        String additional_annovar_operation = ""
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
 
@@ -526,6 +528,8 @@ workflow Mutect2CHIP {
                 vcf_input = select_first([VEP.output_vcf, filter_output_vcf]),
                 annovar_archive = annovar_archive_file,
                 ref_name = annovar_assembly,
+                additional_annovar_protocols = additional_annovar_protocols,
+                additional_annovar_operation = additional_annovar_operation,
                 runtime_params = standard_runtime
         }
 
@@ -1232,12 +1236,17 @@ task Annovar {
       File annovar_archive
 
       String ref_name = "hg38"
-      String annovar_protocols = "refGene,cosmic70"
-      String annovar_operation = "g,f"
+      String additional_annovar_protocols = ""
+      String additional_annovar_operation = ""
       Runtime runtime_params
     }
 
     String file_prefix = sample_id + ".annovar_out"
+
+    String default_annovar_protocols = "refGene,cosmic70"
+    String default_annovar_operation = "g,f"
+    String annovar_protocols = if (additional_annovar_protocols == "") then default_annovar_protocols else default_annovar_protocols + "," + additional_annovar_protocols
+    String annovar_operation = if (additional_annovar_operation == "") then default_annovar_operation else default_annovar_operation + "," + additional_annovar_operation
 
     command {
       set -euo pipefail
@@ -1255,8 +1264,8 @@ task Annovar {
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -remove \
-        -protocol ~{default="refGene,cosmic70" annovar_protocols} \
-        -operation ~{default="g,f" annovar_operation} \
+        -protocol ~{annovar_protocols} \
+        -operation ~{annovar_operation} \
         -nastring . -vcfinput
     }
 
