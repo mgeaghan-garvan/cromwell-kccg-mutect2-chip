@@ -1305,7 +1305,7 @@ task WhitelistFilter {
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R --args ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv
+      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv
     }
 
     runtime {
