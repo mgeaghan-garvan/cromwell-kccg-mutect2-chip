@@ -44,7 +44,7 @@ if (!grepl(annovar_vcf_out_regex, annovar_vcf_out, perl = TRUE)) {
 }
 
 # Load CHIP variant/gene lists
-chip_defs <- read.csv(chip_def_file)
+chip_vars <- read.csv(chip_def_file)
 
 # Define sample ID
 sample_id <- gsub(annovar_text_out_regex, "", annovar_text_out, perl = TRUE)
