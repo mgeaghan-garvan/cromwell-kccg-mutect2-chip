@@ -1321,11 +1321,11 @@ task WhitelistFilter {
     }
 
     output {
-      File? whitelist_filter_output_allvariants_csv = file_prefix + ".all_variants.csv"
-      File? whitelist_filter_output_wl_csv = file_prefix + ".chip_wl._variants.csv"
-      File? whitelist_filter_output_manual_review_csv = file_prefix + ".chip_manual_review_variants.csv"
-      File? whitelist_filter_output_putative_wl_csv = file_prefix + ".chip_putative_wl._variants.csv"
-      File? whitelist_filter_output_putative_manual_review_csv = file_prefix + ".chip_putative_manual_review_variants.csv"
+      File whitelist_filter_output_allvariants_csv = file_prefix + ".all_variants.csv"
+      File whitelist_filter_output_wl_csv = file_prefix + ".chip_wl._variants.csv"
+      File whitelist_filter_output_manual_review_csv = file_prefix + ".chip_manual_review_variants.csv"
+      File whitelist_filter_output_putative_wl_csv = file_prefix + ".chip_putative_wl._variants.csv"
+      File whitelist_filter_output_putative_manual_review_csv = file_prefix + ".chip_putative_manual_review_variants.csv"
     }
 }
 
