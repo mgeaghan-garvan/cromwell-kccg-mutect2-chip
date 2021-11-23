@@ -8,7 +8,7 @@
     "Mutect2CHIP_CHIP_Multi.whitelist_mem_mb": 10000,
     "Mutect2CHIP_CHIP_Multi.whitelist_disk_space": 300,
     "Mutect2CHIP_CHIP_Multi.whitelist_cpu": 1,
-    "Mutect2CHIP_CHIP_Multi.whitelist_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357",
+    "Mutect2CHIP_CHIP_Multi.whitelist_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:cc1d9026f640de7eaa07579146a94eae1201d5f80703bd9096f7d99a13b9cf19",
     "Mutect2CHIP_CHIP_Multi.whitelist_archive": "REQUIRED_FILE",
     "Mutect2CHIP_CHIP_Multi.ref_name": "hg38",
     "Mutect2CHIP_CHIP_Multi.gatk_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b",
