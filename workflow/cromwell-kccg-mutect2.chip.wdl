@@ -38,6 +38,8 @@ workflow Mutect2CHIP_CHIP {
         Int whitelist_mem_mb = 10000
         Int whitelist_disk_space = 300
         Int whitelist_cpu = 1
+        Boolean treat_missing_as_rare = true
+        String gnomad_pop = "AF"
         String whitelist_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
         File whitelist_archive
         # common settings
@@ -102,6 +104,8 @@ workflow Mutect2CHIP_CHIP {
             cpu = whitelist_cpu,
             whitelist_filter_docker = whitelist_docker,
             tumor_sample_name = tumor_sample_name,
+            treat_missing_as_rare = treat_missing_as_rare,
+            gnomad_pop = gnomad_pop,
             txt_input = WhitelistAnnovar.annovar_output_file_table,
             vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
             ref_name = ref_name,

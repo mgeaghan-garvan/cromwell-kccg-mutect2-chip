@@ -192,6 +192,8 @@ workflow Mutect2CHIP {
         File? annovar_archive
         File? whitelist_filter_archive
         String annovar_assembly = "hg38"
+        Boolean treat_missing_as_rare = true
+        String gnomad_pop = "AF"
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
 
@@ -539,6 +541,8 @@ workflow Mutect2CHIP {
                 cpu = 1,
                 whitelist_filter_docker = whitelist_filter_docker,
                 tumor_sample_name = tumor_sample_name,
+                treat_missing_as_rare = treat_missing_as_rare,
+                gnomad_pop = gnomad_pop,
                 txt_input = WhitelistAnnovar.annovar_output_file_table,
                 vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
                 ref_name = annovar_assembly,
@@ -1290,6 +1294,8 @@ task WhitelistFilter {
       Int cpu = 1
       String whitelist_filter_docker
       String tumor_sample_name
+      String gnomad_pop = "AF"
+      Boolean treat_missing_as_rare = true
       File txt_input
       File vcf_input
       String ref_name
@@ -1298,8 +1304,7 @@ task WhitelistFilter {
     }
 
     String file_prefix = basename(txt_input, "_multianno.txt")
-    String gnomad_pop = "AF"  # TODO: set by argument
-    String treat_missing_as_rare_str = "TRUE"  # TODO: set by argument
+    String treat_missing_as_rare_str = if (treat_missing_as_rare) then "TRUE" else "FALSE"
 
     command {
       set -euo pipefail
