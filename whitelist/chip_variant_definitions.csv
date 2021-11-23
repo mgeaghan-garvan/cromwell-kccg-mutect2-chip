@@ -1,4 +1,4 @@
-﻿Gene,Transcript_Accession,Nonsynonymous,Frameshift,Stop_Gain,Splicing,Putative_Nonsynonymous,Putative_Frameshift,Putative_Stop_Gain,Putative_Splicing,M_L_CHIP
+Gene,Transcript_Accession,Nonsynonymous,Frameshift,Stop_Gain,Splicing,Putative_Nonsynonymous,Putative_Frameshift,Putative_Stop_Gain,Putative_Splicing,M_L_CHIP
 ASXL1,NM_015338,,exon11;exon12,exon11;exon12,exon11;exon12,,,,,M
 ASXL2,NM_018263,,exon11;exon12,exon11;exon12,exon11;exon12,,,,,M
 BCOR,NM_001123385,,any,any,any,,,,,M
