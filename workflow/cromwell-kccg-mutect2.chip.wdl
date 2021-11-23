@@ -112,9 +112,10 @@ workflow Mutect2CHIP_CHIP {
     output {
         File out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
-        File? out_whitelist_count = WhitelistFilter.whitelist_filter_output_varcount_csv
-        File? out_whitelist_all_variants = WhitelistFilter.whitelist_filter_output_allvariants_csv
-        File? out_whitelist = WhitelistFilter.whitelist_filter_output_wl_csv
-        File? out_whitelist_manual_review = WhitelistFilter.whitelist_filter_output_manual_review_csv
+        File out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
+        File out_whitelist_filter_output_wl_csv = WhitelistFilter.whitelist_filter_output_wl_csv
+        File out_whitelist_filter_output_manual_review_csv = WhitelistFilter.whitelist_filter_output_manual_review_csv
+        File out_whitelist_filter_output_putative_wl_csv = WhitelistFilter.whitelist_filter_output_putative_wl_csv
+        File out_whitelist_filter_output_putative_manual_review_csv = WhitelistFilter.whitelist_filter_output_putative_manual_review_csv
     }
 }

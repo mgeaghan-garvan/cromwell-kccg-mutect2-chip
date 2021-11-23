@@ -751,9 +751,3 @@ check_vars <- data.frame(Sample=sample_id,
                          total_num_variants=length(varsOI.func$Sample),
                          total_num_whitelist=length(varsOI.func[whitelist==T,]$Sample),
                          total_num_manualreview=length(varsOI.func[manualreview==T,]$Sample))
-
-#write out files
-write.csv(check_vars,paste(sample_id, ".varsOI.varcount.csv", sep=""), row.names=FALSE)
-write.csv(varsOI.func,paste(sample_id, ".varsOI.allvariants.csv", sep=""), row.names=FALSE)
-write.csv(varsOI.func[whitelist==T,],paste(sample_id, ".varsOI.wl.csv", sep=""), row.names=FALSE)
-write.csv(varsOI.func[manualreview==T,],paste(sample_id, ".varsOI.manualreview.csv", sep=""), row.names=FALSE)

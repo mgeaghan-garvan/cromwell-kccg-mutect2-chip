@@ -560,10 +560,11 @@ workflow Mutect2CHIP {
         File? out_vep_vcf = VEP.output_vcf
         File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
-        File? out_whitelist_count = WhitelistFilter.whitelist_filter_output_varcount_csv
-        File? out_whitelist_all_variants = WhitelistFilter.whitelist_filter_output_allvariants_csv
-        File? out_whitelist = WhitelistFilter.whitelist_filter_output_wl_csv
-        File? out_whitelist_manual_review = WhitelistFilter.whitelist_filter_output_manual_review_csv
+        File? out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
+        File? out_whitelist_filter_output_wl_csv = WhitelistFilter.whitelist_filter_output_wl_csv
+        File? out_whitelist_filter_output_manual_review_csv = WhitelistFilter.whitelist_filter_output_manual_review_csv
+        File? out_whitelist_filter_output_putative_wl_csv = WhitelistFilter.whitelist_filter_output_putative_wl_csv
+        File? out_whitelist_filter_output_putative_manual_review_csv = WhitelistFilter.whitelist_filter_output_putative_manual_review_csv
     }
 }
 
@@ -1320,10 +1321,11 @@ task WhitelistFilter {
     }
 
     output {
-      File? whitelist_filter_output_varcount_csv = file_prefix + ".varsOI.varcount.csv"
-      File? whitelist_filter_output_allvariants_csv = file_prefix + ".varsOI.allvariants.csv"
-      File? whitelist_filter_output_wl_csv = file_prefix + ".varsOI.wl.csv"
-      File? whitelist_filter_output_manual_review_csv = file_prefix + ".varsOI.manualreview.csv"
+      File? whitelist_filter_output_allvariants_csv = file_prefix + ".all_variants.csv"
+      File? whitelist_filter_output_wl_csv = file_prefix + ".chip_wl._variants.csv"
+      File? whitelist_filter_output_manual_review_csv = file_prefix + ".chip_manual_review_variants.csv"
+      File? whitelist_filter_output_putative_wl_csv = file_prefix + ".chip_putative_wl._variants.csv"
+      File? whitelist_filter_output_putative_manual_review_csv = file_prefix + ".chip_putative_manual_review_variants.csv"
     }
 }
 
