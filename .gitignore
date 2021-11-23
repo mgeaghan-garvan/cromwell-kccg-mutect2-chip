@@ -8,3 +8,4 @@ workflow/test_*
 configure_cromwell.py
 .service_account.key.pem
 .service_account.email.txt
+**/.DS_Store
