@@ -516,6 +516,7 @@ workflow Mutect2CHIP {
         File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
         String sample_id = basename(basename(filter_output_vcf, ".gz"), ".vcf")
+        String tumor_sample_name = M2.tumor_sample[0]  # M2 is scattered over intervals, all entries in the Array[String] "tumor_sample" will be identical
         call Annovar as WhitelistAnnovar {
             input:
                 mem_mb = 4000,
@@ -537,7 +538,7 @@ workflow Mutect2CHIP {
                 whitelist_filter_disk_space = 300,
                 cpu = 1,
                 whitelist_filter_docker = whitelist_filter_docker,
-                tumor_sample_name = M2.tumor_sample,
+                tumor_sample_name = tumor_sample_name,
                 txt_input = WhitelistAnnovar.annovar_output_file_table,
                 vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
                 ref_name = annovar_assembly,
