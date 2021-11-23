@@ -27,6 +27,7 @@ workflow Mutect2CHIP_CHIP {
     input {
         # input vcf
         File input_vcf
+        String tumor_sample_name
         # annovar settings
         Int annovar_mem_mb = 4000
         Int annovar_disk_space = 300
@@ -100,6 +101,7 @@ workflow Mutect2CHIP_CHIP {
             whitelist_filter_disk_space = whitelist_disk_space,
             cpu = whitelist_cpu,
             whitelist_filter_docker = whitelist_docker,
+            tumor_sample_name = tumor_sample_name,
             txt_input = WhitelistAnnovar.annovar_output_file_table,
             vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
             ref_name = ref_name,

@@ -537,6 +537,7 @@ workflow Mutect2CHIP {
                 whitelist_filter_disk_space = 300,
                 cpu = 1,
                 whitelist_filter_docker = whitelist_filter_docker,
+                tumor_sample_name = M2.tumor_sample,
                 txt_input = WhitelistAnnovar.annovar_output_file_table,
                 vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
                 ref_name = annovar_assembly,
@@ -1286,7 +1287,7 @@ task WhitelistFilter {
       Int whitelist_filter_disk_space = 300
       Int cpu = 1
       String whitelist_filter_docker
-
+      String tumor_sample_name
       File txt_input
       File vcf_input
       String ref_name
@@ -1295,14 +1296,15 @@ task WhitelistFilter {
     }
 
     String file_prefix = basename(txt_input, "_multianno.txt")
+    String gnomad_pop = "AF"  # TODO: set by argument
+    String treat_missing_as_rare_str = "TRUE"  # TODO: set by argument
 
     command {
       set -euo pipefail
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      # TODO: fix this
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R --args ~{txt_input} ~{vcf_input} ~{ref_name} ./whitelist_filter_files
+      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R --args ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv
     }
 
     runtime {

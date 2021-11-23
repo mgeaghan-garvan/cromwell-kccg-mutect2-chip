@@ -1,5 +1,6 @@
 {
     "Mutect2CHIP_CHIP.input_vcf": "REQUIRED_FILE",
+    "Mutect2CHIP_CHIP.tumor_sample_name": "REQUIRED_STRING",
     "Mutect2CHIP_CHIP.annovar_mem_mb": 4000,
     "Mutect2CHIP_CHIP.annovar_disk_space": 300,
     "Mutect2CHIP_CHIP.annovar_cpu": 1,

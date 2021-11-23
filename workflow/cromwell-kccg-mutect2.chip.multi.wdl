@@ -63,11 +63,13 @@ workflow Mutect2CHIP_CHIP_Multi {
     Array[Array[String]] input_vcfs = read_tsv(input_vcf_list)
 
     scatter( row in input_vcfs ) {
-        File input_vcf = row[0]
+        String tumor_sample_name = row[0]
+        File input_vcf = row[1]
 
         call m2c.Mutect2CHIP_CHIP {
             input:
                 input_vcf = input_vcf,
+                tumor_sample_name = tumor_sample_name,
                 annovar_mem_mb = annovar_mem_mb,
                 annovar_disk_space = annovar_disk_space,
                 annovar_cpu = annovar_cpu,

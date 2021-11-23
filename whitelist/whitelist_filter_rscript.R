@@ -1,40 +1,167 @@
-library(data.table, quietly = T)
+# library(data.table, quietly = T)
 library(tidyr)
 library(stringr)
 
 # Check command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop("Incorrect number of arguments!")
+if (length(args) != 6) {
+  stop(paste(
+    "Incorrect number of arguments!",
+    "Usage: Rscript whitelist_filter_rscript.R --args <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE>",
+    "    gnomAD subpopulation codes: AF (all), AF_afr, AF_sas, AF_amr, AF_eas, AF_nfe, AF_fin, AF_asj",
+    "    TREAT MISSING AF AS RARE:   'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
+    "    CHIP DEFINITION FILE: csv file containing CHIP variant definitions",
+    sep = "\n"))
 }
-annovar_out <- args[1]
-chip_def_file <- args[2]
+annovar_text_out <- args[1]
+annovar_vcf_out <- args[2]
+tumor_sample_name <- args[3]
+gnomad_pop <- args[4]
+treat_missing_as_rare <- args[5]
+chip_def_file <- args[6]
 
-if (!file.exists(annovar_out)) {
-  stop("Input file does not exist.")
+if (!file.exists(annovar_text_out)) {
+  stop("Input annovar table file does not exist.")
+}
+if (!file.exists(annovar_vcf_out)) {
+  stop("Input annovar vcf file does not exist.")
 }
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
 }
-annovar_out_regex <- "_multianno\\.txt$"
-if (!grepl(annovar_out_regex, annovar_out, perl = TRUE)) {
-  stop("Invalid input file. Must be an annovar text output ('*_multianno.txt').")
+if (!(treat_missing_as_rare %in% c("TRUE", "FALSE"))) {
+  stop("Positional argument #4 'TREAT MISSING AF AS RARE' must be 'TRUE' or 'FALSE'")
+} else {
+  treat_missing_as_rare <- (treat_missing_as_rare == "TRUE")
+}
+annovar_text_out_regex <- "_multianno\\.txt$"
+if (!grepl(annovar_text_out_regex, annovar_text_out, perl = TRUE)) {
+  stop("Invalid input annovar table file. Must be an annovar text output ('*_multianno.txt').")
+}
+annovar_vcf_out_regex <- "_multianno\\.vcf$"
+if (!grepl(annovar_vcf_out_regex, annovar_vcf_out, perl = TRUE)) {
+  stop("Invalid input annovar vcf file. Must be an annovar vcf output ('*_multianno.vcf').")
 }
 
 # Load CHIP variant/gene lists
-chip_defs <- fread(chip_def_file)
+chip_defs <- read.csv(chip_def_file)
 
 # Define sample ID
-sample_id <- gsub(annovar_out_regex, "", annovar_out, perl = TRUE)
+sample_id <- gsub(annovar_text_out_regex, "", annovar_text_out, perl = TRUE)
 sample_id <- gsub("^.*\\/([^\\/]+)$", "\\1", sample_id, perl = TRUE)
 
 # Load annovar variant annotations
-vars1 <- fread(annovar_out)
-vars <- as.data.frame(transform(vars1, Sample = sample_id))
+vars <- read.table(annovar_text_out, sep = "\t", header = TRUE)
+vars$Sample <- sample_id
+
+# Load annovar vcf file
+vcf <- scan(annovar_vcf_out, character(), sep = "\n")
+vcf_header <- grep("^#CHROM", vcf, perl = TRUE, value = TRUE)
+vcf_header <- gsub("^#", "", vcf_header, perl = TRUE)
+vcf_header <- strsplit(vcf_header, "\t")[[1]]
 
 # Ensure the following columns are present
 req_cols <- c("Chr", "Start", "End", "Ref", "Alt", "Func.refGene", "Gene.refGene", "GeneDetail.refGene", "ExonicFunc.refGene", "AAChange.refGene")
+gnomad_g_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
+gnomad_e_cols <- c("AF.1", "AF_popmax.1", "AF_male.1", "AF_female.1", "AF_raw.1", "AF_afr.1", "AF_sas.1", "AF_amr.1", "AF_eas.1", "AF_nfe.1", "AF_fin.1", "AF_asj.1", "AF_oth.1", "non_topmed_AF_popmax.1", "non_neuro_AF_popmax.1", "non_cancer_AF_popmax.1", "controls_AF_popmax.1")
+req_cols <- c(req_cols, gnomad_g_cols, gnomad_e_cols)
 stopifnot(all(req_cols %in% colnames(vars)))
+
+# Rename Otherinfo columns
+# NOTE: These are hard-coded to match the output of annovar as of 2021-11-22
+#       When converting from vcf to avinput format, the following command is used by table_annovar.pl:
+#       convert2annovar.pl -includeinfo -allsample -withfreq -format vcf4 INPUT.vcf > OUTPUT.avinput
+#       This produces 3 "Otherinfo" columns corresponding to total allele frequency across all samples, quality score, and read deapth
+#       The following 9+N columns (for N samples) correspond to the input vcf file's columns
+otherinfo_cols <- c("ANNOVAR_alt_af", "ANNOVAR_qual", "ANNOVAR_alt_ad", vcf_header)
+colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_cols
+
+# ===== PRE-FILTERING =====
+
+# Get gnomAD allele frequencies
+new_gnomad_g_cols <- paste("gnomAD_genome_", gnomad_g_cols, sep = "")
+new_gnomad_e_cols <- gsub("\\.\\d+$", "", gnomad_e_cols, perl = TRUE)
+new_gnomad_e_cols <- paste("gnomAD_exome_", new_gnomad_e_cols, sep = "")
+
+colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
+colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
+
+gnomad_pop_columns <- paste("gnomAD", c("genome", "exome"), gnomad_pop, sep = "_")
+
+vars$gnomAD_AF <- apply(vars[gnomad_pop_columns], 1, function(x) {
+  af_g <- x[[1]]
+  af_e <- x[[2]]
+  missing_vals <- c(".", "", NA)
+  if(!(af_e %in% missing_vals)) {
+    return(as.numeric(af_e))
+  } else if(!(af_g %in% missing_vals)) {
+    return(as.numeric(af_g))
+  } else if(treat_missing_as_rare) {
+    return(0)
+  } else {
+    return(NA)
+  }
+})
+
+# Filter by AD, DP, AF, F1R2/F2R1 VCF fields and gnomAD frequency
+get_format_field <- function(x, format_field) { grep(paste("^", x, "$", sep = ""), format_field, perl = TRUE) }
+vars$HARD_FILTER <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, function(x) {
+  format_field <- strsplit(x[[1]], ":")[[1]]
+  sample_field <- strsplit(x[[2]], ":")[[1]]
+  gnomad_af <- as.numeric(x[[3]])
+  # Allelic depth
+  var_n_ad_i <- get_format_field("AD", format_field)
+  var_n_ad <- as.integer(strsplit(sample_field[var_n_ad_i], ",")[[1]])
+  var_n_ad_gte_3 <- var_n_ad >= 3
+  # Site read depth
+  var_n_dp_i <- get_format_field("DP", format_field)
+  var_n_dp <- as.integer(sample_field[var_n_dp_i])
+  var_n_dp_gte_20 <- var_n_dp >= 20
+  # VAF
+  var_n_vaf_i <- get_format_field("AF", format_field)
+  var_n_vaf <- as.numeric(strsplit(sample_field[var_n_vaf_i], ",")[[1]])
+  var_n_vaf_gte_2pc <- var_n_vaf >= 0.02
+  var_n_vaf_lt_35pc <- var_n_vaf < 0.35
+  # Forward and reverse stand support
+  var_n_for_i <- get_format_field("F1R2", format_field)
+  var_n_for <- as.integer(strsplit(sample_field[var_n_for_i], ",")[[1]])
+  var_n_rev_i <- get_format_field("F2R1", format_field)
+  var_n_rev <- as.integer(strsplit(sample_field[var_n_rev_i], ",")[[1]])
+  var_n_for_rev_gte_1 <- all(var_n_for >= 1) && all(var_n_rev >= 1)
+  # gnomAD frequency
+  var_n_gnomad_af_lt_0.1pc <- !is.na(gnomad_af) & (gnomad_af < 0.001)
+  filter_pass <- (
+    all(var_n_ad_gte_3[2:length(var_n_ad_gte_3)]) &  # first allele = ref
+      var_n_dp_gte_20 &
+      all(var_n_vaf_gte_2pc) &
+      all(var_n_vaf_lt_35pc) &
+      var_n_for_rev_gte_1 &
+      var_n_gnomad_af_lt_0.1pc
+  )
+  filter_manual_review <- (
+    any(var_n_ad_gte_3[2:length(var_n_ad_gte_3)]) &  # first allele = ref; if any, but not all pass, go to manual review
+      var_n_dp_gte_20 &
+      any(var_n_vaf_gte_2pc) &  # some but not all are passing
+      var_n_for_rev_gte_1 &
+      var_n_gnomad_af_lt_0.1pc
+  )
+  if(filter_pass) {
+    return("PASS")
+  } else if(filter_manual_review) {
+    return("MANUAL_REVIEW")
+  } else {
+    return("FAIL")
+  }
+})
+vars$COMB_FILTER = apply(vars[c("FILTER", "HARD_FILTER")], 1, function(x) {
+  if(x[[1]] == "PASS") {
+    return(x[[2]])
+  } else {
+    return("FAIL")
+  }
+})
+
+# ===== PARSE ANNOVAR OUTPUT =====
 
 # Split multi-gene variants
 vars_g <- as.data.frame(separate_rows(vars, Gene.refGene, sep = ";"))
