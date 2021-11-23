@@ -745,9 +745,3 @@ write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Whitelist,],
 write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Manual_Review,], paste(sample_id, ".chip_manual_review_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Putative_Whitelist,], paste(sample_id, ".chip_putative_wl_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Putative_Manual_Review,], paste(sample_id, ".chip_putative_manual_review_variants.csv", sep = ""), row.names = FALSE)
-
-
-check_vars <- data.frame(Sample=sample_id,
-                         total_num_variants=length(varsOI.func$Sample),
-                         total_num_whitelist=length(varsOI.func[whitelist==T,]$Sample),
-                         total_num_manualreview=length(varsOI.func[manualreview==T,]$Sample))
