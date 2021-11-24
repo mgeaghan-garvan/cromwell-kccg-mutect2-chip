@@ -48,8 +48,6 @@ workflow Mutect2CHIP_CHIP_Multi {
         # common settings
         String ref_name = "hg38"
         # runtime parameters
-        String gatk_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
-        File? gatk_override
         Int? preemptible
         Int? max_retries
         Int small_task_cpu = 4
@@ -61,7 +59,6 @@ workflow Mutect2CHIP_CHIP_Multi {
         Int? emergency_extra_disk
     }
 
-    # TODO: test this - I'm not sure if this works for single-column files. It might only yield Array[String]
     Array[Array[String]] input_vcfs = read_tsv(input_vcf_list)
 
     scatter( row in input_vcfs ) {
@@ -85,8 +82,6 @@ workflow Mutect2CHIP_CHIP_Multi {
                 whitelist_docker = whitelist_docker,
                 whitelist_archive = whitelist_archive,
                 ref_name = ref_name,
-                gatk_docker = gatk_docker,
-                gatk_override = gatk_override,
                 preemptible = preemptible,
                 max_retries = max_retries,
                 small_task_cpu = small_task_cpu,

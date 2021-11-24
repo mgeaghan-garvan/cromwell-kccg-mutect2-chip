@@ -45,8 +45,6 @@ workflow Mutect2CHIP_CHIP {
         # common settings
         String ref_name = "hg38"
         # runtime parameters
-        String gatk_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
-        File? gatk_override
         Int? preemptible
         Int? max_retries
         Int small_task_cpu = 4
@@ -61,15 +59,12 @@ workflow Mutect2CHIP_CHIP {
     Int preemptible_or_default = select_first([preemptible, 2])
     Int max_retries_or_default = select_first([max_retries, 2])
 
-    # If no tar is provided, the task downloads one from broads ftp server
-    Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
-
     # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 10 + gatk_override_size + select_first([emergency_extra_disk,0])
+    Int disk_pad = 10 + select_first([emergency_extra_disk,0])
 
     Runtime standard_runtime = {
-        "gatk_docker": gatk_docker,
-        "gatk_override": gatk_override,
+        "gatk_docker": "",
+        "gatk_override": "",
         "max_retries": max_retries_or_default,
         "preemptible": preemptible_or_default,
         "cpu": small_task_cpu,
