@@ -5,16 +5,17 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun]"
+    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
-    echo -e "\tDB_HOSTNAME:   Hostname where MySQL server is running.            (Default: '0.0.0.0')"
-    echo -e "\tDB_PORT:       Port for MySQL server on host.                     (Default: '40008')"
-    echo -e "\tDB_NAME:       Name for MySQL database.                           (Default: 'cromwell')."
-    echo -e "\tCROMWELL_PORT: Port where Cromwell should run.                    (Default: '8007')"
-    echo -e "\tPLATFORM:      Platform on which workflow should be run.          (Options: 'HPC', 'GCP'. Default: 'HPC')"
-    echo -e "\tMYSQL_DIR:     Root directory for MySQL installation.             (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
-    echo -e "\tMYSQL_RUN_DIR: Run directory for MySQL.                           (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
-    echo -e "\tCROMWELL_JAR:  Location of Cromwell JAR file.                     (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar')"
+    echo -e "\tDB_HOSTNAME:   Hostname where MySQL server is running.                     (Default: '0.0.0.0')"
+    echo -e "\tDB_PORT:       Port for MySQL server on host.                              (Default: '40008')"
+    echo -e "\tDB_NAME:       Name for MySQL database.                                    (Default: 'cromwell')."
+    echo -e "\tCROMWELL_PORT: Port where Cromwell should run.                             (Default: '8007')"
+    echo -e "\tPLATFORM:      Platform on which workflow should be run.                   (Options: 'HPC', 'GCP'. Default: 'HPC')"
+    echo -e "\tMYSQL_DIR:     Root directory for MySQL installation.                      (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
+    echo -e "\tMYSQL_RUN_DIR: Run directory for MySQL.                                    (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
+    echo -e "\tCROMWELL_JAR:  Location of Cromwell JAR file.                              (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar')"
+    echo -e "\t[-m|--multi]:  Run in multi-sample batch mode (requires inputFiles.tsv)."
     echo -e "\t[-d|--dryrun]: Print settings to screen without making changes."
 }
 
@@ -188,18 +189,24 @@ fi
 # Configure run.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run_chip_only.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run_vep_only.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./run_annovar_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./create_pon.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./abort.sh
 if [ "${PLATFORM}" == "GCP" ]
 then
     sed -i -e "s/options\.json/options\.google\.json/g" ./run.sh
     sed -i -e "s/options\.json/options\.google\.json/g" ./run_chip_only.sh
+    sed -i -e "s/options\.json/options\.google\.json/g" ./run_vep_only.sh
+    sed -i -e "s/options\.json/options\.google\.json/g" ./run_annovar_only.sh
     sed -i -e "s/options\.json/options\.google\.json/g" ./create_pon.sh
 fi
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run.sh
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run_chip_only.sh
+sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run_vep_only.sh
+sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./run_annovar_only.sh
 cd workflow
-zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl cromwell-kccg-mutect2.chip.wdl
+zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl cromwell-kccg-mutect2.chip.wdl cromwell-kccg-mutect2.vep.wdl cromwell-kccg-mutect2.annovar.wdl
 cd ..
 
 # Configure start_cromwell.sh

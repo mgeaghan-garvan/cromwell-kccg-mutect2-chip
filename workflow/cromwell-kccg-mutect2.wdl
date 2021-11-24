@@ -187,14 +187,19 @@ workflow Mutect2CHIP {
         File? vep_loftee_ancestor_gzi
         File? vep_loftee_conservation_sql
 
-        # Annovar Whitelist Filter settings
-        Boolean run_chip_detection = true
+        # Annovar settings
+        Boolean annovar = false
         File? annovar_archive
-        File? whitelist_filter_archive
         String annovar_assembly = "hg38"
+        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
+        String annovar_protocols = "cosmic70"
+        String annovar_operations = "f"
+
+        # Whitelist Filter settings
+        Boolean run_chip_detection = true
+        File? whitelist_filter_archive
         Boolean treat_missing_as_rare = true
         String gnomad_pop = "AF"
-        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
 
         # Samtools settings
@@ -512,12 +517,35 @@ workflow Mutect2CHIP {
         }
     }
 
+    File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
+    File annovar_input_vcf = select_first([VEP.output_vcf, filter_output_vcf])
+
+    if (annovar && defined(annovar_archive)) {
+        String annovar_sample_id = basename(basename(annovar_input_vcf, ".gz"), ".vcf")
+        call Annovar {
+            input:
+                mem_mb = 4000,
+                annovar_disk_space = 300,
+                cpu = 1,
+                annovar_docker = annovar_docker,
+                sample_id = annovar_sample_id,
+                vcf_input = annovar_input_vcf,
+                annovar_archive = annovar_archive_file,
+                ref_name = annovar_assembly,
+                annovar_protocols = annovar_protocols,
+                annovar_operations = annovar_operations,
+                runtime_params = standard_runtime
+        }
+    }
+
+    File chip_detection_input_vcf = select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
+
     # Run annovar and CHIP whitelist filter
     # TODO: change mem_mb, *_disk_space, and cpu to workflow input parameters
     if (run_chip_detection && defined(annovar_archive) && defined(whitelist_filter_archive)) {
-        File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
+        # File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
-        String sample_id = basename(basename(filter_output_vcf, ".gz"), ".vcf")
+        String sample_id = basename(basename(chip_detection_input_vcf, ".gz"), ".vcf")
         String tumor_sample_name = M2.tumor_sample[0]  # M2 is scattered over intervals, all entries in the Array[String] "tumor_sample" will be identical
         call Annovar as WhitelistAnnovar {
             input:
@@ -526,7 +554,7 @@ workflow Mutect2CHIP {
                 cpu = 1,
                 annovar_docker = annovar_docker,
                 sample_id = sample_id,
-                vcf_input = select_first([VEP.output_vcf, filter_output_vcf]),
+                vcf_input = chip_detection_input_vcf,
                 annovar_archive = annovar_archive_file,
                 ref_name = annovar_assembly,
                 annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome",
@@ -562,6 +590,8 @@ workflow Mutect2CHIP {
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? out_vep_vcf = VEP.output_vcf
+        File? out_annovar_vcf = Annovar.annovar_output_file_vcf
+        File? out_annovar_table = Annovar.annovar_output_file_table
         File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
         File? out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
