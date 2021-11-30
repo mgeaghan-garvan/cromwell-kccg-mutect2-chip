@@ -41,6 +41,7 @@
     "Mutect2CHIP.whitelist_filter_archive": "OPTIONAL_ZIP_FILE",
     "Mutect2CHIP.annovar_assembly": "hg38",
     "Mutect2CHIP.treat_missing_as_rare": true,
+    "Mutect2CHIP.whitelist_genome": true,
     "Mutect2CHIP.gnomad_pop": "AF",
     "Mutect2CHIP.annovar_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
     "Mutect2CHIP.whitelist_filter_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:cc1d9026f640de7eaa07579146a94eae1201d5f80703bd9096f7d99a13b9cf19",

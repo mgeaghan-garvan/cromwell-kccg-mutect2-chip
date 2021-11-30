@@ -39,6 +39,7 @@ workflow Mutect2CHIP_CHIP {
         Int whitelist_disk_space = 300
         Int whitelist_cpu = 1
         Boolean treat_missing_as_rare = true
+        Boolean whitelist_genome = true
         String gnomad_pop = "AF"
         String whitelist_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
         File whitelist_archive
@@ -76,6 +77,8 @@ workflow Mutect2CHIP_CHIP {
     File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
     File whitelist_archive_file = select_first([whitelist_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
     String sample_id = basename(basename(input_vcf, ".gz"), ".vcf")
+    String whitelist_annovar_protocols = if (whitelist_genome) then "refGene,gnomad211_genome,gnomad211_exome" else "refGene,gnomad211_exome"
+    String whitelist_annovar_operations = if (whitelist_genome) then "g,f,f" else "g,f"
     call m2.Annovar as WhitelistAnnovar {
         input:
             mem_mb = annovar_mem_mb,
@@ -87,10 +90,12 @@ workflow Mutect2CHIP_CHIP {
             annovar_archive = annovar_archive_file,
             ref_name = ref_name,
             label = "whitelist_annovar_out",
-            annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome",
-            annovar_operations = "g,f,f",
+            annovar_protocols = whitelist_annovar_protocols,
+            annovar_operations = whitelist_annovar_operations,
             runtime_params = standard_runtime
     }
+
+    String whitelist_exome_only_or_both = if (whitelist_genome) then "both" else "exome"
 
     call m2.WhitelistFilter {
         input:
@@ -100,6 +105,7 @@ workflow Mutect2CHIP_CHIP {
             whitelist_filter_docker = whitelist_docker,
             tumor_sample_name = tumor_sample_name,
             treat_missing_as_rare = treat_missing_as_rare,
+            gnomad_source = whitelist_exome_only_or_both,
             gnomad_pop = gnomad_pop,
             txt_input = WhitelistAnnovar.annovar_output_file_table,
             vcf_input = WhitelistAnnovar.annovar_output_file_vcf,

@@ -199,6 +199,7 @@ workflow Mutect2CHIP {
         Boolean run_chip_detection = true
         File? whitelist_filter_archive
         Boolean treat_missing_as_rare = true
+        Boolean whitelist_genome = true
         String gnomad_pop = "AF"
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3e3868fbb7e58e6f9550cf15c046e6c004a28b8e98b1008224a272d82a4dc357"  # :latest
 
@@ -547,6 +548,8 @@ workflow Mutect2CHIP {
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
         String sample_id = basename(basename(chip_detection_input_vcf, ".gz"), ".vcf")
         String tumor_sample_name = M2.tumor_sample[0]  # M2 is scattered over intervals, all entries in the Array[String] "tumor_sample" will be identical
+        String whitelist_annovar_protocols = if (whitelist_genome) then "refGene,gnomad211_genome,gnomad211_exome" else "refGene,gnomad211_exome"
+        String whitelist_annovar_operations = if (whitelist_genome) then "g,f,f" else "g,f"
         call Annovar as WhitelistAnnovar {
             input:
                 mem_mb = 4000,
@@ -558,10 +561,12 @@ workflow Mutect2CHIP {
                 annovar_archive = annovar_archive_file,
                 ref_name = annovar_assembly,
                 label = "whitelist_annovar_out",
-                annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome",
-                annovar_operations = "g,f,f",
+                annovar_protocols = whitelist_annovar_protocols,
+                annovar_operations = whitelist_annovar_operations,
                 runtime_params = standard_runtime
         }
+
+        String whitelist_exome_only_or_both = if (whitelist_genome) then "both" else "exome"
 
         call WhitelistFilter {
             input:
@@ -571,6 +576,7 @@ workflow Mutect2CHIP {
                 whitelist_filter_docker = whitelist_filter_docker,
                 tumor_sample_name = tumor_sample_name,
                 treat_missing_as_rare = treat_missing_as_rare,
+                gnomad_source = whitelist_exome_only_or_both,
                 gnomad_pop = gnomad_pop,
                 txt_input = WhitelistAnnovar.annovar_output_file_table,
                 vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
@@ -1327,6 +1333,7 @@ task WhitelistFilter {
       Int cpu = 1
       String whitelist_filter_docker
       String tumor_sample_name
+      String gnomad_source = "both"
       String gnomad_pop = "AF"
       Boolean treat_missing_as_rare = true
       File txt_input
@@ -1344,7 +1351,7 @@ task WhitelistFilter {
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv
+      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_source} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv
     }
 
     runtime {
