@@ -63,33 +63,33 @@ workflow Mutect2CHIP_VEP_Multi {
 
         call m2v.Mutect2CHIP_VEP {
             input:
-                input_vcf = input_vcf
-                input_vcf_idx = input_vcf_idx
-                vep_species = vep_species
-                vep_assembly = vep_assembly
-                vep_cache_archive = vep_cache_archive
-                ref_fasta = ref_fasta
-                vep_docker = vep_docker
-                loftee_docker = loftee_docker
-                loftee = loftee
-                vep_loftee_ancestor_fa = vep_loftee_ancestor_fa
-                vep_loftee_ancestor_fai = vep_loftee_ancestor_fai
-                vep_loftee_ancestor_gzi = vep_loftee_ancestor_gzi
-                vep_loftee_conservation_sql = vep_loftee_conservation_sql
-                vep_mem = vep_mem
-                vep_cpu = vep_cpu
-                preemptible = preemptible
-                max_retries = max_retries
-                small_task_cpu = small_task_cpu
-                small_task_mem = small_task_mem
-                small_task_disk = small_task_disk
-                command_mem_padding = command_mem_padding
-                boot_disk_size = boot_disk_size
+                input_vcf = input_vcf,
+                input_vcf_idx = input_vcf_idx,
+                vep_species = vep_species,
+                vep_assembly = vep_assembly,
+                vep_cache_archive = vep_cache_archive,
+                ref_fasta = ref_fasta,
+                vep_docker = vep_docker,
+                loftee_docker = loftee_docker,
+                loftee = loftee,
+                vep_loftee_ancestor_fa = vep_loftee_ancestor_fa,
+                vep_loftee_ancestor_fai = vep_loftee_ancestor_fai,
+                vep_loftee_ancestor_gzi = vep_loftee_ancestor_gzi,
+                vep_loftee_conservation_sql = vep_loftee_conservation_sql,
+                vep_mem = vep_mem,
+                vep_cpu = vep_cpu,
+                preemptible = preemptible,
+                max_retries = max_retries,
+                small_task_cpu = small_task_cpu,
+                small_task_mem = small_task_mem,
+                small_task_disk = small_task_disk,
+                command_mem_padding = command_mem_padding,
+                boot_disk_size = boot_disk_size,
                 emergency_extra_disk = emergency_extra_disk
         }
     }
 
     output {
-        Array[File] out_vep_vcf = Mutect2CHIP_VEP.out_vep_vcf
+        Array[File?] out_vep_vcf = Mutect2CHIP_VEP.out_vep_vcf
     }
 }

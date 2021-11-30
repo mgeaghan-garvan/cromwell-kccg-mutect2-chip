@@ -56,19 +56,19 @@ workflow Mutect2CHIP_Annovar_Multi {
         call m2a.Mutect2CHIP_Annovar {
             input:
                 input_vcf = input_vcf,
-                annovar_mem_mb = annovar_mem_mb
-                annovar_disk_space = annovar_disk_space
-                annovar_cpu = annovar_cpu
-                annovar_docker = annovar_docker
-                annovar_archive = annovar_archive
-                ref_name = ref_name
-                preemptible = preemptible
-                max_retries = max_retries
-                small_task_cpu = small_task_cpu
-                small_task_mem = small_task_mem
-                small_task_disk = small_task_disk
-                command_mem_padding = command_mem_padding
-                boot_disk_size = boot_disk_size
+                annovar_mem_mb = annovar_mem_mb,
+                annovar_disk_space = annovar_disk_space,
+                annovar_cpu = annovar_cpu,
+                annovar_docker = annovar_docker,
+                annovar_archive = annovar_archive,
+                ref_name = ref_name,
+                preemptible = preemptible,
+                max_retries = max_retries,
+                small_task_cpu = small_task_cpu,
+                small_task_mem = small_task_mem,
+                small_task_disk = small_task_disk,
+                command_mem_padding = command_mem_padding,
+                boot_disk_size = boot_disk_size,
                 emergency_extra_disk = emergency_extra_disk
         }
     }

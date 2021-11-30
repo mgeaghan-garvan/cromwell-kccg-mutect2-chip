@@ -557,6 +557,7 @@ workflow Mutect2CHIP {
                 vcf_input = chip_detection_input_vcf,
                 annovar_archive = annovar_archive_file,
                 ref_name = annovar_assembly,
+                label = "whitelist_annovar_out",
                 annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome",
                 annovar_operations = "g,f,f",
                 runtime_params = standard_runtime
@@ -1271,13 +1272,15 @@ task Annovar {
       File vcf_input
       File annovar_archive
 
+      String label = "annovar_out"
+
       String ref_name = "hg38"
       String annovar_protocols = "cosmic70"
       String annovar_operations = "f"
       Runtime runtime_params
     }
 
-    String file_prefix = sample_id + ".annovar_out"
+    String file_prefix = sample_id + "." + label
 
     command {
       set -euo pipefail

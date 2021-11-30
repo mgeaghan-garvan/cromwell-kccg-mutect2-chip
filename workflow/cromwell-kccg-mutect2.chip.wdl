@@ -64,7 +64,6 @@ workflow Mutect2CHIP_CHIP {
 
     Runtime standard_runtime = {
         "gatk_docker": "",
-        "gatk_override": "",
         "max_retries": max_retries_or_default,
         "preemptible": preemptible_or_default,
         "cpu": small_task_cpu,
@@ -87,6 +86,7 @@ workflow Mutect2CHIP_CHIP {
             vcf_input = input_vcf,
             annovar_archive = annovar_archive_file,
             ref_name = ref_name,
+            label = "whitelist_annovar_out",
             annovar_protocols = "refGene,gnomad211_genome,gnomad211_exome",
             annovar_operations = "g,f,f",
             runtime_params = standard_runtime

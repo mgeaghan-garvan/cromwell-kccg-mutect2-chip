@@ -52,7 +52,6 @@ workflow Mutect2CHIP_Annovar {
 
     Runtime standard_runtime = {
         "gatk_docker": "",
-        "gatk_override": "",
         "max_retries": max_retries_or_default,
         "preemptible": preemptible_or_default,
         "cpu": small_task_cpu,
