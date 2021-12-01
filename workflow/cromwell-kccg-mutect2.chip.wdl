@@ -95,7 +95,7 @@ workflow Mutect2CHIP_CHIP {
             runtime_params = standard_runtime
     }
 
-    String whitelist_exome_only_or_both = if (whitelist_genome) then "both" else "exome"
+    String whitelist_exome_only_or_both = if (whitelist_genome) then "genome,exome" else "exome"
 
     call m2.WhitelistFilter {
         input:

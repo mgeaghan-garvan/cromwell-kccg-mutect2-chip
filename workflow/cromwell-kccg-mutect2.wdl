@@ -566,7 +566,7 @@ workflow Mutect2CHIP {
                 runtime_params = standard_runtime
         }
 
-        String whitelist_exome_only_or_both = if (whitelist_genome) then "both" else "exome"
+        String whitelist_exome_only_or_both = if (whitelist_genome) then "genome,exome" else "exome"
 
         call WhitelistFilter {
             input:
@@ -1333,7 +1333,7 @@ task WhitelistFilter {
       Int cpu = 1
       String whitelist_filter_docker
       String tumor_sample_name
-      String gnomad_source = "both"
+      String gnomad_source = "genome,exome"
       String gnomad_pop = "AF"
       Boolean treat_missing_as_rare = true
       File txt_input

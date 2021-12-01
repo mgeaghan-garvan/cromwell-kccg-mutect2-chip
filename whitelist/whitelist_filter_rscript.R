@@ -8,7 +8,7 @@ if (length(args) != 6) {
   stop(paste(
     "Incorrect number of arguments!",
     "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE>",
-    "    gnomAD source:              'exome', 'genome', or 'both'",
+    "    gnomAD source:              'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
     "    gnomAD subpopulation codes: 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
     "    TREAT MISSING AF AS RARE:   'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
     "    CHIP DEFINITION FILE:       csv file containing CHIP variant definitions",
@@ -31,7 +31,7 @@ if (!file.exists(annovar_vcf_out)) {
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
 }
-if (!(gnomad_source %in% c("exome", "genome", "both"))) {
+if (!(gnomad_source %in% c("exome", "genome", "exome,genome", "genome,exome"))) {
   stop("Invalid gnomAD source.")
 }
 if (!(gnomad_pop %in% c("AF", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj"))) {
@@ -70,9 +70,13 @@ vcf_header <- strsplit(vcf_header, "\t")[[1]]
 
 # Ensure the following columns are present
 req_cols <- c("Chr", "Start", "End", "Ref", "Alt", "Func.refGene", "Gene.refGene", "GeneDetail.refGene", "ExonicFunc.refGene", "AAChange.refGene")
-if (gnomad_source == "both") {
+if (gnomad_source == "genome,exome") {
   gnomad_g_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
   gnomad_e_cols <- c("AF.1", "AF_popmax.1", "AF_male.1", "AF_female.1", "AF_raw.1", "AF_afr.1", "AF_sas.1", "AF_amr.1", "AF_eas.1", "AF_nfe.1", "AF_fin.1", "AF_asj.1", "AF_oth.1", "non_topmed_AF_popmax.1", "non_neuro_AF_popmax.1", "non_cancer_AF_popmax.1", "controls_AF_popmax.1")
+  req_cols <- c(req_cols, gnomad_g_cols, gnomad_e_cols)
+} else if (gnomad_source == "exome,genome") {
+  gnomad_e_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
+  gnomad_g_cols <- c("AF.1", "AF_popmax.1", "AF_male.1", "AF_female.1", "AF_raw.1", "AF_afr.1", "AF_sas.1", "AF_amr.1", "AF_eas.1", "AF_nfe.1", "AF_fin.1", "AF_asj.1", "AF_oth.1", "non_topmed_AF_popmax.1", "non_neuro_AF_popmax.1", "non_cancer_AF_popmax.1", "controls_AF_popmax.1")
   req_cols <- c(req_cols, gnomad_g_cols, gnomad_e_cols)
 } else if (gnomad_source == "exome" || gnomad_source == "genome") {
   gnomad_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
@@ -94,10 +98,34 @@ colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_co
 # ===== PRE-FILTERING =====
 
 # Get gnomAD allele frequencies
-if (gnomad_source == "both") {
+if (gnomad_source == "genome,exome") {
   new_gnomad_g_cols <- paste("gnomAD_genome_", gnomad_g_cols, sep = "")
   new_gnomad_e_cols <- gsub("\\.\\d+$", "", gnomad_e_cols, perl = TRUE)
   new_gnomad_e_cols <- paste("gnomAD_exome_", new_gnomad_e_cols, sep = "")
+
+  colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
+  colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
+
+  gnomad_pop_columns <- paste("gnomAD", c("genome", "exome"), gnomad_pop, sep = "_")
+
+  vars$gnomAD_AF <- apply(vars[gnomad_pop_columns], 1, function(x) {
+    af_g <- x[[1]]
+    af_e <- x[[2]]
+    missing_vals <- c(".", "", NA)
+    if(!(af_e %in% missing_vals)) {
+      return(as.numeric(af_e))
+    } else if(!(af_g %in% missing_vals)) {
+      return(as.numeric(af_g))
+    } else if(treat_missing_as_rare) {
+      return(0)
+    } else {
+      return(NA)
+    }
+  })
+} else if (gnomad_source == "exome,genome") {
+  new_gnomad_e_cols <- paste("gnomAD_exome_", gnomad_e_cols, sep = "")
+  new_gnomad_g_cols <- gsub("\\.\\d+$", "", gnomad_g_cols, perl = TRUE)
+  new_gnomad_g_cols <- paste("gnomAD_genome_", new_gnomad_g_cols, sep = "")
 
   colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
   colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
