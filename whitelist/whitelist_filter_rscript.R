@@ -4,7 +4,7 @@ library(stringr)
 
 # Check command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 6) {
+if (length(args) != 7) {
   stop(paste(
     "Incorrect number of arguments!",
     "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE>",
