@@ -222,3 +222,8 @@ echo 'CREATE DATABASE '"${DBNAME}"';
 GRANT ALL PRIVILEGES ON '"${DBNAME}"'.* TO '\''cromwell_user'\''@'\''localhost'\'' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON '"${DBNAME}"'.* TO '\''cromwell_user'\''@'\''%'\'' WITH GRANT OPTION;' \
 | ${MYSQL}/bin/mysql -u root --password=password --socket="${MYSQL_RUNDIR}"/socket
+
+# Configure reset_database.sh
+sed -i -e "s/DBNAME_TO_SED/${DBNAME}/g" reset_database.sh
+sed -i -e "s/MYSQL_TO_SED/${MYSQL}/g" reset_database.sh
+sed -i -e "s/MYSQL_RUNDIR_TO_SED/${MYSQL_RUNDIR}/g" reset_database.sh
