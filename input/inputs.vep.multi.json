@@ -1,5 +1,5 @@
 {
-    "Mutect2CHIP_VEP_Multi.input_vcf_list": "./inputFiles.tsv",
+    "Mutect2CHIP_VEP_Multi.input_vcf_list": "./input/inputFiles.tsv",
     "Mutect2CHIP_VEP_Multi.vep_species": "homo_sapiens",
     "Mutect2CHIP_VEP_Multi.vep_assembly": "GRCh38",
     "Mutect2CHIP_VEP_Multi.vep_cache_archive": "REQUIRED_FILE",

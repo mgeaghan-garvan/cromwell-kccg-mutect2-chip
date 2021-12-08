@@ -110,13 +110,17 @@ Once running, you can detatch the session with Ctrl + A, then D.
 
 ### Configuring workflow
 
-Inside the workflow directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
+Inside the input directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
 
     Panel of normals creation:                     inputs.pon.json
     Full pipeline, single input mode:              inputs.json
     Full pipeline, batch/mulit-sample mode:        inputs.multi.json
     CHIP detection-only, single input mode:        inputs.chip.json
     CHIP detection-only, batch/multi-sample mode:  inputs.chip.multi.json
+    Annovar annotation, single input mode:         inputs.annovar.json
+    Annovar annotation, batch/multi-sample mode:   inputs.annovar.multi.json
+    VEP annotation, single input mode:             inputs.vep.json
+    VEP annotation, batch/multi-sample mode:       inputs.vep.multi.json
 
 Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
 
@@ -159,8 +163,8 @@ cat inputFile.tsv
     /path/to/first/pon/sample.bam   /path/to/first/pon/sample.bai
     /path/to/second/pon/sample.bam   /path/to/secon/pon/sample.bai
 
-# Ensure inputFile.tsv is specified in workflow/inputs.pon.json
-cat workflow/inputs.pon.json
+# Ensure inputFile.tsv is specified in input/inputs.pon.json
+cat input/inputs.pon.json
 
     {
         ...

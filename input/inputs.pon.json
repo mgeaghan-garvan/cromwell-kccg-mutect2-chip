@@ -3,7 +3,7 @@
     "Mutect2CHIP_Panel.ref_fasta": "REQUIRED_FILE",
     "Mutect2CHIP_Panel.ref_fai": "REQUIRED_FILE",
     "Mutect2CHIP_Panel.ref_dict": "REQUIRED_FILE",
-    "Mutect2CHIP_Panel.bam_bai_list": "./inputFiles.tsv",
+    "Mutect2CHIP_Panel.bam_bai_list": "./input/inputFiles.tsv",
     "Mutect2CHIP_Panel.vcf_idx_list": "OPTIONAL_TSV_FILE",
     "Mutect2CHIP_Panel.scatter_count": 10,
     "Mutect2CHIP_Panel.gnomad": "REQUIRED_FILE",

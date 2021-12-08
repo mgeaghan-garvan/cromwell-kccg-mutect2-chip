@@ -3,7 +3,7 @@
     "Mutect2CHIP_Multi.ref_fasta": "REQUIRED_FILE",
     "Mutect2CHIP_Multi.ref_fai": "REQUIRED_FILE",
     "Mutect2CHIP_Multi.ref_dict": "REQUIRED_FILE",
-    "Mutect2CHIP_Multi.pair_list": "./inputFiles.tsv",
+    "Mutect2CHIP_Multi.pair_list": "./input/inputFiles.tsv",
     "Mutect2CHIP_Multi.pon": "OPTIONAL_FILE",
     "Mutect2CHIP_Multi.pon_idx": "OPTIONAL_FILE",
     "Mutect2CHIP_Multi.scatter_count": 10,
