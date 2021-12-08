@@ -61,6 +61,7 @@ sample_id <- gsub("^.*\\/([^\\/]+)$", "\\1", sample_id, perl = TRUE)
 # Load annovar variant annotations
 vars <- read.table(annovar_text_out, sep = "\t", header = TRUE)
 vars$Sample <- sample_id
+vars$TumorSample <- tumor_sample_name
 
 # Load annovar vcf file
 vcf <- scan(annovar_vcf_out, character(), sep = "\n")
