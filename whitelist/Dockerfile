@@ -4,3 +4,4 @@ USER root
 
 RUN Rscript -e 'if (!require(tidyr)) { install.packages("tidyr") }'
 RUN Rscript -e 'if (!require(stringr)) { install.packages("stringr") }'
+RUN cd /usr/local/bin & wget https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools.static.binary & mv bedtools.static.binary bedtools
