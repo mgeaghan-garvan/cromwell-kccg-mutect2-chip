@@ -52,6 +52,7 @@ workflow Mutect2CHIP_Panel {
         File gnomad
         File gnomad_idx
         String? m2_extra_args
+        Boolean m2_only = false
         String? create_pon_extra_args
         Boolean? compress
         String pon_name
@@ -150,48 +151,50 @@ workflow Mutect2CHIP_Panel {
     Array[File] pon_input_vcfs = flatten([vcf_idx_pairs[0], m2_vcfs_out])
     Array[File] pon_input_vcfs_idx = flatten([vcf_idx_pairs[1], m2_vcfs_idx_out])
 
-    call m2.SplitIntervals {
-        input:
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
-            scatter_count = select_first([create_panel_scatter_count, 24]),
-            split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + contig_size,
-            runtime_params = standard_runtime
-    }
-
-    scatter (subintervals in SplitIntervals.interval_files ) {
-        call CreatePanel {
+    if (!m2_only) {
+        call m2.SplitIntervals {
             input:
-                input_vcfs = pon_input_vcfs,
-                input_vcfs_idx = pon_input_vcfs_idx,
-                intervals = subintervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                gnomad = gnomad,
-                gnomad_idx = gnomad_idx,
-                output_vcf_name = pon_name,
-                create_pon_extra_args = create_pon_extra_args,
-                mem_mb = pon_mem,
-                mem_pad = command_mem_padding,
-                mem_per_core = mem_per_core,
+                scatter_count = select_first([create_panel_scatter_count, 24]),
+                split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + contig_size,
+                runtime_params = standard_runtime
+        }
+
+        scatter (subintervals in SplitIntervals.interval_files ) {
+            call CreatePanel {
+                input:
+                    input_vcfs = pon_input_vcfs,
+                    input_vcfs_idx = pon_input_vcfs_idx,
+                    intervals = subintervals,
+                    ref_fasta = ref_fasta,
+                    ref_fai = ref_fai,
+                    ref_dict = ref_dict,
+                    gnomad = gnomad,
+                    gnomad_idx = gnomad_idx,
+                    output_vcf_name = pon_name,
+                    create_pon_extra_args = create_pon_extra_args,
+                    mem_mb = pon_mem,
+                    mem_pad = command_mem_padding,
+                    mem_per_core = mem_per_core,
+                    runtime_params = standard_runtime
+            }
+        }
+
+        call m2.MergeVCFs {
+            input:
+                input_vcfs = CreatePanel.output_vcf,
+                input_vcf_indices = CreatePanel.output_vcf_index,
+                output_name = pon_name,
+                compress = select_first([compress, false]),
                 runtime_params = standard_runtime
         }
     }
 
-    call m2.MergeVCFs {
-        input:
-            input_vcfs = CreatePanel.output_vcf,
-            input_vcf_indices = CreatePanel.output_vcf_index,
-            output_name = pon_name,
-            compress = select_first([compress, false]),
-            runtime_params = standard_runtime
-    }
-
     output {
-        File pon = MergeVCFs.merged_vcf
-        File pon_idx = MergeVCFs.merged_vcf_idx
+        File? pon = MergeVCFs.merged_vcf
+        File? pon_idx = MergeVCFs.merged_vcf_idx
         Array[File] normal_calls = pon_input_vcfs
         Array[File] normal_calls_idx = pon_input_vcfs_idx
     }
