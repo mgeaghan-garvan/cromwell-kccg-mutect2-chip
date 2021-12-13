@@ -9,6 +9,7 @@
     "Mutect2CHIP_Panel.gnomad": "REQUIRED_FILE",
     "Mutect2CHIP_Panel.gnomad_idx": "REQUIRED_FILE",
     "Mutect2CHIP_Panel.m2_extra_args": "--downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6",
+    "Mutect2CHIP_Panel.m2_only": false,
     "Mutect2CHIP_Panel.create_pon_extra_args": "OPTIONAL_STRING",
     "Mutect2CHIP_Panel.compress": true,
     "Mutect2CHIP_Panel.pon_name": "REQUIRED_STRING",

@@ -4,14 +4,18 @@ library(stringr)
 
 # Check command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 7) {
+if (length(args) != 9) {
   stop(paste(
     "Incorrect number of arguments!",
-    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE>",
-    "    gnomAD source:              'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
-    "    gnomAD subpopulation codes: 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
-    "    TREAT MISSING AF AS RARE:   'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
-    "    CHIP DEFINITION FILE:       csv file containing CHIP variant definitions",
+    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",
+    "    ANNOVAR OUTPUT TABLE/VCF:         output txt and vcf files from Annovar.",
+    "    TUMOR SAMPLE NAME:                name of the tumor sample as recorded in the VCF file's column header line."
+    "    GNOMAD SOURCE:                    one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
+    "    GNOMAD SUBPOPULATION CODE:        one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
+    "    TREAT MISSING AF AS RARE:         'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
+    "    CHIP DEFINITION FILE:             csv file containing CHIP variant definitions",
+    "    TRANSCRIPT PROTEIN LENGTHS FILE:  a file containing three columns: RefSeq transcript ID, HGNC gene symbol, protein length",
+    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have een aligned."
     sep = "\n"))
 }
 annovar_text_out <- args[1]
@@ -21,6 +25,8 @@ gnomad_source <- args[4]
 gnomad_pop <- args[5]
 treat_missing_as_rare <- args[6]
 chip_def_file <- args[7]
+transcript_prot_file <- args[8]
+fasta_file <- args[9]
 
 if (!file.exists(annovar_text_out)) {
   stop("Input annovar table file does not exist.")
@@ -30,6 +36,12 @@ if (!file.exists(annovar_vcf_out)) {
 }
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
+}
+if (!file.exists(transcript_prot_file)) {
+  stop("Protein length file does not exist.")
+}
+if (!file.exists(fasta_file)) {
+  stop("FASTA reference file does not exist.")
 }
 if (!(gnomad_source %in% c("exome", "genome", "exome,genome", "genome,exome"))) {
   stop("Invalid gnomAD source.")
@@ -170,7 +182,7 @@ if (gnomad_source == "genome,exome") {
 
 # Filter by AD, DP, AF, F1R2/F2R1 VCF fields and gnomAD frequency
 get_format_field <- function(x, format_field) { grep(paste("^", x, "$", sep = ""), format_field, perl = TRUE) }
-vars$HARD_FILTER <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, function(x) {
+vars_stats <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, function(x) {
   format_field <- strsplit(x[[1]], ":")[[1]]
   sample_field <- strsplit(x[[2]], ":")[[1]]
   gnomad_af <- as.numeric(x[[3]])
@@ -183,10 +195,11 @@ vars$HARD_FILTER <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, 
   var_n_dp <- as.integer(sample_field[var_n_dp_i])
   var_n_dp_gte_20 <- var_n_dp >= 20
   # VAF
-  var_n_vaf_i <- get_format_field("AF", format_field)
-  var_n_vaf <- as.numeric(strsplit(sample_field[var_n_vaf_i], ",")[[1]])
+  var_n_vaf <- var_n_ad / var_n_dp
   var_n_vaf_gte_2pc <- var_n_vaf >= 0.02
   var_n_vaf_lt_35pc <- var_n_vaf < 0.35
+  var_n_vaf_m2_i <- get_format_field("AF", format_field)
+  var_n_vaf_m2 <- as.numeric(strsplit(sample_field[var_n_vaf_m2_i], ",")[[1]])
   # Forward and reverse stand support
   var_n_for_i <- get_format_field("F1R2", format_field)
   var_n_for <- as.integer(strsplit(sample_field[var_n_for_i], ",")[[1]])
@@ -210,19 +223,99 @@ vars$HARD_FILTER <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, 
       var_n_for_rev_gte_1 &
       var_n_gnomad_af_lt_0.1pc
   )
+  HARD_FILTER = "FAIL"
   if(filter_pass) {
-    return("PASS")
+    HARD_FILTER = "PASS"
   } else if(filter_manual_review) {
-    return("MANUAL_REVIEW")
-  } else {
-    return("FAIL")
+    HARD_FILTER = "MANUAL_REVIEW"
   }
+  return(data.frame(
+    AD = paste(as.character(var_n_ad), collapse = ","),
+    DP = as.character(var_n_dp),
+    VAF = paste(as.character(var_n_vaf), collapse = ","),
+    VAF_M2 = paste(as.character(var_n_vaf_m2), collapse = ","),
+    F1R2 = paste(as.character(var_n_for), collapse = ","),
+    F2R1 = paste(as.character(var_n_ref), collapse = ","),
+    HARD_FILTER = HARD_FILTER
+  ))
 })
-vars$COMB_FILTER = apply(vars[c("FILTER", "HARD_FILTER")], 1, function(x) {
+vars_stats <- do.call(rbind, vars_stats)
+vars <- cbind(vars, vars_stats)
+vars$COMBINED_FILTER = apply(vars[c("FILTER", "HARD_FILTER")], 1, function(x) {
   if(x[[1]] == "PASS") {
     return(x[[2]])
   } else {
     return("FAIL")
+  }
+})
+
+# Get sequence context around INDELS and set filter to manual review if AD < 10 or VAF < 0.1
+vars_indels <- vars[grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE), c("Chr", "Start", "End", "Ref", "Alt")]
+vars_indels_bed <- unique(vars_indels[, c("Chr", "Start", "End")])
+vars_indels_bed$Start = as.integer(vars_indels_bed$Start) - 11  # Zero-based coordinates for BED format, get 10bp upstream
+vars_indels_bed$End = as.integer(vars_indels_bed$End) + 10  # Get 10bp downstream
+write.table(vars_indels_bed, "_tmp_indels.bed", col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
+system(paste("bedtools getfasta -fi ", fasta_file, " -bed _tmp_indels.bed -fo _tmp_indels.fa", sep = ""))
+vars_indels_fa <- scan("_tmp_indels.fa", character())
+if (!(length(vars_indels_fa) %% 2 == 0)) {
+  print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
+  vars_indels$INDEL_CONTEXT = ""
+} else {
+  indel_seq = list()
+  i = 1
+  j = 1
+  for (s in vars_indels_fa) {
+    if (i %% 2 == 1 && !grepl("^>", s, perl = TRUE)) {
+      print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
+      vars_indels$INDEL_CONTEXT = ""
+      break
+    } else if (i %% 2 == 0 && grepl("^>", s, perl = TRUE)) {
+      print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
+      vars_indels$INDEL_CONTEXT = ""
+      break
+    } else {
+      if (i %% 2 == 1) {
+        name <- s
+        chr <- gsub("\\:.*", "", name, perl = TRUE)
+        chr <- gsub("^>", "", chr, perl = TRUE)
+        start <- gsub(".*\\:", "", name, perl = TRUE)
+        start <- gsub("\\-.*", "", start, perl = TRUE)
+        start <- as.integer(start) + 11
+        end <- gsub(".*\\-", "", name, perl = TRUE)
+        end <- as.integer(end) - 10
+        indel_seq[[j]] <- c(chr, start, end, "")
+        i <- i + 1
+      } else if (i %% 2 == 0) {
+        indel_seq[[j]][4] = s
+        i <- i + 1
+        j <- j + 1
+      }
+    }
+  }
+  indel_seq <- as.data.frame(do.call(rbind, indel_seq))
+  colnames(indel_seq) <- c("Chr", "Start", "End", "INDEL_SEQ_CONTEXT")
+  vars_indels$Start <- as.integer(vars_indels$Start)
+  vars_indels$End <- as.integer(vars_indels$End)
+  vars_indels <- merge(vars_indels, indel_seq, all.x = TRUE)
+}
+
+vars <- merge(vars, vars_indels)
+vars$INDEL_FILTER <- "PASS"
+vars$INDEL_FILTER[(
+  grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE) &
+  (
+    vars$AD < 10 |
+    vars$VAF < 0.1
+  )
+)] <- "CHECK_FOR_HOMOPOLYMER"
+
+vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "INDEL_FILTER")], 1, function(x) {
+  if (x[[2]] == "PASS") {
+    return(x[[1]])
+  } else if (x[[1]] == "FAIL") {
+    return("FAIL")
+  } else {
+    return("MANUAL_REVIEW")
   }
 })
 
@@ -428,6 +521,42 @@ parse_aa_change <- function(x) {
     end_AA_ref = end_AA_ref
   ))
 }
+
+# Get position along protein - add N- and C-terminal 10% columns
+prot_lengths <- read.csv(transcript_prot_file, header = TRUE)
+colnames(prot_lengths) <- c("refseq_mrna", "hgnc_symbol", "prot_length")
+vars_g_chip_func_filtered$AAChange.position <- unlist(lapply(vars_g_chip_func_filtered$AAChange.protChange, function(x) {
+  y <- parse_aa_change(x)
+  return(x$start_pos)
+}))
+vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("AAChange.transcript", "AAChange.position")], 1, function(x) {
+  t <- as.character(x[[1]])
+  p <- as.integer(x[[2]])
+  if (t %in% prot_lengths$refseq_mrna) {
+    l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
+    if (p > l) {
+      return(NA)
+    } else {
+      return((p/l) < 0.1)
+    }
+  } else {
+    return(NA)
+  }
+})
+vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("AAChange.transcript", "AAChange.position")], 1, function(x) {
+  t <- as.character(x[[1]])
+  p <- as.integer(x[[2]])
+  if (t %in% prot_lengths$refseq_mrna) {
+    l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
+    if (p > l) {
+      return(NA)
+    } else {
+      return((p/l) > 0.9)
+    }
+  } else {
+    return(NA)
+  }
+})
 
 # Functions for matching variants with CHIP conditions
 match_ns_conditions <- function(conditions, aa_changes, aa_exons) {
@@ -789,12 +918,27 @@ wl_sp <- apply(vars_g_chip_func_filtered[, c("Func.refGene", "Splicing", "Putati
 # Add whitelist/manual review columns to data frame
 wl_ns_df <- data.frame(t(wl_ns))
 colnames(wl_ns_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Nonsynonymous", sep = "_")
+
 wl_fs_df <- data.frame(t(wl_fs))
 colnames(wl_fs_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Frameshift", sep = "_")
+wl_fs_df$Whitelist <- wl_fs_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+wl_fs_df$Putative_Whitelist <- wl_fs_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+wl_fs_df$Manual_Review <- (wl_fs_df$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL")) | (wl_fs_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+wl_fs_df$Putative_Manual_Review <- (wl_fs_df$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_fs_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+
 wl_sg_df <- data.frame(t(wl_sg))
 colnames(wl_sg_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Stop_Gain", sep = "_")
+wl_sg_df$Whitelist <- wl_sg_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+wl_sg_df$Putative_Whitelist <- wl_sg_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+wl_sg_df$Manual_Review <- (wl_sg_df$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL")) | (wl_sg_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+wl_sg_df$Putative_Manual_Review <- (wl_sg_df$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_sg_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+
 wl_sp_df <- data.frame(t(wl_sp))
 colnames(wl_sp_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Splicing", sep = "_")
+wl_sp_df$Whitelist <- wl_sp_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+wl_sp_df$Putative_Whitelist <- wl_sp_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+wl_sp_df$Manual_Review <- (wl_sp_df$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL")) | (wl_sp_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+wl_sp_df$Putative_Manual_Review <- (wl_sp_df$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_sp_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
 
 # Overall whitelist/manual review
 wl <- wl_ns_df[, 1] | wl_fs_df[, 1] | wl_sg_df[, 1] | wl_sp_df[, 1]
@@ -802,6 +946,11 @@ mr <- (!wl) & (wl_ns_df[, 2] | wl_fs_df[, 2] | wl_sg_df[, 2] | wl_sp_df[, 2])
 pwl <- wl_ns_df[, 3] | wl_fs_df[, 3] | wl_sg_df[, 3] | wl_sp_df[, 3]
 pmr <- (!pwl) & (wl_ns_df[, 4] | wl_fs_df[, 4] | wl_sg_df[, 4] | wl_sp_df[, 4])
 overall_wl <- data.frame(Whitelist = wl, Manual_Review = mr, Putative_Whitelist = pwl, Putative_Manual_Review = pmr)
+
+overall_wl$Whitelist <- overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+overall_wl$Putative_Whitelist <- overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
+overall_wl$Manual_Review <- (overall_wl$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+overall_wl$Putative_Manual_Review <- (overall_wl$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
 
 vars_g_chip_func_filtered_wl <- cbind(vars_g_chip_func_filtered, wl_ns_df, wl_fs_df, wl_sg_df, wl_sp_df, overall_wl)
 
