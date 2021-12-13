@@ -84,6 +84,7 @@ workflow Mutect2CHIP_CHIP_Multi {
                 gnomad_pop = gnomad_pop,
                 whitelist_docker = whitelist_docker,
                 whitelist_archive = whitelist_archive,
+                ref_fasta = ref_fasta,
                 ref_name = ref_name,
                 preemptible = preemptible,
                 max_retries = max_retries,
