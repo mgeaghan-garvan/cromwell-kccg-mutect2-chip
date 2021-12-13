@@ -921,24 +921,12 @@ colnames(wl_ns_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist"
 
 wl_fs_df <- data.frame(t(wl_fs))
 colnames(wl_fs_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Frameshift", sep = "_")
-wl_fs_df$Whitelist <- wl_fs_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-wl_fs_df$Putative_Whitelist <- wl_fs_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-wl_fs_df$Manual_Review <- (wl_fs_df$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_fs_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
-wl_fs_df$Putative_Manual_Review <- (wl_fs_df$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_fs_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
 
 wl_sg_df <- data.frame(t(wl_sg))
 colnames(wl_sg_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Stop_Gain", sep = "_")
-wl_sg_df$Whitelist <- wl_sg_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-wl_sg_df$Putative_Whitelist <- wl_sg_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-wl_sg_df$Manual_Review <- (wl_sg_df$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_sg_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
-wl_sg_df$Putative_Manual_Review <- (wl_sg_df$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_sg_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
 
 wl_sp_df <- data.frame(t(wl_sp))
 colnames(wl_sp_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Splicing", sep = "_")
-wl_sp_df$Whitelist <- wl_sp_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-wl_sp_df$Putative_Whitelist <- wl_sp_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-wl_sp_df$Manual_Review <- (wl_sp_df$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_sp_df$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
-wl_sp_df$Putative_Manual_Review <- (wl_sp_df$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (wl_sp_df$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
 
 # Overall whitelist/manual review
 wl <- wl_ns_df[, 1] | wl_fs_df[, 1] | wl_sg_df[, 1] | wl_sp_df[, 1]
