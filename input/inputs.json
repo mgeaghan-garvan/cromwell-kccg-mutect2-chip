@@ -44,7 +44,7 @@
     "Mutect2CHIP.whitelist_genome": true,
     "Mutect2CHIP.gnomad_pop": "AF",
     "Mutect2CHIP.annovar_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
-    "Mutect2CHIP.whitelist_filter_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:cc1d9026f640de7eaa07579146a94eae1201d5f80703bd9096f7d99a13b9cf19",
+    "Mutect2CHIP.whitelist_filter_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4",
     "Mutect2CHIP.samtools_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3",
     "Mutect2CHIP.gatk_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b",
     "Mutect2CHIP.gatk_override": "OPTIONAL_FILE",
