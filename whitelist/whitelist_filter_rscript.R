@@ -15,7 +15,7 @@ if (length(args) != 9) {
     "    TREAT MISSING AF AS RARE:         'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
     "    CHIP DEFINITION FILE:             csv file containing CHIP variant definitions",
     "    TRANSCRIPT PROTEIN LENGTHS FILE:  a file containing three columns: RefSeq transcript ID, HGNC gene symbol, protein length",
-    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have een aligned.",
+    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have been aligned.",
     sep = "\n"))
 }
 annovar_text_out <- args[1]

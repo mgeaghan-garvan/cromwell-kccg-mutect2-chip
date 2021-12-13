@@ -581,6 +581,7 @@ workflow Mutect2CHIP {
                 txt_input = WhitelistAnnovar.annovar_output_file_table,
                 vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
                 ref_name = annovar_assembly,
+                ref_fasta = ref_fasta,
                 whitelist_filter_archive = whitelist_filter_archive_file,
                 runtime_params = standard_runtime
         }
@@ -1339,6 +1340,7 @@ task WhitelistFilter {
       File txt_input
       File vcf_input
       String ref_name
+      File ref_fasta
       File whitelist_filter_archive
       Runtime runtime_params
     }
@@ -1351,7 +1353,7 @@ task WhitelistFilter {
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_source} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv
+      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_source} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv ./whitelist_filter_files/transcript_protein_lengths.csv ~{ref_fasta}
     }
 
     runtime {

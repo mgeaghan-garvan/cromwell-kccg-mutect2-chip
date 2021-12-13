@@ -43,6 +43,7 @@ workflow Mutect2CHIP_CHIP {
         String gnomad_pop = "AF"
         String whitelist_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
         File whitelist_archive
+        File ref_fasta
         # common settings
         String ref_name = "hg38"
         # runtime parameters
@@ -110,6 +111,7 @@ workflow Mutect2CHIP_CHIP {
             txt_input = WhitelistAnnovar.annovar_output_file_table,
             vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
             ref_name = ref_name,
+            ref_fasta = ref_fasta,
             whitelist_filter_archive = whitelist_archive_file,
             runtime_params = standard_runtime
     }

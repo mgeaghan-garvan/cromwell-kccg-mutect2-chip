@@ -13,6 +13,7 @@
     "Mutect2CHIP_CHIP_Multi.whitelist_cpu": 1,
     "Mutect2CHIP_CHIP_Multi.whitelist_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4",
     "Mutect2CHIP_CHIP_Multi.whitelist_archive": "REQUIRED_FILE",
+    "Mutect2CHIP_CHIP_Multi.ref_fasta": "REQUIRED_FILE",
     "Mutect2CHIP_CHIP_Multi.ref_name": "hg38",
     "Mutect2CHIP_CHIP_Multi.preemptible": 2,
     "Mutect2CHIP_CHIP_Multi.max_retries": 2,
