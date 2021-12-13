@@ -9,13 +9,13 @@ if (length(args) != 9) {
     "Incorrect number of arguments!",
     "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",
     "    ANNOVAR OUTPUT TABLE/VCF:         output txt and vcf files from Annovar.",
-    "    TUMOR SAMPLE NAME:                name of the tumor sample as recorded in the VCF file's column header line."
+    "    TUMOR SAMPLE NAME:                name of the tumor sample as recorded in the VCF file's column header line.",
     "    GNOMAD SOURCE:                    one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
     "    GNOMAD SUBPOPULATION CODE:        one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
     "    TREAT MISSING AF AS RARE:         'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
     "    CHIP DEFINITION FILE:             csv file containing CHIP variant definitions",
     "    TRANSCRIPT PROTEIN LENGTHS FILE:  a file containing three columns: RefSeq transcript ID, HGNC gene symbol, protein length",
-    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have een aligned."
+    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have een aligned.",
     sep = "\n"))
 }
 annovar_text_out <- args[1]
