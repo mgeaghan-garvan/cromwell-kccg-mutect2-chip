@@ -235,7 +235,7 @@ vars_stats <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, functi
     VAF = paste(as.character(var_n_vaf), collapse = ","),
     VAF_M2 = paste(as.character(var_n_vaf_m2), collapse = ","),
     F1R2 = paste(as.character(var_n_for), collapse = ","),
-    F2R1 = paste(as.character(var_n_ref), collapse = ","),
+    F2R1 = paste(as.character(var_n_rev), collapse = ","),
     HARD_FILTER = HARD_FILTER
   ))
 })
