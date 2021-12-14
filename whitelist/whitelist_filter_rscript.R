@@ -935,10 +935,10 @@ pwl <- wl_ns_df[, 3] | wl_fs_df[, 3] | wl_sg_df[, 3] | wl_sp_df[, 3]
 pmr <- (!pwl) & (wl_ns_df[, 4] | wl_fs_df[, 4] | wl_sg_df[, 4] | wl_sp_df[, 4])
 overall_wl <- data.frame(Whitelist = wl, Manual_Review = mr, Putative_Whitelist = pwl, Putative_Manual_Review = pmr)
 
-overall_wl$Whitelist <- overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-overall_wl$Putative_Whitelist <- overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
 overall_wl$Manual_Review <- (overall_wl$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+overall_wl$Whitelist <- overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
 overall_wl$Putative_Manual_Review <- (overall_wl$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
+overall_wl$Putative_Whitelist <- overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
 
 vars_g_chip_func_filtered_wl <- cbind(vars_g_chip_func_filtered, wl_ns_df, wl_fs_df, wl_sg_df, wl_sp_df, overall_wl)
 
