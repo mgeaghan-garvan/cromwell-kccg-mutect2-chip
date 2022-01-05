@@ -727,7 +727,7 @@ task M2 {
       Int? preemptible
       Int? max_retries
       Int? disk_space
-      Int? cpu
+      Int cpu = 4
       Boolean use_ssd = false
     }
 
