@@ -5,7 +5,7 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun] [-m|--multi] [-C|--call_caching]"
+    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun] [-C|--call_caching]"
     echo -e "Display this help message: $0 -h\n"
     echo -e "\tDB_HOSTNAME:        Hostname where MySQL server is running.                     (Default: '0.0.0.0')"
     echo -e "\tDB_PORT:            Port for MySQL server on host.                              (Default: '40008')"
@@ -15,7 +15,6 @@ helpmsg() {
     echo -e "\tMYSQL_DIR:          Root directory for MySQL installation.                      (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
     echo -e "\tMYSQL_RUN_DIR:      Run directory for MySQL.                                    (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
     echo -e "\tCROMWELL_JAR:       Location of Cromwell JAR file.                              (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar')"
-    echo -e "\t[-m|--multi]:       Run in multi-sample batch mode (requires inputFiles.tsv)."
     echo -e "\t[-C|--call_caching]:  Enable call caching (WARNING: if not enabled, failed workflows will need to be re-run from scratch)."
     echo -e "\t[-d|--dryrun]:      Print settings to screen without making changes."
 }
@@ -41,7 +40,6 @@ DBPORT="40008"
 DBNAME="cromwell"
 CROMPORT="8007"
 PLATFORM="HPC"
-MULTI="FALSE"
 CACHING="FALSE"
 DRYRUN="0"
 
@@ -106,10 +104,6 @@ while [[ $# -gt 0 ]]; do
                         shift
                         shift
                         ;;
-                -m|--multi)
-                        MULTI="TRUE"
-                        shift
-                        ;;
                 -C|--call_caching)
                         CACHING="TRUE"
                         shift
@@ -132,7 +126,6 @@ echo "Database port       = ${DBPORT}"
 echo "Database name       = ${DBNAME}"
 echo "Cromwell port       = ${CROMPORT}"
 echo "Platform            = ${PLATFORM}"
-echo "Multi-sample mode   = ${MULTI}"
 echo "Call caching        = ${CACHING}"
 echo "MySQL directory     = ${MYSQL}"
 echo "MySQL run directory = ${MYSQL_RUNDIR}"
