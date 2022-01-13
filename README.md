@@ -54,7 +54,7 @@ chmod 600 .service_account.email.txt
 chmod 600 .service_account.key.pem
 ```
 
-Now configure the run by running configure_cromwell.sh.
+Now configure the Cromwell server by running configure_cromwell.sh.
 
 ```bash
 # Run configuration script
@@ -84,7 +84,7 @@ CROMWELL_JAR=/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-
     -M ${MYSQL_DIR} \
     -R ${MYSQL_RUN_DIR} \
     -c ${CROMWELL_JAR} \
-    -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
+    -C  # Optional: enable call caching (off by default).
 ```
 
 ### Running Cromwell server
@@ -123,6 +123,29 @@ Inside the input directory are several JSON files that describe the input files 
     VEP annotation, batch/multi-sample mode:       inputs.vep.multi.json
 
 Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
+
+Now configure the run by running configure_run.sh.
+
+```bash
+# Run configuration script
+
+# To see the available options and the defaults:
+./configure_run.sh -h
+
+# To perform a dry-run and only print the configuration settings without modifying any files:
+./configure_run.sh -d [OPTIONS]
+
+# When ready, run the configuration script with desired settings:
+DB_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
+CROMWELL_PORT=8007
+PLATFORM=GCP
+
+./configure_cromwell.sh \
+    -n ${DB_NAME} \
+    -p ${CROMWELL_PORT} \
+    -f ${PLATFORM} \
+    -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
+```
 
 #### Memory requirements
 
@@ -187,8 +210,12 @@ Once everything is set up and configured, run the workflow as follows:
 # Option 1: run the full pipeline (BAM --> somatic variant calling --> CHIP detection)
 ./run.sh
 
-# Option2: only run the CHIP detection stage
+# Option 2: only run the CHIP detection stage
 ./run_chip_only.sh
+
+# Option 3: only run VEP or Annovar annotation
+./run_vep_only.sh
+./run_annovar_only.sh
 ```
 
 You can check on the state of the run by re-attaching the Cromwell screen session:
@@ -213,4 +240,12 @@ cat run_id.txt
     {"id":"3deb2054-445f-400a-afcd-465a50fc44ba","status":"Submitted"}
 
 ./abort.sh "3deb2054-445f-400a-afcd-465a50fc44ba"
+```
+
+### Resetting the database
+
+If you need to start from scratch, you can choose to delete and re-create the Cromwell database by running reset_database.sh. This may be useful if the workflow fails to abort properly.
+
+```bash
+./reset_database.sh
 ```
