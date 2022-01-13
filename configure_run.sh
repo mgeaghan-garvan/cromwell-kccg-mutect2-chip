@@ -5,7 +5,7 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-d|--dryrun] [-m|--multi]"
+    echo -e "\nUsage: $0 [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
     echo -e "\tDB_NAME:       Name of the run and the MySQL database.                     (Default: 'cromwell')."
     echo -e "\tCROMWELL_PORT: Port where Cromwell should run.                             (Default: '8007')"
