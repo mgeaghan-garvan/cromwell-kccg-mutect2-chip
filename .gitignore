@@ -9,3 +9,4 @@ configure_cromwell.py
 .service_account.key.pem
 .service_account.email.txt
 **/.DS_Store
+input_dx.json
