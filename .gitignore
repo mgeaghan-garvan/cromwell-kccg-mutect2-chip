@@ -10,3 +10,4 @@ configure_cromwell.py
 .service_account.email.txt
 **/.DS_Store
 input_dx.json
+_dx_run.sh
