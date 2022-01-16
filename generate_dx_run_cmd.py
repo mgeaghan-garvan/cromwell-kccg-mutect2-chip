@@ -26,10 +26,10 @@ def main(args):
 
     with open(args.output, 'w') as f:
         f.write("#!/bin/bash\n")
-        f.write(f"dx run --watch --yes --destination {args.destination}")
+        f.write(f"dx run --watch --yes --destination {args.destination} \\\n    ")
         for k in new_data.keys():
-            f.write(" \\\n    ")
-            f.write(f"-i{k}={new_data[k]}")
+            f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
+        f.write(args.workflow)
         f.write("\n")
 
 
