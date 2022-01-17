@@ -226,7 +226,7 @@ task CreatePanel {
 
         parameter_meta{
             gnomad: {localization_optional: true}
-            gnomad_idx: {localization_optional: true}
+            gnomad_idx: {localization_optional: false}
         }
 
     command {

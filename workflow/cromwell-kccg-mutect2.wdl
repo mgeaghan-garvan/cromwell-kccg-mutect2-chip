@@ -743,20 +743,20 @@ task M2 {
     parameter_meta{
       intervals: {localization_optional: true}
       ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
+      ref_fai: {localization_optional: false}
+      ref_dict: {localization_optional: false}
       tumor_bam: {localization_optional: true}
-      tumor_bai: {localization_optional: true}
+      tumor_bai: {localization_optional: false}
       normal_bam: {localization_optional: true}
-      normal_bai: {localization_optional: true}
+      normal_bai: {localization_optional: false}
       pon: {localization_optional: true}
-      pon_idx: {localization_optional: true}
+      pon_idx: {localization_optional: false}
       gnomad: {localization_optional: true}
-      gnomad_idx: {localization_optional: true}
+      gnomad_idx: {localization_optional: false}
       gga_vcf: {localization_optional: true}
-      gga_vcf_idx: {localization_optional: true}
+      gga_vcf_idx: {localization_optional: false}
       variants_for_contamination: {localization_optional: true}
-      variants_for_contamination_idx: {localization_optional: true}
+      variants_for_contamination_idx: {localization_optional: false}
     }
 
     command <<<
@@ -1087,8 +1087,8 @@ task Filter {
 
     parameter_meta{
       ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
+      ref_fai: {localization_optional: false}
+      ref_dict: {localization_optional: false}
     }
 
     command {
@@ -1153,12 +1153,12 @@ task FilterAlignmentArtifacts {
 
     parameter_meta{
       ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
+      ref_fai: {localization_optional: false}
+      ref_dict: {localization_optional: false}
       input_vcf: {localization_optional: true}
-      input_vcf_idx: {localization_optional: true}
+      input_vcf_idx: {localization_optional: false}
       bam: {localization_optional: true}
-      bai: {localization_optional: true}
+      bai: {localization_optional: false}
     }
 
     command {
