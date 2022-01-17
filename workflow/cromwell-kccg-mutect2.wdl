@@ -628,11 +628,17 @@ task CramToBam {
       Int mem_mb = 6000
     }
 
+    # DNAnexus compatability: get the filename of all optional index files
+    String crai_fn = if defined(crai) then basename(crai) else "undefined"
+
     # Calls samtools view to do the conversion
     command {
         # Set -e and -o says if any command I run fails in this script, make sure to return a failure
         set -e
         set -o pipefail
+
+        # DNAnexus compatability: echo optional index filenames to ensure they get localized
+        echo "crai: ~{crai_fn}"
 
         samtools view -h -T ~{ref_fasta} ~{cram} |
             samtools view -b -o ~{name}.bam -
@@ -740,6 +746,13 @@ task M2 {
     Int cpu_mult = if cpu > 1 then cpu - 1 else 1
     Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
+    # DNAnexus compatability: get the filename of all optional index files
+    String normal_bai_fn = if defined(normal_bai) then basename(normal_bai) else "undefined"
+    String pon_idx_fn = if defined(pon_idx) then basename(pon_idx) else "undefined"
+    String gnomad_idx_fn = if defined(gnomad_idx) then basename(gnomad_idx) else "undefined"
+    String gga_vcf_idx_fn = if defined(gga_vcf_idx) then basename(gga_vcf_idx) else "undefined"
+    String variants_for_contamination_idx_fn = if defined(variants_for_contamination_idx) then basename(variants_for_contamination_idx) else "undefined"
+
     parameter_meta{
       intervals: {localization_optional: true}
       ref_fasta: {localization_optional: true}
@@ -768,6 +781,13 @@ task M2 {
         touch bamout.bam
         touch f1r2.tar.gz
         echo "" > normal_name.txt
+
+        # DNAnexus compatability: echo optional index filenames to ensure they get localized
+        echo "normal_bai: ~{normal_bai_fn}"
+        echo "pon_idx: ~{pon_idx_fn}"
+        echo "gnomad_idx: ~{gnomad_idx_fn}"
+        echo "gga_vcf_idx: ~{gga_vcf_idx_fn}"
+        echo "variants_for_contamination_idx: ~{variants_for_contamination_idx_fn}"
 
         gatk --java-options "-Xmx~{command_mem}m -Xms~{command_mem - 1000}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
         tumor_command_line="-I ~{tumor_bam} -tumor `cat tumor_name.txt`"
@@ -1223,7 +1243,16 @@ task VEP {
     String stats_file = input_basename + ".vep.html"
     String offline_options = if offline then "--offline" else ""
 
+    # DNAnexus compatability: get the filename of all optional index files
+    String loftee_ancestor_fai_fn = if defined(loftee_ancestor_fai) then basename(loftee_ancestor_fai) else "undefined"
+    String loftee_ancestor_gzi_fn = if defined(loftee_ancestor_gzi) then basename(loftee_ancestor_gzi) else "undefined"
+
+
     command {
+        # DNAnexus compatability: echo optional index filenames to ensure they get localized
+        echo "loftee_ancestor_fai:  ~{loftee_ancestor_fai_fn}"
+        echo "loftee_ancestor_gzi:  ~{loftee_ancestor_gzi_fn}"
+
         mkdir -p .vep/cache
         tar -xzvf ~{cache_archive} -C .vep/cache/
         # this seems necessary on GCP - running into permissions errors.
