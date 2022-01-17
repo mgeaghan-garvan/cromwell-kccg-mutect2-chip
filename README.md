@@ -4,7 +4,13 @@ Run the KCCG GATK4 Mutect2 somatic variant calling pipeline using the Cromwell w
 
 ## Usage:
 
-### Configuring MySQL server
+### Cromwell
+
+For running the pipeline on the local cluster or the Google Cloud Platform, a Cromwell server must be first set up on the local cluster. Cromwell handles orchestrating the pipeline and submitting each task to either the cluster or GCP.
+
+Cromwell is not required for running the pipeline on DNAnexus. For instructions for that platform, see below.
+
+#### Configuring MySQL server
 If there is no MySQL server currently running on the cluster, run the following commands:
 ```bash
 # Choose an empty port number.
@@ -33,7 +39,7 @@ CREATE USER 'cromwell_user'@'localhost' IDENTIFIED BY '123456781!aA';
 CREATE USER 'cromwell_user'@'%' IDENTIFIED BY '12345678!1aA';
 ```
 
-### Configuring Cromwell server
+#### Configuring Cromwell server
 
 First, clone the repository to a suitable location.
 
@@ -43,7 +49,7 @@ git pull https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2.git
 cd cromwell-kccg-mutect2
 ```
 
-#### Using a Google Service Account
+##### Using a Google Service Account
 
 If running the pipeline on the Google Cloud Platform, before configuring the Cromwell server, Google Service Account credentials are required. Set up a Compute Engine Service Account and an authentication key (https://console.cloud.google.com/apis/credentials). Add the Service Account email to the first line in a new file within the top-level run directory with the name '.service_account.email.txt'. Similarly, add the key to a file with the name '.service_account.key.pem'. These strings can be found in the JSON file downloaded from GCP when setting up the authentication key.
 
@@ -87,7 +93,7 @@ CROMWELL_JAR=/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-
     -C  # Optional: enable call caching (off by default).
 ```
 
-### Running Cromwell server
+#### Running Cromwell server
 
 ```bash
 # Create a screen session
@@ -108,7 +114,7 @@ module load centos6.10/shacar/java/jdk-11.0.2
 
 Once running, you can detatch the session with Ctrl + A, then D.
 
-### Configuring workflow
+#### Configuring workflow
 
 Inside the input directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
 
@@ -147,11 +153,11 @@ PLATFORM=GCP
     -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
 ```
 
-#### Memory requirements
+##### Memory requirements
 
 In some cases, such as when running the workflow on the Garvan HPC, the requested memory will be multiplied by the requested number of cores. In other cases, such as when running on GCP, the requested memory will be the total memory allocated to a job. To ensure the proper amount of memory is being requested in each case, set the "mem_per_core" parameter in the input JSON file, i.e. for the local HPC, set "mem_per_core" to true, and for GCP set it to false.
 
-#### Prerequisite files
+##### Prerequisite files
 
 The following files are required to run parts of the pipeline.
 
@@ -165,7 +171,7 @@ The following files are required to run parts of the pipeline.
 | annovar_archive | TAR.GZ archive file containing the necessary files to run ANNOVAR | /share/ClusterShare/software/contrib/micgea/chip/data/annovar_files.tar.gz |
 | whitelist_archive, whitelist_filter_archive | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | /share/ClusterShare/software/contrib/micgea/chip/data/whitelist_filter_files.tar.gz |
 
-#### Batch/multi-sample mode
+##### Batch/multi-sample mode
 
 If running the pipeline in batch/multi-sample mode, you will need to supply a file to the pipeline describing each sample. A template is provided in inputFile.tsv
 
@@ -173,7 +179,7 @@ For the full pipeline, the input file is a tab-separated values (TSV) file. Each
 
 For the CHIP-only pipeline, the input file should contain only a single column, with each line describing the filtered (and possibly annotated) VCF file for a single sample to be used as input to the CHIP detection pipeline.
 
-### Create a panel of normals (optional)
+#### Create a panel of normals (optional)
 
 If a panel of normals is required, run the create_pon.sh script.
 
@@ -199,7 +205,7 @@ cat input/inputs.pon.json
 ./create_pon.sh
 ```
 
-### Running the workflow
+#### Running the workflow
 
 Once everything is set up and configured, run the workflow as follows:
 
@@ -224,7 +230,7 @@ You can check on the state of the run by re-attaching the Cromwell screen sessio
 screen -r "CromwellPort${CROMWELL_PORT}"
 ```
 
-### Aborting the workflow
+#### Aborting the workflow
 
 To abort the workflow, simply run the following:
 
@@ -242,10 +248,88 @@ cat run_id.txt
 ./abort.sh "3deb2054-445f-400a-afcd-465a50fc44ba"
 ```
 
-### Resetting the database
+#### Resetting the database
 
 If you need to start from scratch, you can choose to delete and re-create the Cromwell database by running reset_database.sh. This may be useful if the workflow fails to abort properly.
 
 ```bash
 ./reset_database.sh
+```
+
+### DNAnexus
+
+Running the pipeline on DNAnexus (and DNAnexus-based platforms such as the UK Biobank Reasearch Analysis Platform (RAP)) consists of four steps: compiling the pipeline up to DNAnexus, uploading data to a project, configuring the pipeline, and running the pipeline.
+
+Ensure that you have installed [dx-toolkit](https://documentation.dnanexus.com/downloads) and that the ```dx``` command is available in your path.
+
+#### Compiling the pipeline
+
+Compilation of the workflow requires the dxCompiler tool provided by DNAnexus: [dxCompiler](https://github.com/dnanexus/dxCompiler). The latest version ([v2.8.3](https://github.com/dnanexus/dxCompiler/releases/tag/2.8.3)) requires Java v11 to be installed.
+
+Prior to compilation, ensure that you are logged in to your DNAnexus account, have created a project for the analysis, and have selected that project with ```dx```.
+
+```bash
+# If you already have a project ready to go, dx login will let you interactively select it from a list
+dx login
+
+# If you first need to create a project, run these commands instead
+dx login --noprojects
+dx new project --name <PROJECT NAME> --region <REGION> --bill-to <BILLING ACCOUNT>
+dx select --name <PROJECT NAME>
+```
+
+Once ready, change into the ```workflow/``` directory and compile the workflow as follows:
+```bash
+cd workflow/
+java -jar /PATH/TO/dxCompiler-2.8.3.jar compile cromwell-kccg-mutect2.wdl -destination <PROJECT NAME>:/PATH/TO/PLACE/WORKFLOW/ -f
+# The -f option will force dxCompiler to overwrite the workflow and/or applets if they are already present in the workflow directory on DNAnexus.
+```
+
+If this completes successfully, the workflow will be ready to run, and located in the selected project at the location defined with the ```-destination``` parameter.
+
+#### Uploading data to DNAnexus
+
+Upload all necessary data to the DNAnexus project using dx-toolkit:
+
+```bash
+dx upload --path <PROJECT NAME>:/PATH/TO/UPLOAD/DATA [-r] filename [filename ...]
+
+# -r means upload a directory recursively, similar to cp -r
+```
+
+For example, to upload a single file named ```test.txt``` to ```test_project``` at the location ```/data/```:
+
+```bash
+dx upload --path test_project:/data/ test.txt
+```
+
+Or to upload an entire directory called ```test_dir/```:
+
+```bash
+dx upload --path -r test_project:/data/ test_dir
+```
+
+#### Configuring the pipeline for DNAnexus
+
+Use the input templates in the ```input/``` directory to configure the pipeline, similar to what is described above for Cromwell workflows. The only difference is to provide the DNAnexus paths for files. For example:
+
+```json
+{
+    "Mutect2CHIP.intervals": "project-G7Q2GLb5FXyKGpYj4SpgKfk3:/data/exome_evaluation_regions.v1.interval_list"
+    ...
+}
+```
+
+#### Running the pipeline on DNAnexus
+
+Finally, to run the pipeline, first ensure you have Python 3 installed and available on your PATH. Then, run the following:
+
+```bash
+./run_dx.sh -i input/<INPUT JSON FILE> -o <PROJECT NAME>:/PATH/TO/ANALYSIS/OUTPUT -w <PROJECT NAME>:/PATH/TO/WORKFLOW
+```
+
+For example, to run the main, single-sample pipeline loated in the DNAnexus project ```project-G7Q2GLb5FXyKGpYj4SpgKfk3``` at ```/workflows/single_sample/Mutect2CHIP``` using the configuration in ```input/inputs.json```, and to output the data to ```/output/run_1```:
+
+```bash
+./run_dx.sh -i input/inputs.json -o project-G7Q2GLb5FXyKGpYj4SpgKfk3:/output/run_1/ -w project-G7Q2GLb5FXyKGpYj4SpgKfk3:/workflows/single_sample/Mutect2CHIP
 ```
