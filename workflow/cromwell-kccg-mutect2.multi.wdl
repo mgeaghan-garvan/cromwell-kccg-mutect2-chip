@@ -124,6 +124,7 @@ workflow Mutect2CHIP_Multi {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 4
+        Boolean localization_optional = true
     
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -214,6 +215,7 @@ workflow Mutect2CHIP_Multi {
                 filter_alignment_artifacts_mem = filter_alignment_artifacts_mem,
                 vep_mem = vep_mem,
                 vep_cpu = vep_cpu,
+                localization_optional = localization_optional,
                 emergency_extra_disk = emergency_extra_disk,
                 large_input_to_output_multiplier = large_input_to_output_multiplier,
                 small_input_to_output_multiplier = small_input_to_output_multiplier,

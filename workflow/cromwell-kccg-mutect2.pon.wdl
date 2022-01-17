@@ -78,6 +78,7 @@ workflow Mutect2CHIP_Panel {
         Int m2_mem = 5000
         Int m2_cpu = 4
         Int pon_mem = 5000
+        Boolean localization_optional = true
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -141,7 +142,8 @@ workflow Mutect2CHIP_Panel {
                     boot_disk_size = boot_disk_size,
                     c2b_mem = c2b_mem,
                     m2_mem = m2_mem,
-                    m2_cpu = m2_cpu
+                    m2_cpu = m2_cpu,
+                    localization_optional = localization_optional
             }
         }
     }
@@ -178,7 +180,8 @@ workflow Mutect2CHIP_Panel {
                     mem_mb = pon_mem,
                     mem_pad = command_mem_padding,
                     mem_per_core = mem_per_core,
-                    runtime_params = standard_runtime
+                    runtime_params = standard_runtime,
+                    localization_optional = localization_optional
             }
         }
 
@@ -215,6 +218,7 @@ task CreatePanel {
         Int mem_mb = 5000
         Int mem_pad = 1000
         Boolean mem_per_core = true
+        Boolean localization_optional = true
 
         # runtime
         Runtime runtime_params
@@ -225,8 +229,8 @@ task CreatePanel {
     Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
         parameter_meta{
-            gnomad: {localization_optional: true}
-            gnomad_idx: {localization_optional: true}
+            gnomad: {localization_optional: localization_optional}
+            gnomad_idx: {localization_optional: localization_optional}
         }
 
     command {
