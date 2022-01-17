@@ -224,7 +224,6 @@ workflow Mutect2CHIP {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 1
-        Boolean localization_optional = true
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -368,8 +367,7 @@ workflow Mutect2CHIP {
                 mem_mb = m2_mem,
                 mem_pad = command_mem_padding,
                 mem_per_core = mem_per_core,
-                cpu = m2_cpu,
-                localization_optional = localization_optional
+                cpu = m2_cpu
         }
     }
 
@@ -461,8 +459,7 @@ workflow Mutect2CHIP {
             artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
             m2_extra_filtering_args = m2_extra_filtering_args,
             runtime_params = standard_runtime,
-            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad,
-                localization_optional = localization_optional
+            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
     # FilterAlignmentArtifacts is experimental and not recommended for production use
@@ -487,8 +484,7 @@ workflow Mutect2CHIP {
                 runtime_params = standard_runtime,
                 mem_mb = filter_alignment_artifacts_mem,
                 mem_pad = command_mem_padding,
-                mem_per_core = mem_per_core,
-                localization_optional = localization_optional
+                mem_per_core = mem_per_core
         }
     }
 
@@ -733,7 +729,6 @@ task M2 {
       Int? disk_space
       Int cpu = 4
       Boolean use_ssd = false
-      Boolean localization_optional = true
     }
 
     String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
@@ -746,22 +741,22 @@ task M2 {
     Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
     parameter_meta{
-      intervals: {localization_optional: localization_optional}
-      ref_fasta: {localization_optional: localization_optional}
-      ref_fai: {localization_optional: localization_optional}
-      ref_dict: {localization_optional: localization_optional}
-      tumor_bam: {localization_optional: localization_optional}
-      tumor_bai: {localization_optional: localization_optional}
-      normal_bam: {localization_optional: localization_optional}
-      normal_bai: {localization_optional: localization_optional}
-      pon: {localization_optional: localization_optional}
-      pon_idx: {localization_optional: localization_optional}
-      gnomad: {localization_optional: localization_optional}
-      gnomad_idx: {localization_optional: localization_optional}
-      gga_vcf: {localization_optional: localization_optional}
-      gga_vcf_idx: {localization_optional: localization_optional}
-      variants_for_contamination: {localization_optional: localization_optional}
-      variants_for_contamination_idx: {localization_optional: localization_optional}
+      intervals: {localization_optional: true}
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
+      tumor_bam: {localization_optional: true}
+      tumor_bai: {localization_optional: true}
+      normal_bam: {localization_optional: true}
+      normal_bai: {localization_optional: true}
+      pon: {localization_optional: true}
+      pon_idx: {localization_optional: true}
+      gnomad: {localization_optional: true}
+      gnomad_idx: {localization_optional: true}
+      gga_vcf: {localization_optional: true}
+      gga_vcf_idx: {localization_optional: true}
+      variants_for_contamination: {localization_optional: true}
+      variants_for_contamination_idx: {localization_optional: true}
     }
 
     command <<<
@@ -1082,7 +1077,6 @@ task Filter {
       File? contamination_table
       File? maf_segments
       String? m2_extra_filtering_args
-      Boolean localization_optional = true
 
       Runtime runtime_params
       Int? disk_space
@@ -1092,9 +1086,9 @@ task Filter {
     String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
 
     parameter_meta{
-      ref_fasta: {localization_optional: localization_optional}
-      ref_fai: {localization_optional: localization_optional}
-      ref_dict: {localization_optional: localization_optional}
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
     }
 
     command {
@@ -1148,7 +1142,6 @@ task FilterAlignmentArtifacts {
       Int mem_mb = 5000
       Int mem_pad = 1000
       Boolean mem_per_core = true
-      Boolean localization_optional = true
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -1159,13 +1152,13 @@ task FilterAlignmentArtifacts {
     Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
 
     parameter_meta{
-      ref_fasta: {localization_optional: localization_optional}
-      ref_fai: {localization_optional: localization_optional}
-      ref_dict: {localization_optional: localization_optional}
-      input_vcf: {localization_optional: localization_optional}
-      input_vcf_idx: {localization_optional: localization_optional}
-      bam: {localization_optional: localization_optional}
-      bai: {localization_optional: localization_optional}
+      ref_fasta: {localization_optional: true}
+      ref_fai: {localization_optional: true}
+      ref_dict: {localization_optional: true}
+      input_vcf: {localization_optional: true}
+      input_vcf_idx: {localization_optional: true}
+      bam: {localization_optional: true}
+      bai: {localization_optional: true}
     }
 
     command {
