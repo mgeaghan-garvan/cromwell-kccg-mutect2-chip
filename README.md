@@ -281,8 +281,9 @@ dx select --name <PROJECT NAME>
 Once ready, change into the ```workflow/``` directory and compile the workflow as follows:
 ```bash
 cd workflow/
-java -jar /PATH/TO/dxCompiler-2.8.3.jar compile cromwell-kccg-mutect2.wdl -destination <PROJECT NAME>:/PATH/TO/PLACE/WORKFLOW/ -f
+java -jar /PATH/TO/dxCompiler-2.8.3.jar compile cromwell-kccg-mutect2.wdl -destination <PROJECT NAME>:/PATH/TO/PLACE/WORKFLOW/ -f -reorg
 # The -f option will force dxCompiler to overwrite the workflow and/or applets if they are already present in the workflow directory on DNAnexus.
+# The -reorg option will separate the intermediate files away from the main workflow outputs
 ```
 
 If this completes successfully, the workflow will be ready to run, and located in the selected project at the location defined with the ```-destination``` parameter.
