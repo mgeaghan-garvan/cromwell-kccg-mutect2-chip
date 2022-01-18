@@ -24,11 +24,9 @@ def main(args):
         new_key = re.sub("Mutect2CHIP(_[^\.]+)?\.", "stage-common.", k)
         new_data[new_key] = data[k]
 
-    destination_clean = re.sub("\/$", "", args.destination)
-
     with open(args.output, 'w') as f:
         f.write("#!/bin/bash\n")
-        f.write(f"dx run --watch --yes --destination {destination_clean}/tmp --stage-output-folder outputs {args.destination} \\\n    ")
+        f.write(f"dx run --watch --yes --destination {args.destination} \\\n    ")
         for k in new_data.keys():
             f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
         f.write(args.workflow)
