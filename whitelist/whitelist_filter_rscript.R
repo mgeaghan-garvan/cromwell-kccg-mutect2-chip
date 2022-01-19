@@ -526,36 +526,55 @@ parse_aa_change <- function(x) {
 prot_lengths <- read.csv(transcript_prot_file, header = TRUE)
 colnames(prot_lengths) <- c("refseq_mrna", "hgnc_symbol", "prot_length")
 vars_g_chip_func_filtered$AAChange.position <- unlist(lapply(vars_g_chip_func_filtered$AAChange.protChange, function(x) {
-  y <- parse_aa_change(x)
-  return(y$start_pos)
+  y <- strsplit(x, ",")[[1]]
+  z <- unlist(lapply(y, function(zz) { parse_aa_change(zz)$start_pos }))
+  return(paste(z, collapse = ","))
 }))
-vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("AAChange.transcript", "AAChange.position")], 1, function(x) {
-  t <- as.character(x[[1]])
-  p <- as.integer(x[[2]])
-  if (t %in% prot_lengths$refseq_mrna) {
-    l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
-    if (p > l) {
-      return(NA)
+vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("Transcript_Accession", "AAChange.transcript", "AAChange.position")], 1, function(z) {
+  t_list <- strsplit(z[[1]], ",")[[1]]
+  detail_list <- strsplit(z[[2]], ",")[[1]]
+  detail_t_list <- unlist(lapply(strsplit(detail_list, ":"), function(zz) { zz[zz %in% t_list][1] }))
+  pos_list <- strsplit(z[[3]], ",")[[1]]
+  ret <- list()
+  for (i in 1:length(detail_t_list)) {
+    t <- as.character(detail_t_list[i])
+    p <- as.integer(pos_list[i])
+    if (t %in% prot_lengths$refseq_mrna) {
+      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
+      if (p > l) {
+        ret[[i]] <- NA
+      } else {
+        ret[[i]] <- (p/l) < 0.1
+      }
     } else {
-      return((p/l) < 0.1)
+      ret[[i]] <- NA
     }
-  } else {
-    return(NA)
   }
+  ret <- as.character(unlist(ret))
+  return(paste(ret, collapse = ","))
 })
 vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("AAChange.transcript", "AAChange.position")], 1, function(x) {
-  t <- as.character(x[[1]])
-  p <- as.integer(x[[2]])
-  if (t %in% prot_lengths$refseq_mrna) {
-    l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
-    if (p > l) {
-      return(NA)
+  t_list <- strsplit(z[[1]], ",")[[1]]
+  detail_list <- strsplit(z[[2]], ",")[[1]]
+  detail_t_list <- unlist(lapply(strsplit(detail_list, ":"), function(zz) { zz[zz %in% t_list][1] }))
+  pos_list <- strsplit(z[[3]], ",")[[1]]
+  ret <- list()
+  for (i in 1:length(detail_t_list)) {
+    t <- as.character(detail_t_list[i])
+    p <- as.integer(pos_list[i])
+    if (t %in% prot_lengths$refseq_mrna) {
+      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
+      if (p > l) {
+        ret[[i]] <- NA
+      } else {
+        ret[[i]] <- (p/l) > 0.9
+      }
     } else {
-      return((p/l) > 0.9)
+      ret[[i]] <- NA
     }
-  } else {
-    return(NA)
   }
+  ret <- as.character(unlist(ret))
+  return(paste(ret, collapse = ","))
 })
 
 # Functions for matching variants with CHIP conditions
