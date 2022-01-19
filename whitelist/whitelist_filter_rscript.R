@@ -553,7 +553,7 @@ vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- apply(vars_g_chip_func_filter
   ret <- as.character(unlist(ret))
   return(paste(ret, collapse = ","))
 })
-vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("AAChange.transcript", "AAChange.position")], 1, function(x) {
+vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("Transcript_Accession", "AAChange.transcript", "AAChange.position")], 1, function(z) {
   t_list <- strsplit(z[[1]], ",")[[1]]
   detail_list <- strsplit(z[[2]], ",")[[1]]
   detail_t_list <- unlist(lapply(strsplit(detail_list, ":"), function(zz) { zz[zz %in% t_list][1] }))
