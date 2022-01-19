@@ -299,7 +299,7 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
   vars_indels <- merge(vars_indels, indel_seq, all.x = TRUE)
 }
 
-vars <- merge(vars, vars_indels)
+vars <- merge(vars, vars_indels, all.x = TRUE)
 vars$INDEL_FILTER <- "PASS"
 vars$INDEL_FILTER[(
   grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE) &
