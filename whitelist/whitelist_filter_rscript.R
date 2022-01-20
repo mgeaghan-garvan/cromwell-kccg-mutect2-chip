@@ -525,57 +525,60 @@ parse_aa_change <- function(x) {
 # Get position along protein - add N- and C-terminal 10% columns
 prot_lengths <- read.csv(transcript_prot_file, header = TRUE)
 colnames(prot_lengths) <- c("refseq_mrna", "hgnc_symbol", "prot_length")
-vars_g_chip_func_filtered$AAChange.position <- unlist(lapply(vars_g_chip_func_filtered$AAChange.protChange, function(x) {
-  y <- strsplit(x, ",")[[1]]
-  z <- unlist(lapply(y, function(zz) { parse_aa_change(zz)$start_pos }))
-  return(paste(z, collapse = ","))
-}))
-vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("Transcript_Accession", "AAChange.transcript", "AAChange.position")], 1, function(z) {
-  t_list <- strsplit(z[[1]], ",")[[1]]
-  detail_list <- strsplit(z[[2]], ",")[[1]]
-  detail_t_list <- unlist(lapply(strsplit(detail_list, ":"), function(zz) { zz[zz %in% t_list][1] }))
-  pos_list <- strsplit(z[[3]], ",")[[1]]
+vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- unlist(lapply(vars_g_chip_func_filtered$AAChange.refGene, function(x) {
+  t_list <- strsplit(x, ",")[[1]]
+  t_list <- strsplit(t_list, ":")
   ret <- list()
-  for (i in 1:length(detail_t_list)) {
-    t <- as.character(detail_t_list[i])
-    p <- as.integer(pos_list[i])
-    if (t %in% prot_lengths$refseq_mrna) {
-      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
-      if (p > l) {
+  for (i in 1:length(t_list)) {
+    t <- t_list[[i]]
+    t_in_prot_lengths <- t %in% prot_lengths$refseq_mrna
+    if (!any(t_in_prot_lengths)) {
+      ret[[i]] <- "NA"
+    } else {
+      t_name <- t[t_in_prot_lengths][1]
+      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t_name][1]
+      a <- grep("^p\\.", t, perl = TRUE, value = TRUE)
+      a <- gsub("^p\\.", "", a, perl = TRUE)
+      p <- parse_aa_change(a)$start_pos
+      if (is.na(p)) {
+        ret[[i]] <- "NA"
+      } else if (p > l) {
         ret[[i]] <- NA
       } else {
         ret[[i]] <- (p/l) < 0.1
       }
-    } else {
-      ret[[i]] <- NA
     }
   }
   ret <- as.character(unlist(ret))
   return(paste(ret, collapse = ","))
-})
-vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- apply(vars_g_chip_func_filtered[, c("Transcript_Accession", "AAChange.transcript", "AAChange.position")], 1, function(z) {
-  t_list <- strsplit(z[[1]], ",")[[1]]
-  detail_list <- strsplit(z[[2]], ",")[[1]]
-  detail_t_list <- unlist(lapply(strsplit(detail_list, ":"), function(zz) { zz[zz %in% t_list][1] }))
-  pos_list <- strsplit(z[[3]], ",")[[1]]
+}))
+vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- unlist(lapply(vars_g_chip_func_filtered$AAChange.refGene, function(x) {
+  t_list <- strsplit(x, ",")[[1]]
+  t_list <- strsplit(t_list, ":")
   ret <- list()
-  for (i in 1:length(detail_t_list)) {
-    t <- as.character(detail_t_list[i])
-    p <- as.integer(pos_list[i])
-    if (t %in% prot_lengths$refseq_mrna) {
-      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t][1]
-      if (p > l) {
+  for (i in 1:length(t_list)) {
+    t <- t_list[[i]]
+    t_in_prot_lengths <- t %in% prot_lengths$refseq_mrna
+    if (!any(t_in_prot_lengths)) {
+      ret[[i]] <- "NA"
+    } else {
+      t_name <- t[t_in_prot_lengths][1]
+      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t_name][1]
+      a <- grep("^p\\.", t, perl = TRUE, value = TRUE)
+      a <- gsub("^p\\.", "", a, perl = TRUE)
+      p <- parse_aa_change(a)$start_pos
+      if (is.na(p)) {
+        ret[[i]] <- "NA"
+      } else if (p > l) {
         ret[[i]] <- NA
       } else {
         ret[[i]] <- (p/l) > 0.9
       }
-    } else {
-      ret[[i]] <- NA
     }
   }
   ret <- as.character(unlist(ret))
   return(paste(ret, collapse = ","))
-})
+}))
 
 # Functions for matching variants with CHIP conditions
 match_ns_conditions <- function(conditions, aa_changes, aa_exons) {
