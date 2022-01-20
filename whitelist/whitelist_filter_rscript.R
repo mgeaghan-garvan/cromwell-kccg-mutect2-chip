@@ -304,8 +304,8 @@ vars$INDEL_FILTER <- "PASS"
 vars$INDEL_FILTER[(
   grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE) &
   (
-    vars$AD < 10 |
-    vars$VAF < 0.1
+    unlist(lapply(strsplit(vars$AD, ","), function(x) { any(as.integer(x[2:length(x)]) < 10) })) |
+    unlist(lapply(strsplit(vars$VAF, ","), function(x) { any(as.numeric(x) < 0.1) }))
   )
 )] <- "CHECK_FOR_HOMOPOLYMER"
 
@@ -964,7 +964,7 @@ vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c
   ad <- as.integer(strsplit(x[[2]], ",")[[1]])
   f1r2 <- as.integer(strsplit(x[[3]], ",")[[1]])
   f2r1 <- as.integer(strsplit(x[[4]], ",")[[1]])
-  vaf <- as.numeric(x[[5]])
+  vaf <- as.numeric(strsplit(x[[5]], ",")[[1]])
   if (!p) {
     return("PASS")
   }
