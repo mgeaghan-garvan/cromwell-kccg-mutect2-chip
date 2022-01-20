@@ -595,6 +595,9 @@ match_ns_conditions <- function(conditions, aa_changes, aa_exons) {
     } else if(cond == "nan" || cond == "" || is.na(cond)) {
       # No nonsynonymous condition defined for this gene
       next
+    } else if(aa_changes == "nan" || aa_changes == "" || is.na(aa_changes) || aa_exons == "nan" || aa_exons == "" || is.na(aa_exons)) {
+      # Variant doesn't match the representative transcript(s) - cannot match to specific AA or exon
+      next
     }
     cond_details <- parse_cond(cond)
     if(all(is.na(cond_details))) {
@@ -665,7 +668,7 @@ match_ns <- function(x) {
   manual_review <- FALSE
   putative_whitelist <- FALSE
   putative_manual_review <- FALSE
-  if(grepl("(nonsynonymous|nonframeshift)", x[[1]], perl = TRUE) && x[[4]] != "nan" && x[[5]] != "nan") {
+  if(grepl("(nonsynonymous|nonframeshift)", x[[1]], perl = TRUE)) {
     conditions <- strsplit(x[[2]], ";")[[1]]
     conditions_put <- strsplit(x[[3]], ";")[[1]]
     aa_changes <- strsplit(x[[4]], ",")[[1]]
@@ -693,6 +696,9 @@ match_fs_conditions <- function(conditions, aa_changes, aa_exons) {
       next
     } else if(cond == "nan" || cond == "" || is.na(cond)) {
       # No nonsynonymous condition defined for this gene
+      next
+    } else if(aa_changes == "nan" || aa_changes == "" || is.na(aa_changes) || aa_exons == "nan" || aa_exons == "" || is.na(aa_exons)) {
+      # Variant doesn't match the representative transcript(s) - cannot match to specific AA or exon
       next
     }
     cond_details <- parse_cond(cond)
@@ -740,7 +746,7 @@ match_fs <- function(x) {
   manual_review <- FALSE
   putative_whitelist <- FALSE
   putative_manual_review <- FALSE
-  if(grepl("^frameshift", x[[1]], perl = TRUE) && x[[4]] != "nan" && x[[5]] != "nan") {
+  if(grepl("^frameshift", x[[1]], perl = TRUE)) {
     conditions <- strsplit(x[[2]], ";")[[1]]
     conditions_put <- strsplit(x[[3]], ";")[[1]]
     aa_changes <- strsplit(x[[4]], ",")[[1]]
@@ -768,6 +774,9 @@ match_sg_conditions <- function(conditions, aa_changes, aa_exons) {
       next
     } else if(cond == "nan" || cond == "" || is.na(cond)) {
       # No nonsynonymous condition defined for this gene
+      next
+    } else if(aa_changes == "nan" || aa_changes == "" || is.na(aa_changes) || aa_exons == "nan" || aa_exons == "" || is.na(aa_exons)) {
+      # Variant doesn't match the representative transcript(s) - cannot match to specific AA or exon
       next
     }
     cond_details <- parse_cond(cond)
@@ -852,7 +861,7 @@ match_sg <- function(x) {
   manual_review <- FALSE
   putative_whitelist <- FALSE
   putative_manual_review <- FALSE
-  if(grepl("stopgain", x[[1]], perl = TRUE) && x[[4]] != "nan" && x[[5]] != "nan") {
+  if(grepl("stopgain", x[[1]], perl = TRUE)) {
     conditions <- strsplit(x[[2]], ";")[[1]]
     conditions_put <- strsplit(x[[3]], ";")[[1]]
     aa_changes <- strsplit(x[[4]], ",")[[1]]
@@ -882,6 +891,9 @@ match_sp_conditions <- function(conditions, transcript_changes, transcript_exons
       } else if(cond == "nan" || cond == "" || is.na(cond)) {
         # No nonsynonymous condition defined for this gene
         next
+      } else if(transcript_changes == "nan" || transcript_changes == "" || is.na(transcript_changes) || transcript_exons == "nan" || transcript_exons == "" || is.na(transcript_exons)) {
+        # Variant doesn't match the representative transcript(s) - cannot match to specific change or exon
+        next
       }
       cond_details <- parse_cond(cond)
       if(all(is.na(cond_details))) {
@@ -910,7 +922,7 @@ match_sp <- function(x) {
   manual_review <- FALSE
   putative_whitelist <- FALSE
   putative_manual_review <- FALSE
-  if(grepl("splicing", x[[1]], perl = TRUE) && x[[4]] != "nan" && x[[5]] != "nan") {
+  if(grepl("splicing", x[[1]], perl = TRUE)) {
     conditions <- strsplit(x[[2]], ";")[[1]]
     conditions_put <- strsplit(x[[3]], ";")[[1]]
     transcript_changes <- strsplit(x[[4]], ";")[[1]]
