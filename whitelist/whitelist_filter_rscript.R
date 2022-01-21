@@ -352,6 +352,9 @@ extractTranscript <- function(column, transcripts, sep) {
   transcripts_list <- strsplit(transcripts, ",")[[1]]
   column_list <- strsplit(column, sep)[[1]]
   column_match <- list()
+  if (length(column_list) == 0) {
+    return("nan")
+  }
   for(i in 1:length(column_list)) {
     column_match[[i]] <- TRUE %in% (transcripts_list %in% strsplit(column_list, ":")[[i]])
   }
