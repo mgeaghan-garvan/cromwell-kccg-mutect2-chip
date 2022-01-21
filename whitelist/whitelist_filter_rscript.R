@@ -532,6 +532,9 @@ vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- unlist(lapply(vars_g_chip_fun
   t_list <- strsplit(x, ",")[[1]]
   t_list <- strsplit(t_list, ":")
   ret <- list()
+  if (length(t_list) == 0) {
+    return("")
+  }
   for (i in 1:length(t_list)) {
     t <- t_list[[i]]
     t_in_prot_lengths <- t %in% prot_lengths$refseq_mrna
@@ -559,6 +562,9 @@ vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- unlist(lapply(vars_g_chip_fun
   t_list <- strsplit(x, ",")[[1]]
   t_list <- strsplit(t_list, ":")
   ret <- list()
+  if (length(t_list) == 0) {
+    return("")
+  }
   for (i in 1:length(t_list)) {
     t <- t_list[[i]]
     t_in_prot_lengths <- t %in% prot_lengths$refseq_mrna
