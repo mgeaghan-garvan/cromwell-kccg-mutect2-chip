@@ -69,7 +69,7 @@ df_all_var_unique$COUNT <- apply(df_all_var_unique, 1, function(x) {
 df_all_var_unique$PREVALENCE <- df_all_var_unique$COUNT / length(inputFiles_csv)
 
 df_all_var_unique$PREVALENCE_FILTER <- "PASS"
-df_all_var_unique$PREVALENCE_FILTER[df_all_var_unique$PREVALENCE > max_prevalence_threshold] <- "MANUAL_REVIEW"
+df_all_var_unique$PREVALENCE_FILTER[df_all_var_unique$PREVALENCE > max_variant_prevalence] <- "MANUAL_REVIEW"
 
 for (i in 1:length(df_all_var_list)) {
   df_all_var_list[[i]] <- merge(df_all_var_list[[i]], df_all_var_unique, all.x = TRUE)
@@ -97,9 +97,9 @@ for (i in 1:length(df_all_var_list)) {
   write.csv(df_all_var_list[[i]], new_csv_file, row.names = FALSE)
   new_csv_file <- paste(inputFiles_csv[[i]], ".cohort_wide_filter.chip_wl_variants.csv", sep = "")
   write.csv(df_all_var_list[[i]][df_all_var_list[[i]]$Whitelist,], new_csv_file, row.names = FALSE)
-  new_csv_file <- paste(inputFiles_csv[[i]], ".cohort_wide_filter.chip_maual_review_variants.csv", sep = "")
-  write.csv(df_all_var_list[[i]][df_all_var_list[[i]]$Putative_Whitelist,], new_csv_file, row.names = FALSE)
   new_csv_file <- paste(inputFiles_csv[[i]], ".cohort_wide_filter.chip_putative_wl_variants.csv", sep = "")
+  write.csv(df_all_var_list[[i]][df_all_var_list[[i]]$Putative_Whitelist,], new_csv_file, row.names = FALSE)
+  new_csv_file <- paste(inputFiles_csv[[i]], ".cohort_wide_filter.chip_manual_review_variants.csv", sep = "")
   write.csv(df_all_var_list[[i]][df_all_var_list[[i]]$Manual_Review,], new_csv_file, row.names = FALSE)
   new_csv_file <- paste(inputFiles_csv[[i]], ".cohort_wide_filter.chip_putative_manual_review_variants.csv", sep = "")
   write.csv(df_all_var_list[[i]][df_all_var_list[[i]]$Putative_Manual_Review,], new_csv_file, row.names = FALSE)
