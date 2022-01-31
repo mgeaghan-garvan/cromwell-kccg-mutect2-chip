@@ -4,13 +4,25 @@ Run the KCCG GATK4 Mutect2 somatic variant calling pipeline using the Cromwell w
 
 ## Usage:
 
-### Cromwell
+This pipeline can be run in several different modes:
+* Full pipeline: In this mode the entire pipeline will be run, starting with input BAM/CRAM files and performing somatic variant calling. Optionally, the VCF output can be further annotated with either Annovar or VEP. Additionally, CHIP variant detection can be run as a final stage of the pipeline, or can be run separately at a later time.
+* Panel of Normals creation: This mode generates the Panel of Normals (PoN) from a set of input files. Input can either be BAM/CRAM alignment files, or pre-called VCF files.
+* Annotation-only: The pipeline can be run in annotation-only mode to annotate pre-called VCF files. Both Annovar and VEP are available.
+* CHIP-only: CHIP variant detection can be run stand-alone on pre-called VCF files.
 
-For running the pipeline on the local cluster or the Google Cloud Platform, a Cromwell server must be first set up on the local cluster. Cromwell handles orchestrating the pipeline and submitting each task to either the cluster or GCP.
+The pipeline can also be run on several platforms:
+* Local HPC cluster: Currently this supports the Sun Grid Engine (SGE) HPC cluster at the Garvan using the Cromwell workflow manager.
+* Google Cloud Platform (GCP): This also uses the Cromwell workflow manager to manage running the pipeline remotely on GCP.
+* Terra: Terra is a GCP-based front-end that uses Cromwell in the background to run workflows. This pipeline can be run natively on Terra.
+* DNAnexus: DNAnexus is an Amazon Web Serivces (AWS)-based cloud platform. While it doesn't support WDL workflows natively, the dxCompiler software provided by DNAnexus can compile this script into a DNAnexus-ready workflow.
 
-Cromwell is not required for running the pipeline on DNAnexus. For instructions for that platform, see below.
+### Running on the Garvan HPC and Google Cloud Platform
 
-#### Configuring MySQL server
+For running the pipeline on the local cluster (SGE backend) or the Google Cloud Platform, a Cromwell server must be first set up on the local cluster. Cromwell handles orchestrating the pipeline and submitting each task to either the cluster or GCP.
+
+Cromwell is not required for running the pipeline on DNAnexus or Terra. For instructions for those platforms, see further below.
+
+#### Configuring a MySQL server
 If there is no MySQL server currently running on the cluster, run the following commands:
 ```bash
 # Choose an empty port number.
@@ -39,13 +51,13 @@ CREATE USER 'cromwell_user'@'localhost' IDENTIFIED BY '123456781!aA';
 CREATE USER 'cromwell_user'@'%' IDENTIFIED BY '12345678!1aA';
 ```
 
-#### Configuring Cromwell server
+#### Configuring a Cromwell server
 
 First, clone the repository to a suitable location.
 
 ```bash
 # Clone the repository into your working directory
-git pull https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2.git
+git clone https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2-chip.git
 cd cromwell-kccg-mutect2
 ```
 
@@ -118,15 +130,17 @@ Once running, you can detatch the session with Ctrl + A, then D.
 
 Inside the input directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
 
-    Panel of normals creation:                     inputs.pon.json
-    Full pipeline, single input mode:              inputs.json
-    Full pipeline, batch/mulit-sample mode:        inputs.multi.json
-    CHIP detection-only, single input mode:        inputs.chip.json
-    CHIP detection-only, batch/multi-sample mode:  inputs.chip.multi.json
-    Annovar annotation, single input mode:         inputs.annovar.json
-    Annovar annotation, batch/multi-sample mode:   inputs.annovar.multi.json
-    VEP annotation, single input mode:             inputs.vep.json
-    VEP annotation, batch/multi-sample mode:       inputs.vep.multi.json
+| Filename | Description |
+| -------- | ----------- |
+| inputs.pon.json | Panel of normals creation |
+| inputs.json | Full pipeline, single input mode |
+| inputs.multi.json | Full pipeline, batch mode |
+| inputs.chip.json | CHIP detection only, single input mode |
+| inputs.chip.multi.json | CHIP detection only, batch mode |
+| inputs.annovar.json | Annovar annotation only, single input mode |
+| inputs.annovar.multi.json | Annovar annotation only, batch mode |
+| inputs.vep.json | VEP annotation only, single input mode |
+| inputs.vep.multi.json | VEP annotation only, batch mode |
 
 Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
 
@@ -153,9 +167,9 @@ PLATFORM=GCP
     -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
 ```
 
-##### Memory requirements
+##### A note about memory requirements
 
-In some cases, such as when running the workflow on the Garvan HPC, the requested memory will be multiplied by the requested number of cores. In other cases, such as when running on GCP, the requested memory will be the total memory allocated to a job. To ensure the proper amount of memory is being requested in each case, set the "mem_per_core" parameter in the input JSON file, i.e. for the local HPC, set "mem_per_core" to true, and for GCP set it to false.
+When running the workflow on the Garvan HPC, the requested memory will be multiplied by the requested number of cores. However, when running on GCP, Terra, or DNAnexus, the requested memory will be the total memory allocated to a job. To ensure the proper amount of memory is being requested in each case, set the "mem_per_core" parameter in the input JSON file, i.e. for the local HPC, set "mem_per_core" to true, and for GCP/Terra/DNAnexus, set it to false.
 
 ##### Prerequisite files
 
@@ -177,11 +191,15 @@ If running the pipeline in batch/multi-sample mode, you will need to supply a fi
 
 For the full pipeline, the input file is a tab-separated values (TSV) file. Each line describes the files required to run one sample. The file must contain either TWO or FOUR tab-delimited columns. The columns describe the tumor BAM, tumor BAI, normal BAM (optional), and normal BAI (optional) files, respectively.
 
-For the CHIP-only pipeline, the input file should contain only a single column, with each line describing the filtered (and possibly annotated) VCF file for a single sample to be used as input to the CHIP detection pipeline.
+For the CHIP-only pipeline, the input file should contain two columns: the first containing the sample name (which must match the tumor sample name in the VCF header), and the file path to the filtered (and possibly annotated) VCF file to be used as input to the CHIP detection pipeline.
+
+For annotating VCF files with VEP, a two-column input file is required: the file path to the VCF file, and the path to the VCF index.
+
+For annotating with Annovar, only a single column is required: the file path to the VCF file.
 
 #### Create a panel of normals (optional)
 
-If a panel of normals is required, run the create_pon.sh script.
+While it is possible to run the pipeline without a panel of normals (PoN), it is not recommended to do so. A generic PoN can be used; for example, the GATK best practices PoN generated from the 1000 genomes dataset: gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz. However, it is advisable to generate a PoN from a similar source to the samples being analysed, as this will help identify sequencing artefacts that may be called as false positive somatic variants. See https://gatk.broadinstitute.org/hc/en-us/articles/360035890631-Panel-of-Normals-PON- for further details on the best practices for generating a PoN. To generate a PoN, use the create_pon.sh script.
 
 Similar to the batch/multi-sample mode, the panel of normals pipeline requires a two-column input TSV file describing the BAM and BAI file pairs for each sample. For reference, the panel of normals pipeline in effect runs the Mutect2 pipeline in tumor-only mode for each sample, hence the need for a two-column TSV file.
 
@@ -256,7 +274,19 @@ If you need to start from scratch, you can choose to delete and re-create the Cr
 ./reset_database.sh
 ```
 
-### DNAnexus
+### Running on Terra
+
+#### TODO: finish this section
+
+Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. Instead, all that is required is to:
+
+1. Upload the relevant workflow up to the Terra platform.
+2. Generate the appropriate input JSON file as described above.
+    1. Ensure that all files are uploaded to a GCP bucket and that their gs:// URLs are entered into the input JSON file.
+3. Upload the input JSON file to Terra.
+5. Run the workflow on Terra.
+
+### Running on DNAnexus
 
 Running the pipeline on DNAnexus (and DNAnexus-based platforms such as the UK Biobank Reasearch Analysis Platform (RAP)) consists of four steps: compiling the pipeline up to DNAnexus, uploading data to a project, configuring the pipeline, and running the pipeline.
 
