@@ -979,13 +979,14 @@ pmr <- (!pwl) & (wl_ns_df[, 4] | wl_fs_df[, 4] | wl_sg_df[, 4] | wl_sp_df[, 4])
 overall_wl <- data.frame(Whitelist = wl, Manual_Review = mr, Putative_Whitelist = pwl, Putative_Manual_Review = pmr)
 
 # Apply stricter hard filter to putative CHIP variants
-vars_g_chip_func_filtered$PUTATIVE <- overall_wl$Putative_Whitelist | overall_wl$Putative_Manual_Review
-vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c("PUTATIVE", "AD", "F1R2", "F2R1", "VAF")], 1, function(x) {
+vars_g_chip_func_filtered$PUTATIVE <- !overall_wl$Whitelist & (overall_wl$Putative_Whitelist | overall_wl$Putative_Manual_Review)
+vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c("PUTATIVE", "AD", "F1R2", "F2R1", "VAF", "Manual_Review")], 1, function(x) {
   p <- as.logical(x[[1]])
   ad <- as.integer(strsplit(x[[2]], ",")[[1]])
   f1r2 <- as.integer(strsplit(x[[3]], ",")[[1]])
   f2r1 <- as.integer(strsplit(x[[4]], ",")[[1]])
   vaf <- as.numeric(strsplit(x[[5]], ",")[[1]])
+  mr <- as.logical(x[[6]])
   if (!p) {
     return("PASS")
   }
@@ -1008,7 +1009,7 @@ vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c
   PUTATIVE_FILTER = "FAIL"
   if(filter_pass) {
     PUTATIVE_FILTER = "PASS"
-  } else if(filter_manual_review) {
+  } else if(filter_manual_review || mr) {
     PUTATIVE_FILTER = "MANUAL_REVIEW"
   }
   return(PUTATIVE_FILTER)
