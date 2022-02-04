@@ -979,15 +979,15 @@ pmr <- (!pwl) & (wl_ns_df[, 4] | wl_fs_df[, 4] | wl_sg_df[, 4] | wl_sp_df[, 4])
 overall_wl <- data.frame(Whitelist = wl, Manual_Review = mr, Putative_Whitelist = pwl, Putative_Manual_Review = pmr)
 
 # Apply stricter hard filter to putative CHIP variants
-vars_g_chip_func_filtered$PUTATIVE <- !overall_wl$Whitelist & (overall_wl$Putative_Whitelist | overall_wl$Putative_Manual_Review)
-vars_g_chip_func_filtered$MANUAL_REVIEW <- overall_wl$Manual_Review
-vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c("PUTATIVE", "AD", "F1R2", "F2R1", "VAF", "MANUAL_REVIEW")], 1, function(x) {
+vars_g_chip_func_filtered$PUTATIVE <-  (overall_wl$Putative_Whitelist | overall_wl$Putative_Manual_Review)
+vars_g_chip_func_filtered$KNOWN <- (overall_wl$Whitelist | overall_wl$Manual_Review)
+vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c("PUTATIVE", "AD", "F1R2", "F2R1", "VAF", "KNOWN")], 1, function(x) {
   p <- as.logical(x[[1]])
   ad <- as.integer(strsplit(x[[2]], ",")[[1]])
   f1r2 <- as.integer(strsplit(x[[3]], ",")[[1]])
   f2r1 <- as.integer(strsplit(x[[4]], ",")[[1]])
   vaf <- as.numeric(strsplit(x[[5]], ",")[[1]])
-  mr <- as.logical(x[[6]])
+  kwn <- as.logical(x[[6]])
   if (!p) {
     return("PASS")
   }
@@ -1007,10 +1007,14 @@ vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c
       any(var_n_vaf_lte_20pc) &  # some but not all are passing
       var_n_for_rev_gte_2
   )
-  PUTATIVE_FILTER = "FAIL"
+  if (kwn) {
+    PUTATIVE_FILTER = "MANUAL_REVIEW"
+  } else {
+    PUTATIVE_FILTER = "FAIL"
+  }
   if(filter_pass) {
     PUTATIVE_FILTER = "PASS"
-  } else if(filter_manual_review || mr) {
+  } else if(filter_manual_review) {
     PUTATIVE_FILTER = "MANUAL_REVIEW"
   }
   return(PUTATIVE_FILTER)
@@ -1026,6 +1030,7 @@ vars_g_chip_func_filtered$COMBINED_FILTER <- apply(vars_g_chip_func_filtered[, c
   }
 })
 
+# Update the overall whitelist filter columns to include the putative variant filter information
 overall_wl$Manual_Review <- (overall_wl$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
 overall_wl$Whitelist <- overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
 overall_wl$Putative_Manual_Review <- (overall_wl$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
