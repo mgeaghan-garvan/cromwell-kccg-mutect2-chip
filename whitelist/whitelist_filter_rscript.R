@@ -1019,7 +1019,6 @@ vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c
   }
   return(PUTATIVE_FILTER)
 })
-vars_g_chip_func_filtered <- vars_g_chip_func_filtered[, colnames(vars_g_chip_func_filtered) != "MANUAL_REVIEW"]
 vars_g_chip_func_filtered$COMBINED_FILTER <- apply(vars_g_chip_func_filtered[, c("COMBINED_FILTER", "PUTATIVE_FILTER")], 1, function(x) {
   if (x[[1]] == "PASS" && x[[2]] == "PASS") {
     return("PASS")
