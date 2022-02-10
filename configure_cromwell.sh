@@ -5,13 +5,15 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun] [-C|--call_caching]"
+    echo -e "\nUsage: $0 [-H|--dbhost DB_HOSTNAME] [-P|--dbport DB_PORT] [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-j|--project GCP_PROJECT] [-r|--cromwell_root CROMWELL_ROOT] [-M|--mysql MYSQL_DIR] [-R|--mysql_rundir MYSQL_RUN_DIR] [-c|--cromwell CROMWELL_JAR] [-d|--dryrun] [-C|--call_caching]"
     echo -e "Display this help message: $0 -h\n"
     echo -e "\tDB_HOSTNAME:        Hostname where MySQL server is running.                     (Default: '0.0.0.0')"
     echo -e "\tDB_PORT:            Port for MySQL server on host.                              (Default: '40008')"
     echo -e "\tDB_NAME:            Name for MySQL database.                                    (Default: 'cromwell')."
     echo -e "\tCROMWELL_PORT:      Port where Cromwell should run.                             (Default: '8007')"
     echo -e "\tPLATFORM:           Platform on which workflow should be run.                   (Options: 'HPC', 'GCP'. Default: 'HPC')"
+    echo -e "\tGCP_PROJECT:        (GCP only) GCP project under which to run the pipeline."
+    echo -e "\tCROMWELL_ROOT:      (GCP only) GCP location for Cromwell root run directory."
     echo -e "\tMYSQL_DIR:          Root directory for MySQL installation.                      (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
     echo -e "\tMYSQL_RUN_DIR:      Run directory for MySQL.                                    (Default: '/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/')"
     echo -e "\tCROMWELL_JAR:       Location of Cromwell JAR file.                              (Default: '/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar')"
@@ -40,6 +42,8 @@ DBPORT="40008"
 DBNAME="cromwell"
 CROMPORT="8007"
 PLATFORM="HPC"
+GCP_PROJECT=""
+CROMWELL_ROOT=""
 CACHING="FALSE"
 DRYRUN="0"
 
@@ -104,6 +108,16 @@ while [[ $# -gt 0 ]]; do
                         shift
                         shift
                         ;;
+                -j|--project)
+                        GCP_PROJECT="$2"
+                        shift
+                        shift
+                        ;;
+                -r|--cromwell_root)
+                        CROMWELL_ROOT="$2"
+                        shift
+                        shift
+                        ;;
                 -C|--call_caching)
                         CACHING="TRUE"
                         shift
@@ -126,6 +140,8 @@ echo "Database port       = ${DBPORT}"
 echo "Database name       = ${DBNAME}"
 echo "Cromwell port       = ${CROMPORT}"
 echo "Platform            = ${PLATFORM}"
+if [ "${PLATFORM}" == "GCP" ]; then echo "Cromwell root       = ${CROMWELL_ROOT}"; fi
+if [ "${PLATFORM}" == "GCP" ]; then echo "GCP project         = ${GCP_PROJECT}"; fi
 echo "Call caching        = ${CACHING}"
 echo "MySQL directory     = ${MYSQL}"
 echo "MySQL run directory = ${MYSQL_RUNDIR}"
@@ -145,6 +161,8 @@ CROMWELL_BN="$(basename ${CROMWELL})"
 
 # Configure mutect2.conf
 if [ "${CACHING}" == "TRUE" ]; then ENABLECACHING="true"; else ENABLECACHING="false"; fi
+if [ "${PLATFORM}" == "GCP" ] && [ "${CROMWELL_ROOT}" == "" ]; then echo "NO CROMWELL ROOT PROVIDED FOR GCP RUN!"; exit 0; fi
+if [ "${PLATFORM}" == "GCP" ] && [ "${GCP_PROJECT}" == "" ]; then echo "NO GCP PROJECT PROVIDED FOR GCP RUN!"; exit 0; fi
 # Set the MySQL hostname, port, and database name
 sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBPORT_TO_SED/${DBPORT}/g" \
@@ -156,6 +174,8 @@ sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBPORT_TO_SED/${DBPORT}/g" \
     -e "s/DBNAME_TO_SED/${DBNAME}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
+    -e "s/GCP_PROJECT_TO_SED/${GCP_PROJECT}/g" \
+    -e "s/CROMWELL_ROOT_TO_SED/${CROMWELL_ROOT}/g" \
     ./workflow/mutect2.google.conf
 if [ "${PLATFORM}" == "GCP" ]
 then

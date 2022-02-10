@@ -80,7 +80,7 @@ workflow Mutect2CHIP_Multi {
         Boolean vep = true
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
-        File vep_cache_archive
+        File? vep_cache_archive
         Boolean loftee = true
         File? vep_loftee_ancestor_fa
         File? vep_loftee_ancestor_fai
@@ -89,7 +89,7 @@ workflow Mutect2CHIP_Multi {
     
         # Annovar settings
         Boolean annovar = false
-        File annovar_archive
+        File? annovar_archive
         String annovar_assembly = "hg38"
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         String annovar_protocols = "cosmic70"
@@ -97,7 +97,7 @@ workflow Mutect2CHIP_Multi {
 
         # Whitelist Filter settings
         Boolean run_chip_detection = true
-        File whitelist_filter_archive
+        File? whitelist_filter_archive
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
         String gnomad_pop = "AF"

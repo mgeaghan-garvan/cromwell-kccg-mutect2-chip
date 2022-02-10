@@ -279,46 +279,50 @@ workflow Mutect2CHIP {
         "boot_disk_size": boot_disk_size
     }
 
-    if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
-        call CramToBam as TumorCramToBam {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                cram = tumor_reads,
-                crai = tumor_reads_index,
-                name = output_basename,
-                samtools_docker = samtools_docker,
-                disk_size_gb = tumor_cram_to_bam_disk,
-                mem_mb = c2b_mem
-        }
-    }
+    # if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
+    #     call CramToBam as TumorCramToBam {
+    #         input:
+    #             ref_fasta = ref_fasta,
+    #             ref_fai = ref_fai,
+    #             ref_dict = ref_dict,
+    #             cram = tumor_reads,
+    #             crai = tumor_reads_index,
+    #             name = output_basename,
+    #             samtools_docker = samtools_docker,
+    #             disk_size_gb = tumor_cram_to_bam_disk,
+    #             mem_mb = c2b_mem
+    #     }
+    # }
 
-    if (defined(normal_reads)) {
-        String normal_or_empty = select_first([normal_reads, ""])
-        if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
-            String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
-            call CramToBam as NormalCramToBam {
-                input:
-                    ref_fasta = ref_fasta,
-                    ref_fai = ref_fai,
-                    ref_dict = ref_dict,
-                    cram = normal_reads,
-                    crai = normal_reads_index,
-                    name = normal_basename,
-                    samtools_docker = samtools_docker,
-                    disk_size_gb = normal_cram_to_bam_disk,
-                    mem_mb = c2b_mem
-            }
-        }
-    }
+    # if (defined(normal_reads)) {
+    #     String normal_or_empty = select_first([normal_reads, ""])
+    #     if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
+    #         String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
+    #         call CramToBam as NormalCramToBam {
+    #             input:
+    #                 ref_fasta = ref_fasta,
+    #                 ref_fai = ref_fai,
+    #                 ref_dict = ref_dict,
+    #                 cram = normal_reads,
+    #                 crai = normal_reads_index,
+    #                 name = normal_basename,
+    #                 samtools_docker = samtools_docker,
+    #                 disk_size_gb = normal_cram_to_bam_disk,
+    #                 mem_mb = c2b_mem
+    #         }
+    #     }
+    # }
 
-    File tumor_bam = select_first([TumorCramToBam.output_bam, tumor_reads])
-    File tumor_bai = select_first([TumorCramToBam.output_bai, tumor_reads_index])
+    # File tumor_bam = select_first([TumorCramToBam.output_bam, tumor_reads])
+    # File tumor_bai = select_first([TumorCramToBam.output_bai, tumor_reads_index])
+    File tumor_bam = tumor_reads
+    File tumor_bai = tumor_reads_index
     Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
 
-    File? normal_bam = if defined(normal_reads) then select_first([NormalCramToBam.output_bam, normal_reads]) else normal_reads
-    File? normal_bai = if defined(normal_reads) then select_first([NormalCramToBam.output_bai, normal_reads_index]) else normal_reads_index
+    # File? normal_bam = if defined(normal_reads) then select_first([NormalCramToBam.output_bam, normal_reads]) else normal_reads
+    # File? normal_bai = if defined(normal_reads) then select_first([NormalCramToBam.output_bai, normal_reads_index]) else normal_reads_index
+    File? normal_bam = normal_reads
+    File? normal_bai = normal_reads_index
     Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
 
     Int m2_output_size = tumor_bam_size / scatter_count
