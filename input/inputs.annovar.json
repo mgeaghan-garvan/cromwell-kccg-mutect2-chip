@@ -6,6 +6,8 @@
     "Mutect2CHIP_Annovar.annovar_docker":  "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
     "Mutect2CHIP_Annovar.annovar_archive": "REQUIRED_FILE",
     "Mutect2CHIP_Annovar.ref_name":  "hg38",
+    "Mutect2CHIP_Annovar.annovar_protocols": "cosmic70",
+    "Mutect2CHIP_Annovar.annovar_operations": "f",
     "Mutect2CHIP_Annovar.preemptible": 2,
     "Mutect2CHIP_Annovar.max_retries": 2,
     "Mutect2CHIP_Annovar.small_task_cpu":  4,
