@@ -32,6 +32,8 @@ workflow Mutect2CHIP_Annovar {
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         File annovar_archive
         String ref_name = "hg38"
+        String annovar_protocols = "cosmic70"
+        String annovar_operations = "f"
         # runtime parameters
         Int? preemptible
         Int? max_retries
@@ -72,8 +74,8 @@ workflow Mutect2CHIP_Annovar {
             vcf_input = input_vcf,
             annovar_archive = annovar_archive,
             ref_name = ref_name,
-            annovar_protocols = "cosmic70",
-            annovar_operations = "f",
+            annovar_protocols = annovar_protocols,
+            annovar_operations = annovar_operations,
             runtime_params = standard_runtime
     }
 
