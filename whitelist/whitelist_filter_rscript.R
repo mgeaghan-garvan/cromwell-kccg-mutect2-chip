@@ -71,7 +71,7 @@ sample_id <- gsub(annovar_text_out_regex, "", annovar_text_out, perl = TRUE)
 sample_id <- gsub("^.*\\/([^\\/]+)$", "\\1", sample_id, perl = TRUE)
 
 # Load annovar variant annotations
-vars <- read.table(annovar_text_out, sep = "\t", header = TRUE)
+vars <- read.delim(annovar_text_out, sep = "\t", header = TRUE)
 vars$Sample <- sample_id
 vars$TumorSample <- tumor_sample_name
 
