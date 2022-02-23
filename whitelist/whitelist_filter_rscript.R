@@ -544,6 +544,10 @@ vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- unlist(lapply(vars_g_chip_fun
       t_name <- t[t_in_prot_lengths][1]
       l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t_name][1]
       a <- grep("^p\\.", t, perl = TRUE, value = TRUE)
+      if (length(a) == 0) {
+        ret[[i]] <- "NA"
+        next
+      }
       a <- gsub("^p\\.", "", a, perl = TRUE)
       p <- parse_aa_change(a)$start_pos
       if (is.na(p)) {
@@ -574,6 +578,10 @@ vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- unlist(lapply(vars_g_chip_fun
       t_name <- t[t_in_prot_lengths][1]
       l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t_name][1]
       a <- grep("^p\\.", t, perl = TRUE, value = TRUE)
+      if (length(a) == 0) {
+        ret[[i]] <- "NA"
+        next
+      }
       a <- gsub("^p\\.", "", a, perl = TRUE)
       p <- parse_aa_change(a)$start_pos
       if (is.na(p)) {
