@@ -276,15 +276,41 @@ If you need to start from scratch, you can choose to delete and re-create the Cr
 
 ### Running on Terra
 
-#### TODO: finish this section
+Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. All that is required is to:
 
-Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. Instead, all that is required is to:
-
-1. Upload the relevant workflow up to the Terra platform.
-2. Generate the appropriate input JSON file as described above.
-    1. Ensure that all files are uploaded to a GCP bucket and that their gs:// URLs are entered into the input JSON file.
-3. Upload the input JSON file to Terra.
+1. Create a workspace on Terra
+2. Add the workflow(s) to the Terra workspace.
+3. Upload all requisite files to a GCP bucket.
+    1. If running in batch mode, ensure the inputFiles.tsv files is uploaded to GCP as well.
+    2. Ensure all input files are recorded in the input JSON file with their gs:// URLs.
+4. Upload the input JSON file to the Terra workspace.
 5. Run the workflow on Terra.
+
+#### Terra workspace
+
+This workflow is already hosted on Terra in a [private workspace](https://app.terra.bio/#workspaces/terra-kccg-production/terra-kccg-somvar-pipeline). If you have access to this workspace, you can go ahead and start running the pipeline (see below).
+
+For setting up your own workspace, see [this Google Docs document](https://docs.google.com/document/d/1pZVTxjRJfAyWYiFWmmF_o31lORQ8a-xmqdK1zE3RDyk) for detailed instructions on setting up a Terra workspace. In short, a billing account on GCP is required to be linked with a billing account on Terra, to which the new workspace can be added. A Terra group must also be created, containing any Terra users that wish to run the pipeline, and the group's firecloud email added as a "Storage Object Creator" and "Storage Object Viewer" on any GCP buckets used to host data as part of the workflow.
+
+Once set up, the workflows can be added to Terra via Dockstore. Dockstore monitors a public git repository containing the workflows and supplies these workflows for Terra to use. The public repository of this pipeline is available [here](https://github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip), and is already hosted on Dockstore for use with Terra. To add the workflow to Terra:
+
+1. Go to the Terra workspace.
+2. Go to the "Workflows" tab.
+3. Click on "Find a Workflow".
+4. Click on "Dockstore" under "Find Additional Workflows".
+5. Search for the workflows with "github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip". Click on the link to the desired workflow.
+6. Click on "Terra" under the "Launch with" section.
+7. Set the workflow name and pick a destination workspace, then click "Import".
+
+#### Setting up and running a workflow
+
+As mentioned above, first ensure that all requisite files, including the inputFiles.tsv containing paths to all BAMs/CRAMs/VCFs for batch runs are present in a GCP bucket to which the Terra workspace has access. Once data has been uploaded to GCP:
+
+1. Go to the Terra workspace.
+2. Go to the "Workflows" tab.
+3. Click on the relevant workflow.
+4. Under the "Inputs" tab, drag and drop the input JSON file, or search for it by clicking on "upload json". Alternatively, the input fields can be filled out manually.
+5. Click on "Run Analysis".
 
 ### Running on DNAnexus
 
