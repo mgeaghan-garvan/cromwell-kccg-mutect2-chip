@@ -5,9 +5,9 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-n|--dbname DB_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-d|--dryrun] [-m|--multi]"
+    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
-    echo -e "\tDB_NAME:       Name of the run and the MySQL database.                     (Default: 'cromwell')."
+    echo -e "\tRUN_NAME:      Name of the run.                                            (Default: 'run')."
     echo -e "\tCROMWELL_PORT: Port where Cromwell should run.                             (Default: '8007')"
     echo -e "\tPLATFORM:      Platform on which workflow should be run.                   (Options: 'HPC', 'GCP'. Default: 'HPC')"
     echo -e "\t[-m|--multi]:  Run in multi-sample batch mode (requires inputFiles.tsv)."
@@ -24,7 +24,7 @@ helpmsg() {
 
 # Set defaults
 # Host, port, database and platform defaults
-DBNAME="cromwell"
+RUNNAME="run"
 CROMPORT="8007"
 PLATFORM="HPC"
 MULTI="FALSE"
@@ -39,8 +39,8 @@ while [[ $# -gt 0 ]]; do
                         helpmsg
                         exit 0
                         ;;
-                -n|--dbname)
-                        DBNAME="$2"
+                -n|--name)
+                        RUNNAME="$2"
                         shift
                         shift
                         ;;
@@ -83,7 +83,7 @@ done
 
 set -- "${POSITIONAL[@]}"
 
-echo "Database name       = ${DBNAME}"
+echo "Run name            = ${RUNNAME}"
 echo "Cromwell port       = ${CROMPORT}"
 echo "Platform            = ${PLATFORM}"
 echo "Multi-sample mode   = ${MULTI}"
@@ -100,7 +100,7 @@ fi
 # Configure options files
 # '#' delimiters are used to enable path substitution
 sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.json
-sed -i -e "s#PWD_TO_SED#${PWD}#g" -e "s/ID_TO_SED/${DBNAME}/g" ./workflow/options.google.json
+sed -i -e "s#PWD_TO_SED#${PWD}#g" -e "s/ID_TO_SED/${RUNNAME}/g" ./workflow/options.google.json
 
 # Set up output directories
 mkdir -p workflow_out
