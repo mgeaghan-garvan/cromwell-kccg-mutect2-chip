@@ -1,0 +1,110 @@
+version: 1.2
+workflows:
+  - name: KCCGMutect2CHIP
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_Batch
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.multi.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_VEP
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.vep.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_VEP_Batch
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.vep.multi.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_Annovar
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.annovar.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_Annovar_Batch
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.annovar.multi.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_CHIPOnly
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.chip.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_CHIPOnly_Batch
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.chip.multi.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
+  - name: KCCGMutect2CHIP_PoN
+    subclass: WDL
+    primaryDescriptorPath: /workflow/cromwell-kccg-mutect2.pon.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+    filters:
+      branches: "main"
