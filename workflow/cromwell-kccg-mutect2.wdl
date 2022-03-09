@@ -1291,6 +1291,7 @@ task VEP {
         memory: mem_mb + " MB"
         mem_mb: mem_mb
         disks: "local-disk " + runtime_params.disk + " HDD"
+        tmp_disk: runtime_params.disk
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
         cpu: cpus
@@ -1353,6 +1354,7 @@ task Annovar {
       memory: mem_mb + " MB"
       mem_mb: mem_mb
       disks: "local-disk " + annovar_disk_space + " HDD"
+      tmp_disk: annovar_disk_space
       preemptible: runtime_params.preemptible
       maxRetries: runtime_params.max_retries
       cpu: cpu
