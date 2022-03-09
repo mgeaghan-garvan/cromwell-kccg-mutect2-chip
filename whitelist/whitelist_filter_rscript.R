@@ -212,7 +212,6 @@ vars_stats <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, functi
     all(var_n_ad_gte_3[2:length(var_n_ad_gte_3)]) &  # first allele = ref
       var_n_dp_gte_20 &
       all(var_n_vaf_gte_2pc) &
-      all(var_n_vaf_lt_35pc) &
       var_n_for_rev_gte_1 &
       var_n_gnomad_af_lt_0.1pc
   )
