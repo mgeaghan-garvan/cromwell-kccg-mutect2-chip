@@ -1257,13 +1257,13 @@ task VEP {
         OPT_VAR_DEFINED="~{loftee_ancestor_fai_def}"
         OPT_VAR_DEFINED="~{loftee_ancestor_gzi_def}"
 
-        mkdir -p .vep/cache
-        tar -xzvf ~{cache_archive} -C .vep/cache/
+        mkdir -p /tmp/.vep/cache
+        tar -xzvf ~{cache_archive} -C /tmp/.vep/cache/
         # this seems necessary on GCP - running into permissions errors.
         # TODO: find a better solution
-        cp ~{fasta} ./ref_fasta.fasta
+        cp ~{fasta} /tmp/ref_fasta.fasta
         vep \
-            --dir_cache ./.vep/cache \
+            --dir_cache /tmp/.vep/cache \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1273,7 +1273,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
-            --fasta ./ref_fasta.fasta \
+            --fasta /tmp/ref_fasta.fasta \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
@@ -1325,16 +1325,20 @@ task Annovar {
     command {
       set -euo pipefail
 
+      cd /tmp
+
       tar -xzvf ~{annovar_archive}
 
-      chmod +x ./annovar_files/convert2annovar.pl
-      chmod +x ./annovar_files/table_annovar.pl
-      chmod +x ./annovar_files/annotate_variation.pl
-      chmod +x ./annovar_files/coding_change.pl
-      chmod +x ./annovar_files/retrieve_seq_from_fasta.pl
-      chmod +x ./annovar_files/variants_reduction.pl
+      cd -
 
-      perl annovar_files/table_annovar.pl ~{vcf_input} annovar_files \
+      chmod +x /tmp/annovar_files/convert2annovar.pl
+      chmod +x /tmp/annovar_files/table_annovar.pl
+      chmod +x /tmp/annovar_files/annotate_variation.pl
+      chmod +x /tmp/annovar_files/coding_change.pl
+      chmod +x /tmp/annovar_files/retrieve_seq_from_fasta.pl
+      chmod +x /tmp/annovar_files/variants_reduction.pl
+
+      perl /tmp/annovar_files/table_annovar.pl ~{vcf_input} /tmp/annovar_files \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -remove \
