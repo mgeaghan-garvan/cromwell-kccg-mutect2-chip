@@ -2,6 +2,8 @@ import json
 import argparse
 import re
 import sys
+import csv
+import os
 
 def check_args(args=None):
     parser = argparse.ArgumentParser(description="Generate the run command for DNAnexus.", formatter_class=argparse.RawTextHelpFormatter)
@@ -43,7 +45,12 @@ JSON_KEY_MAP = {
 
 
 def validate_batch_json(json_data):
-    pass
+    json_keys = list(json_data.keys())
+    json_keys = [k.split(".")[0] for k in json_keys]
+    json_keys = list(set(json_keys))
+    if len(json_keys) != 1 or json_keys[0] not in VALID_JSON_KEYS:
+        raise ValueError("ERROR: Invalid input JSON file.")
+    return JSON_KEY_MAP[json_keys[0]]
 
 
 def main(args):
@@ -51,19 +58,42 @@ def main(args):
     with open(args.json, 'r') as f:
         data = json.load(f)
 
-    # Replace the workflow name with "stage-common"
-    new_data = {}
-    for k in data.keys():
-        new_key = re.sub("Mutect2CHIP(_[^\.]+)?\.", "stage-common.", k)
-        new_data[new_key] = data[k]
+    json_data_list = []
+    out_file_list = []
+    if args.batch:
+        batch_json_keys = validate_batch_json(data)
+        with open(args.batch, 'r') as f:
+            reader = csv.reader(f, delimiter="\t")
+            i = 1
+            for line in reader:
+                if len(line) > len(batch_json_keys):
+                    raise ValueError("ERROR: Invalid batch input TSV file.")
+                new_json_data = data.copy()
+                for idx, val in enumerate(line):
+                    new_json_data[batch_json_keys[idx]] = val
+                json_data_list.append(new_json_data)
+                out_file_split = os.path.split(args.output)
+                out_file = f"{out_file_split[0]}/_batch_{str(i)}_{out_file_split[1]}"
+                out_file_list.append(out_file)
+    else:
+        json_data_list = [data]
+        out_file_list = [args.output]
 
-    with open(args.output, 'w') as f:
-        f.write("#!/bin/bash\n")
-        f.write(f"dx run --watch --yes --destination {args.destination} \\\n    ")
-        for k in new_data.keys():
-            f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
-        f.write(args.workflow)
-        f.write("\n")
+    for i, j in enumerate(json_data_list):
+        # Replace the workflow name with "stage-common"
+        new_data = {}
+        for k in j.keys():
+            new_key = re.sub("Mutect2CHIP(_[^\.]+)?\.", "stage-common.", k)
+            new_data[new_key] = j[k]
+
+        out_file = out_file_list[i]
+        with open(out_file, 'w') as f:
+            f.write("#!/bin/bash\n")
+            f.write(f"dx run --watch --yes --destination {args.destination} \\\n    ")
+            for k in new_data.keys():
+                f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
+            f.write(args.workflow)
+            f.write("\n")
 
 
 if __name__ == "__main__":
