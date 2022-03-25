@@ -25,21 +25,21 @@ VALID_JSON_KEYS = [
 
 JSON_KEY_MAP = {
     "Mutect2CHIP": [
-        "tumor_reads",
-        "tumor_reads_index",
-        "normal_reads",
-        "normal_reads_index"
+        "Mutect2CHIP.tumor_reads",
+        "Mutect2CHIP.tumor_reads_index",
+        "Mutect2CHIP.normal_reads",
+        "Mutect2CHIP.normal_reads_index"
     ],
     "Mutect2CHIP_CHIP": [
-        "input_vcf",
-        "tumor_sample_name"
+        "Mutect2CHIP_CHIP.tumor_sample_name",
+        "Mutect2CHIP_CHIP.input_vcf"
     ],
     "Mutect2CHIP_Annovar": [
-        "input_vcf"
+        "Mutect2CHIP_Annovar.input_vcf"
     ],
     "Mutect2CHIP_VEP": [
-        "input_vcf",
-        "input_vcf_idx"
+        "Mutect2CHIP_VEP.input_vcf",
+        "Mutect2CHIP_VEP.input_vcf_idx"
     ]
 }
 
@@ -71,10 +71,15 @@ def main(args):
                 new_json_data = data.copy()
                 for idx, val in enumerate(line):
                     new_json_data[batch_json_keys[idx]] = val
+                if len(batch_json_keys) > idx:
+                    idx += 1
+                    for j in range(idx, len(batch_json_keys)):
+                        new_json_data.pop(batch_json_keys[j], None)
                 json_data_list.append(new_json_data)
                 out_file_split = os.path.split(args.output)
-                out_file = f"{out_file_split[0]}/_batch_{str(i)}_{out_file_split[1]}"
+                out_file = f"{out_file_split[0] if out_file_split[0] else '.'}/_batch_{str(i)}_{out_file_split[1]}"
                 out_file_list.append(out_file)
+                i += 1
     else:
         json_data_list = [data]
         out_file_list = [args.output]
@@ -94,6 +99,8 @@ def main(args):
                 f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
             f.write(args.workflow)
             f.write("\n")
+        print(out_file)
+    # print(" ".join(out_file_list))
 
 
 if __name__ == "__main__":
