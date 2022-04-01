@@ -249,7 +249,36 @@ vars$COMBINED_FILTER = apply(vars[c("FILTER", "HARD_FILTER")], 1, function(x) {
 })
 
 # Get sequence context around INDELS and set filter to manual review if AD < 10 or VAF < 0.1
-vars_indels <- vars[grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE), c("Chr", "Start", "End", "Ref", "Alt")]
+get_hprs <- function(seq, min_size = 5) {
+  # Sliding window algorithm to pick out all homopolymer regions within a sequence
+  hpr_list <- list()
+  hidx <- 1
+  l <- nchar(seq)
+  i <- 1
+  while (i <= (l - min_size + 1)) {
+    b1 <- substr(seq, i, i)
+    j <- i + 1
+    while (j <= l) {
+      b2 <- substr(seq, j, j)
+      if (b2 == b1) {
+        j <- j + 1
+      } else {
+        break
+      }
+    }
+    subseq_len <- j - i
+    if (subseq_len >= min_size) {
+      hpr_list[[hidx]] <- data.frame(start = i, end = (j - 1), length = (j - i), base = b1)
+      hidx <- hidx + 1
+    }
+    i <- j
+  }
+  return(do.call(rbind, hpr_list))
+}
+
+vars_indels <- vars[grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE), c("Chr", "POS", "REF", "ALT")]
+vars_indels$Start <- vars_indels$POS
+vars_indels$End <- vars_indels$Start + nchar(vars_indels$REF) - 1
 vars_indels_bed <- unique(vars_indels[, c("Chr", "Start", "End")])
 vars_indels_bed$Start = as.integer(vars_indels_bed$Start) - 11  # Zero-based coordinates for BED format, get 10bp upstream
 vars_indels_bed$End = as.integer(vars_indels_bed$End) + 10  # Get 10bp downstream
@@ -296,25 +325,82 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
   vars_indels$Start <- as.integer(vars_indels$Start)
   vars_indels$End <- as.integer(vars_indels$End)
   vars_indels <- merge(vars_indels, indel_seq, all.x = TRUE)
+  vars_indels_filter <- do.call(rbind, apply(vars_indels[c("Start", "End", "REF", "ALT", "INDEL_SEQ_CONTEXT")], 1, function(x) {
+    # Get alternate allele sequence context
+    s <- as.integer(x[[1]])
+    e <- as.integer(x[[2]])
+    r <- as.character(x[[3]])
+    a <- as.character(x[[4]])
+    l <- e - s + 1  # l <- nchar(r)
+    rs <- as.character(x[[5]])
+    as <- paste(
+      substr(rs, 1, 10),
+      a,
+      substr(rs, (11 + l), nchar(rs)),
+      sep = ""
+    )
+    # Find all homopolymers in both ref and alt sequences
+    hpr_ref <- get_hprs(rs)
+    hpr_alt <- get_hprs(as)
+    filter <- ""
+    # Find INDELs in homopolymer regions
+    if (is.null(hpr_ref) && is.null(hpr_alt)) {
+      # No homopolymers - filter passes
+      filter <- "PASS"
+    } else if (is.null(hpr_ref) && !is.null(hpr_alt)) {
+      # Alternate allele creates homopolymer
+      filter <- "HOMOPOLYMER_INDEL"
+    } else if (!is.null(hpr_ref) && is.null(hpr_alt)) {
+      # Alternate allele destroys homopolymer
+      filter <- "HOMOPOLYMER_INDEL"
+    } else if (all(hpr_ref[c("length", "base")] != hpr_al[c("length", "base")])) {
+      # Reference and alternate sequences have differing homopolymers (i.e. variant creates/destroys a homopolymer sequence)
+      filter <- "HOMOPOLYMER_INDEL"
+    } else if (all(hpr_ref$end <= 10) && all(hpr_alt$end <= 10)) {
+      # All homopolymers reside within first 10 bp (outside of INDEL which starts at bp 11)
+      filter <- "PASS"
+    } else if (l == 1) {
+      # All remaining insertions should pass
+      filter <- "PASS"
+    } else {
+      # All remaining variants are deletions
+      filter <- "PASS"
+      s_del <- 11
+      e_del <- 11 + l - 1
+      for (i in 1:dim(hpr_ref)[1]) {
+        s_hpr <- hpr_ref[i, "start"]
+        e_hpr <- hpr_ref[i, "end"]
+        if (
+          ((s_hpr <= s_del) && (s_del <= e_hpr)) ||
+          ((s_hpr <= e_del) && (e_del <= e_hpr)) ||
+          ((s_del < s_hpr) && (e_del > e_hpr))
+        ) {
+          # Deletion starts or ends within, or contains a homopolymer region
+          filter <- "HOMOPOLYMER_INDEL"
+          break
+        }
+      }
+    }
+    return(data.frame(INDEL_ALT_SEQ_CONTEXT = as, INDEL_FILTER = filter))
+  }))
+  vars_indels$INDEL_ALT_SEQ_CONTEXT <- vars_indels_filter$INDEL_ALT_SEQ_CONTEXT
+  vars_indels$INDEL_FILTER <- vars_indels_filter$INDEL_FILTER
 }
 
 vars <- merge(vars, vars_indels, all.x = TRUE)
-vars$INDEL_FILTER <- "PASS"
 vars$INDEL_FILTER[(
-  grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE) &
+  vars$INDEL_FILTER == "HOMOPOLYMER_INDEL" &
   (
     unlist(lapply(strsplit(vars$AD, ","), function(x) { any(as.integer(x[2:length(x)]) < 10) })) |
-    unlist(lapply(strsplit(vars$VAF, ","), function(x) { any(as.numeric(x) < 0.1) }))
+    unlist(lapply(strsplit(vars$VAF, ","), function(x) { any(as.numeric(x) < 0.08) }))  # was originally 0.1, changed based on Kessler et al.
   )
-)] <- "CHECK_FOR_HOMOPOLYMER"
+)] <- "FAIL"
 
 vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "INDEL_FILTER")], 1, function(x) {
   if (x[[2]] == "PASS") {
     return(x[[1]])
-  } else if (x[[1]] == "FAIL") {
-    return("FAIL")
   } else {
-    return("MANUAL_REVIEW")
+    return("FAIL")
   }
 })
 
