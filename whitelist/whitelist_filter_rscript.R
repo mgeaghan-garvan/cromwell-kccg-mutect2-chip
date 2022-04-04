@@ -353,7 +353,7 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
     } else if (!is.null(hpr_ref) && is.null(hpr_alt)) {
       # Alternate allele destroys homopolymer
       filter <- "HOMOPOLYMER_INDEL"
-    } else if (all(hpr_ref[c("length", "base")] != hpr_al[c("length", "base")])) {
+    } else if (all(hpr_ref[c("length", "base")] != hpr_alt[c("length", "base")])) {
       # Reference and alternate sequences have differing homopolymers (i.e. variant creates/destroys a homopolymer sequence)
       filter <- "HOMOPOLYMER_INDEL"
     } else if (all(hpr_ref$end <= 10) && all(hpr_alt$end <= 10)) {
