@@ -397,7 +397,7 @@ vars$INDEL_FILTER[(
 )] <- "FAIL"
 
 vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "INDEL_FILTER")], 1, function(x) {
-  if (x[[2]] == "PASS") {
+  if (x[[2]] != "FAIL") {
     return(x[[1]])
   } else {
     return("FAIL")
