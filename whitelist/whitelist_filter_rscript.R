@@ -388,6 +388,7 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
 }
 
 vars <- merge(vars, vars_indels, all.x = TRUE)
+vars$INDEL_FILTER[is.na(vars$INDEL_FILTER)] <- "PASS"
 vars$INDEL_FILTER[(
   vars$INDEL_FILTER == "HOMOPOLYMER_INDEL" &
   (
