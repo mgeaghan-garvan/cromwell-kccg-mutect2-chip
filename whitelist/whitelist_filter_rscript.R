@@ -414,6 +414,7 @@ vars_g$AAChange.refGene <- apply(vars_g[, c("Gene.refGene", "AAChange.refGene")]
   aaa <- paste(aa, collapse = ",")
   return(aaa)
 })
+vars_g <- unique(vars_g)  # Remove potential duplicate entries after splitting by gene name
 
 # Filter for CHIP genes
 vars_g_chip <- vars_g[vars_g$Gene.refGene %in% chip_vars$Gene,]
@@ -1129,6 +1130,8 @@ overall_wl$Putative_Manual_Review <- (overall_wl$Putative_Manual_Review & vars_g
 overall_wl$Putative_Whitelist <- overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
 
 vars_g_chip_func_filtered_wl <- cbind(vars_g_chip_func_filtered, wl_ns_df, wl_fs_df, wl_sg_df, wl_sp_df, overall_wl)
+
+vars_g_chip_func_filtered_wl <- unique(vars_g_chip_func_filtered_wl)  # Perform final removal of duplicate entries
 
 write.csv(vars_g_chip_func_filtered_wl, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Whitelist,], paste(sample_id, ".chip_wl_variants.csv", sep = ""), row.names = FALSE)
