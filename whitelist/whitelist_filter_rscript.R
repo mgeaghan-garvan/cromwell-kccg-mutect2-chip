@@ -387,8 +387,8 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
   vars_indels$INDEL_FILTER <- vars_indels_filter$INDEL_FILTER
 }
 
-preserve_col_order <- union(colnames(vars), colnames(vars_indels))
 vars_indels <- vars_indels[!(colnames(vars_indels) %in% c("Start", "End"))]
+preserve_col_order <- union(colnames(vars), colnames(vars_indels))
 vars <- merge(vars, vars_indels, all.x = TRUE)
 vars <- vars[preserve_col_order]
 vars$INDEL_FILTER[is.na(vars$INDEL_FILTER)] <- "PASS"
