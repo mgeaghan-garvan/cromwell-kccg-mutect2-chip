@@ -522,10 +522,10 @@ workflow Mutect2CHIP {
         }
     }
 
-    File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
     File annovar_input_vcf = select_first([VEP.output_vcf, filter_output_vcf])
 
     if (annovar && defined(annovar_archive)) {
+        File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
         String annovar_sample_id = basename(basename(annovar_input_vcf, ".gz"), ".vcf")
         call Annovar {
             input:
@@ -548,7 +548,7 @@ workflow Mutect2CHIP {
     # Run annovar and CHIP whitelist filter
     # TODO: change mem_mb, *_disk_space, and cpu to workflow input parameters
     if (run_chip_detection && defined(annovar_archive) && defined(whitelist_filter_archive)) {
-        # File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
+        File wl_annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
         String sample_id = basename(basename(chip_detection_input_vcf, ".gz"), ".vcf")
         String tumor_sample_name = M2.tumor_sample[0]  # M2 is scattered over intervals, all entries in the Array[String] "tumor_sample" will be identical
@@ -562,7 +562,7 @@ workflow Mutect2CHIP {
                 annovar_docker = annovar_docker,
                 sample_id = sample_id,
                 vcf_input = chip_detection_input_vcf,
-                annovar_archive = annovar_archive_file,
+                annovar_archive = wl_annovar_archive_file,
                 ref_name = annovar_assembly,
                 label = "whitelist_annovar_out",
                 annovar_protocols = whitelist_annovar_protocols,
