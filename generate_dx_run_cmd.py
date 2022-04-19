@@ -95,7 +95,7 @@ def main(args):
         with open(out_file, 'w') as f:
             f.write("#!/bin/bash\n")
             destination = re.sub("/$", "", args.destination)
-            f.write(f"dx run --watch --yes --destination {destination}/{str(i)}/ \\\n    ")
+            f.write(f"dx run --priority low --yes --destination {destination}/{str(i)}/ \\\n    ")
             for k in new_data.keys():
                 f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
             f.write(args.workflow)
