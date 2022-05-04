@@ -2,7 +2,11 @@
 library(tidyr)
 library(stringr)
 
-# Check command-line arguments
+
+# ========================== #
+# Get command-line arguments #
+# ========================== #
+
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 9) {
   stop(paste(
@@ -27,6 +31,11 @@ treat_missing_as_rare <- args[6]
 chip_def_file <- args[7]
 transcript_prot_file <- args[8]
 fasta_file <- args[9]
+
+
+# ============================ #
+# Check command-line arguments #
+# ============================ #
 
 if (!file.exists(annovar_text_out)) {
   stop("Input annovar table file does not exist.")
@@ -63,6 +72,11 @@ if (!grepl(annovar_vcf_out_regex, annovar_vcf_out, perl = TRUE)) {
   stop("Invalid input annovar vcf file. Must be an annovar vcf output ('*_multianno.vcf').")
 }
 
+
+# ========= #
+# Load data #
+# ========= #
+
 # Load CHIP variant/gene lists
 chip_vars <- read.csv(chip_def_file)
 
@@ -83,6 +97,8 @@ vcf_header <- strsplit(vcf_header, "\t")[[1]]
 
 # Ensure the following columns are present
 req_cols <- c("Chr", "Start", "End", "Ref", "Alt", "Func.refGene", "Gene.refGene", "GeneDetail.refGene", "ExonicFunc.refGene", "AAChange.refGene")
+# When using both genome and exome gnomAD annotations, Annovar (unhelpfully) gives them the same column headers, with the second annotation suffixed with ".1".
+# So, we need to supply the script with the order in which they were annotated ("genome,exome", or "exome,genome") so it can determine which is which.
 if (gnomad_source == "genome,exome") {
   gnomad_g_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
   gnomad_e_cols <- c("AF.1", "AF_popmax.1", "AF_male.1", "AF_female.1", "AF_raw.1", "AF_afr.1", "AF_sas.1", "AF_amr.1", "AF_eas.1", "AF_nfe.1", "AF_fin.1", "AF_asj.1", "AF_oth.1", "non_topmed_AF_popmax.1", "non_neuro_AF_popmax.1", "non_cancer_AF_popmax.1", "controls_AF_popmax.1")
@@ -108,38 +124,19 @@ stopifnot(all(req_cols %in% colnames(vars)))
 otherinfo_cols <- c("ANNOVAR_alt_af", "ANNOVAR_qual", "ANNOVAR_alt_ad", vcf_header)
 colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_cols
 
-# ===== PRE-FILTERING =====
-
 # Get gnomAD allele frequencies
-if (gnomad_source == "genome,exome") {
-  new_gnomad_g_cols <- paste("gnomAD_genome_", gnomad_g_cols, sep = "")
-  new_gnomad_e_cols <- gsub("\\.\\d+$", "", gnomad_e_cols, perl = TRUE)
-  new_gnomad_e_cols <- paste("gnomAD_exome_", new_gnomad_e_cols, sep = "")
-
-  colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
-  colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
-
-  gnomad_pop_columns <- paste("gnomAD", c("genome", "exome"), gnomad_pop, sep = "_")
-
-  vars$gnomAD_AF <- apply(vars[gnomad_pop_columns], 1, function(x) {
-    af_g <- x[[1]]
-    af_e <- x[[2]]
-    missing_vals <- c(".", "", NA)
-    if(!(af_e %in% missing_vals)) {
-      return(as.numeric(af_e))
-    } else if(!(af_g %in% missing_vals)) {
-      return(as.numeric(af_g))
-    } else if(treat_missing_as_rare) {
-      return(0)
-    } else {
-      return(NA)
-    }
-  })
-} else if (gnomad_source == "exome,genome") {
-  new_gnomad_e_cols <- paste("gnomAD_exome_", gnomad_e_cols, sep = "")
-  new_gnomad_g_cols <- gsub("\\.\\d+$", "", gnomad_g_cols, perl = TRUE)
-  new_gnomad_g_cols <- paste("gnomAD_genome_", new_gnomad_g_cols, sep = "")
-
+if (gnomad_source %in% c("genome,exome", "exome,genome")) {
+  new_gnomad_g_cols <- NA
+  new_gnomad_e_cols <- NA
+  if (gnomad_source == "genome,exome") {
+    new_gnomad_g_cols <- paste("gnomAD_genome_", gnomad_g_cols, sep = "")
+    new_gnomad_e_cols <- gsub("\\.\\d+$", "", gnomad_e_cols, perl = TRUE)
+    new_gnomad_e_cols <- paste("gnomAD_exome_", new_gnomad_e_cols, sep = "")
+  } else if (gnomad_source == "exome,genome") {
+    new_gnomad_e_cols <- paste("gnomAD_exome_", gnomad_e_cols, sep = "")
+    new_gnomad_g_cols <- gsub("\\.\\d+$", "", gnomad_g_cols, perl = TRUE)
+    new_gnomad_g_cols <- paste("gnomAD_genome_", new_gnomad_g_cols, sep = "")
+  }
   colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
   colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
 
@@ -179,6 +176,10 @@ if (gnomad_source == "genome,exome") {
   })
 }
 
+
+# ================== #
+# Apply hard filters #
+# ================== #
 
 # Filter by AD, DP, AF, F1R2/F2R1 VCF fields and gnomAD frequency
 get_format_field <- function(x, format_field) { grep(paste("^", x, "$", sep = ""), format_field, perl = TRUE) }
@@ -248,7 +249,12 @@ vars$COMBINED_FILTER = apply(vars[c("FILTER", "HARD_FILTER")], 1, function(x) {
   }
 })
 
-# Get sequence context around INDELS and set filter to manual review if AD < 10 or VAF < 0.1
+
+# ================================================ #
+# Apply filters to variants in homopolymer regions #
+# ================================================ #
+
+# Get sequence context around variants and set filter to manual review if AD < 10 or VAF < 0.1
 get_hprs <- function(seq, min_size = 5) {
   # Sliding window algorithm to pick out all homopolymer regions within a sequence
   hpr_list <- list()
@@ -276,33 +282,40 @@ get_hprs <- function(seq, min_size = 5) {
   return(do.call(rbind, hpr_list))
 }
 
-vars_indels <- vars[grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE), c("Chr", "POS", "REF", "ALT")]
-vars_indels$Start <- vars_indels$POS
-vars_indels$End <- vars_indels$Start + nchar(vars_indels$REF) - 1
-vars_indels_bed <- unique(vars_indels[, c("Chr", "Start", "End")])
-vars_indels_bed$Start = as.integer(vars_indels_bed$Start) - 11  # Zero-based coordinates for BED format, get 10bp upstream
-vars_indels_bed$End = as.integer(vars_indels_bed$End) + 10  # Get 10bp downstream
-write.table(vars_indels_bed, "_tmp_indels.bed", col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
-system(paste("bedtools getfasta -fi ", fasta_file, " -bed _tmp_indels.bed -fo _tmp_indels.fa", sep = ""))
-vars_indels_fa <- scan("_tmp_indels.fa", character())
-if (!(length(vars_indels_fa) %% 2 == 0)) {
-  print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
-  vars_indels$INDEL_CONTEXT = ""
+# Create sub-set of variants that pass previous filters. Get basic variant information
+vars_pass <- vars[vars$COMBINED_FILTER == "PASS", c("Chr", "POS", "REF", "ALT")]
+# Construct bed-formatted variant data-frame
+vars_pass$Start <- vars_pass$POS
+vars_pass$End <- vars_pass$Start + nchar(vars_pass$REF) - 1
+vars_pass_bed <- unique(vars_pass[, c("Chr", "Start", "End")])
+vars_pass_bed$Start = as.integer(vars_pass_bed$Start) - 11  # Zero-based coordinates for BED format, get 10bp upstream
+vars_pass_bed$End = as.integer(vars_pass_bed$End) + 10  # Get 10bp downstream
+# Write to a bed file and run bedtools getfasta to get sequence context, then read back in
+write.table(vars_pass_bed, "_tmp_pass.bed", col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
+system(paste("bedtools getfasta -fi ", fasta_file, " -bed _tmp_pass.bed -fo _tmp_pass.fa", sep = ""))
+vars_pass_fa <- scan("_tmp_pass.fa", character())
+if (!(length(vars_pass_fa) %% 2 == 0)) {
+  # Something went wrong and the fasta file is improperly formatted (number of lines not a mulitple of 2)
+  print("WARNING: Could not successfully retrieve variant sequence contexts. Skipping...")
+  vars_pass$VAR_CONTEXT = ""
 } else {
-  indel_seq = list()
+  pass_seq = list()
   i = 1
   j = 1
-  for (s in vars_indels_fa) {
+  for (s in vars_pass_fa) {
     if (i %% 2 == 1 && !grepl("^>", s, perl = TRUE)) {
-      print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
-      vars_indels$INDEL_CONTEXT = ""
+      # Second of every pair of lines should not start with a ">" (should be the sequence itself)
+      print("WARNING: Could not successfully retrieve variant sequence contexts. Skipping...")
+      vars_pass$VAR_CONTEXT = ""
       break
     } else if (i %% 2 == 0 && grepl("^>", s, perl = TRUE)) {
-      print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
-      vars_indels$INDEL_CONTEXT = ""
+      # First of every pair of lines should start with ">" (this is the sequence name)
+      print("WARNING: Could not successfully retrieve variant sequence contexts. Skipping...")
+      vars_pass$VAR_CONTEXT = ""
       break
     } else {
       if (i %% 2 == 1) {
+        # Parse the sequence name: retrieve chr, start, and end positions
         name <- s
         chr <- gsub("\\:.*", "", name, perl = TRUE)
         chr <- gsub("^>", "", chr, perl = TRUE)
@@ -311,21 +324,24 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
         start <- as.integer(start) + 11
         end <- gsub(".*\\-", "", name, perl = TRUE)
         end <- as.integer(end) - 10
-        indel_seq[[j]] <- c(chr, start, end, "")
+        pass_seq[[j]] <- c(chr, start, end, "")
         i <- i + 1
       } else if (i %% 2 == 0) {
-        indel_seq[[j]][4] = s
+        # Get the sequence context
+        pass_seq[[j]][4] = s
         i <- i + 1
         j <- j + 1
       }
     }
   }
-  indel_seq <- as.data.frame(do.call(rbind, indel_seq))
-  colnames(indel_seq) <- c("Chr", "Start", "End", "INDEL_SEQ_CONTEXT")
-  vars_indels$Start <- as.integer(vars_indels$Start)
-  vars_indels$End <- as.integer(vars_indels$End)
-  vars_indels <- merge(vars_indels, indel_seq, all.x = TRUE)
-  vars_indels_filter <- do.call(rbind, apply(vars_indels[c("Start", "End", "REF", "ALT", "INDEL_SEQ_CONTEXT")], 1, function(x) {
+  # Merge results into a single dataframe, rename the columns, and format the position columns as integers
+  pass_seq <- as.data.frame(do.call(rbind, pass_seq))
+  colnames(pass_seq) <- c("Chr", "Start", "End", "VAR_SEQ_CONTEXT")
+  vars_pass$Start <- as.integer(vars_pass$Start)
+  vars_pass$End <- as.integer(vars_pass$End)
+  vars_pass <- merge(vars_pass, pass_seq, all.x = TRUE)
+  # Find homopolymer regions
+  vars_pass_filter <- do.call(rbind, apply(vars_pass[c("Start", "End", "REF", "ALT", "VAR_SEQ_CONTEXT")], 1, function(x) {
     # Get alternate allele sequence context
     s <- as.integer(x[[1]])
     e <- as.integer(x[[2]])
@@ -334,7 +350,7 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
     l <- e - s + 1  # l <- nchar(r)
     rs <- as.character(x[[5]])
     if (length(a) == 0 || is.null(a) || is.na(a)) {
-      return(data.frame(INDEL_ALT_SEQ_CONTEXT = "", INDEL_FILTER = "FAIL"))  # This shouldn't ever occur, but if it does we have an invalid INDEL so it should FAIL
+      return(data.frame(VAR_ALT_SEQ_CONTEXT = "", HOMOPOLYMER_FILTER = "FAIL"))  # This shouldn't ever occur, but if it does we have an invalid variant so it should FAIL
     }
     as_list = list()
     filter_list = list()
@@ -350,21 +366,21 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
       hpr_ref <- get_hprs(rs)
       hpr_alt <- get_hprs(as)
       filter <- ""
-      # Find INDELs in homopolymer regions
+      # Find variants in homopolymer regions
       if (is.null(hpr_ref) && is.null(hpr_alt)) {
         # No homopolymers - filter passes
         filter <- "PASS"
       } else if (is.null(hpr_ref) && !is.null(hpr_alt)) {
         # Alternate allele creates homopolymer
-        filter <- "HOMOPOLYMER_INDEL"
+        filter <- "HOMOPOLYMER_VARIANT"
       } else if (!is.null(hpr_ref) && is.null(hpr_alt)) {
         # Alternate allele destroys homopolymer
-        filter <- "HOMOPOLYMER_INDEL"
+        filter <- "HOMOPOLYMER_VARIANT"
       } else if (!identical(hpr_ref[c("length", "base")], hpr_alt[c("length", "base")])) {
         # Reference and alternate sequences have differing homopolymers (i.e. variant creates/destroys a homopolymer sequence)
-        filter <- "HOMOPOLYMER_INDEL"
+        filter <- "HOMOPOLYMER_VARIANT"
       } else if (all(hpr_ref$end <= 10) && all(hpr_alt$end <= 10)) {
-        # All homopolymers reside within first 10 bp (outside of INDEL which starts at bp 11)
+        # All homopolymers reside within first 10 bp (outside of variant range which starts at bp 11)
         filter <- "PASS"
       } else if (l == 1) {
         # All remaining insertions should pass
@@ -383,7 +399,7 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
             ((s_del < s_hpr) && (e_del > e_hpr))
           ) {
             # Deletion starts or ends within, or contains a homopolymer region
-            filter <- "HOMOPOLYMER_INDEL"
+            filter <- "HOMOPOLYMER_VARIANT"
             break
           }
         }
@@ -391,41 +407,50 @@ if (!(length(vars_indels_fa) %% 2 == 0)) {
       as_list[[allele_idx]] <- as
       filter_list[[allele_idx]] <- filter
     }
-    return(data.frame(INDEL_ALT_SEQ_CONTEXT = paste(as_list, collapse = ","), INDEL_FILTER = paste(filter_list, collapse = ",")))
+    return(data.frame(VAR_ALT_SEQ_CONTEXT = paste(as_list, collapse = ","), HOMOPOLYMER_FILTER = paste(filter_list, collapse = ",")))
   }))
-  vars_indels$INDEL_ALT_SEQ_CONTEXT <- vars_indels_filter$INDEL_ALT_SEQ_CONTEXT
-  vars_indels$INDEL_FILTER <- vars_indels_filter$INDEL_FILTER
+  vars_pass$VAR_ALT_SEQ_CONTEXT <- vars_pass_filter$VAR_ALT_SEQ_CONTEXT
+  vars_pass$HOMOPOLYMER_FILTER <- vars_pass_filter$HOMOPOLYMER_FILTER
 }
 
-vars_indels <- vars_indels[!(colnames(vars_indels) %in% c("Start", "End"))]
-preserve_col_order <- union(colnames(vars), colnames(vars_indels))
-vars <- merge(vars, vars_indels, all.x = TRUE)
+# Discard the temporary 'Start' and 'End' columns
+vars_pass <- vars_pass[!(colnames(vars_pass) %in% c("Start", "End"))]
+preserve_col_order <- union(colnames(vars), colnames(vars_pass))
+# Merge the new sequence and filter columns into the main dataframe
+vars <- merge(vars, vars_pass, all.x = TRUE)
 vars <- vars[preserve_col_order]
-vars$INDEL_FILTER[is.na(vars$INDEL_FILTER)] <- "PASS"
-vars$INDEL_FILTER <- unlist(apply(vars[c("INDEL_FILTER", "AD", "VAF")], 1, function(x) {
+# Apply homopolymer filters
+vars$HOMOPOLYMER_FILTER[is.na(vars$HOMOPOLYMER_FILTER)] <- "PASS"
+vars$HOMOPOLYMER_FILTER <- unlist(apply(vars[c("HOMOPOLYMER_FILTER", "AD", "VAF")], 1, function(x) {
   filter <- as.character(x[[1]])
   if (filter == "PASS") {
     return("PASS")
   }
+  # Get filter, AD, and VAF values
+  # Multiallelic variants will have multiple comma-separated values for each
   filter <- strsplit(filter, ",")[[1]]
   ad <- as.integer(strsplit(as.character(x[[2]]), ",")[[1]])
   ad <- ad[2:length(ad)]
   vaf <- as.numeric(strsplit(as.character(x[[3]]), ",")[[1]])
   if (length(filter) != length(ad) && length(filter) != length(vaf)) {
+    # Something's not right with the filter, AD, or VAF columns - investigate
+    # Hopefully this never happens!
     return("MANUAL_REVIEW")
   }
+  # For each alternate allele, check AD and VAF against filter thresholds
   new_filter_list <- list()
   for (filter_idx in 1:length(filter)) {
     filter_i <- filter[filter_idx]
     ad_i <- ad[filter_idx]
     vaf_i <- vaf[filter_idx]
-    if (filter_i == "HOMOPOLYMER_INDEL" & (ad_i < 10 || vaf_i < 0.08)) {
+    if (filter_i == "HOMOPOLYMER_VARIANT" & (ad_i < 10 || vaf_i < 0.1)) {
       new_filter_list[[filter_idx]] <- "FAIL"
     } else {
       new_filter_list[[filter_idx]] <- filter_i
     }
   }
-  if (all(new_filter_list %in% c("PASS", "HOMOPOLYMER_INDEL"))) {
+  # Update filter column
+  if (all(new_filter_list %in% c("PASS", "HOMOPOLYMER_VARIANT"))) {
     return("PASS")
   } else if (all(new_filter_list == "FAIL")) {
     return("FAIL")
@@ -434,7 +459,8 @@ vars$INDEL_FILTER <- unlist(apply(vars[c("INDEL_FILTER", "AD", "VAF")], 1, funct
   }
 }))
 
-vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "INDEL_FILTER")], 1, function(x) {
+# Update combined filter column
+vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "HOMOPOLYMER_FILTER")], 1, function(x) {
   if (x[[2]] == "PASS") {
     return(x[[1]])
   } else if (x[[2]] == "FAIL") {
@@ -446,7 +472,10 @@ vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "INDEL_FILTER")], 1, fun
   }
 })
 
-# ===== PARSE ANNOVAR OUTPUT =====
+
+# ==================== #
+# PARSE ANNOVAR OUTPUT #
+# ==================== #
 
 # Split multi-gene variants
 vars_g <- as.data.frame(separate_rows(vars, Gene.refGene, sep = ";"))
@@ -471,6 +500,11 @@ vars_g_chip_func <- vars_g_chip[
 
 # Merge filtered variants and CHIP gene annotation data frames
 vars_g_chip_func <- merge(vars_g_chip_func, chip_vars, by.x = "Gene.refGene", by.y = "Gene")
+
+
+# =================================================================== #
+# Define functions to extract variant information from Annovar output #
+# =================================================================== #
 
 # Filter GeneDetail.refGene and AAChange.refGene columns for matching refseq transcript IDs
 extractTranscript <- function(column, transcripts, sep) {
@@ -536,6 +570,11 @@ extractSpliceExons <- function(GeneDetail) {
   }
 }
 
+
+# =============================================== #
+# Extract variant information from Annovar output #
+# =============================================== #
+
 vars_g_chip_func$GeneDetail.transcript <- unlist(apply(vars_g_chip_func[, c("GeneDetail.refGene", "Transcript_Accession")], 1, function(x) {
   extractTranscript(x[1], x[2], ";")
 }))
@@ -567,7 +606,11 @@ vars_g_chip_func_filtered <- vars_g_chip_func[!(
     !(vars_g_chip_func$Putative_Splicing %in% c("any", "c_term"))
 ), ]
 
-# Functions for parsing condition and AA change codes
+
+# ========================================================== #
+# Define functions for parsing condition and AA change codes #
+# ========================================================== #
+
 parse_cond <- function(x) {
   cond_type <- NA
   start_pos <- NA
@@ -653,7 +696,10 @@ parse_aa_change <- function(x) {
   ))
 }
 
-# Get position along protein - add N- and C-terminal 10% columns
+
+# ============================================================== #
+# Get position along protein - add N- and C-terminal 10% columns #
+# ============================================================== #
 prot_lengths <- read.csv(transcript_prot_file, header = TRUE)
 colnames(prot_lengths) <- c("refseq_mrna", "hgnc_symbol", "prot_length")
 vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- unlist(lapply(vars_g_chip_func_filtered$AAChange.refGene, function(x) {
@@ -725,7 +771,11 @@ vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- unlist(lapply(vars_g_chip_fun
   return(paste(ret, collapse = ","))
 }))
 
-# Functions for matching variants with CHIP conditions
+
+# =========================================================== #
+# Define functions for matching variants with CHIP conditions #
+# =========================================================== #
+
 match_ns_conditions <- function(conditions, aa_changes, aa_exons) {
   whitelist <- FALSE
   manual_review <- FALSE
@@ -1082,6 +1132,11 @@ match_sp <- function(x) {
   return(c(whitelist, manual_review, putative_whitelist, putative_manual_review))
 }
 
+
+# ===================================== #
+# Apply CHIP variant definition filters #
+# ===================================== #
+
 # Matching non-synonymous mutations (SNV, non-frameshift INDELs)
 wl_ns <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Nonsynonymous", "Putative_Nonsynonymous", "AAChange.protChange", "AAChange.exon")], 1, match_ns)
 
@@ -1114,7 +1169,11 @@ pwl <- wl_ns_df[, 3] | wl_fs_df[, 3] | wl_sg_df[, 3] | wl_sp_df[, 3]
 pmr <- (!pwl) & (wl_ns_df[, 4] | wl_fs_df[, 4] | wl_sg_df[, 4] | wl_sp_df[, 4])
 overall_wl <- data.frame(Whitelist = wl, Manual_Review = mr, Putative_Whitelist = pwl, Putative_Manual_Review = pmr)
 
-# Apply stricter hard filter to putative CHIP variants
+
+# ==================================================== #
+# Apply stricter hard filter to putative CHIP variants #
+# ==================================================== #
+
 vars_g_chip_func_filtered$PUTATIVE <-  (overall_wl$Putative_Whitelist | overall_wl$Putative_Manual_Review)
 vars_g_chip_func_filtered$KNOWN <- (overall_wl$Whitelist | overall_wl$Manual_Review)
 vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c("PUTATIVE", "AD", "F1R2", "F2R1", "VAF", "KNOWN")], 1, function(x) {
@@ -1174,6 +1233,11 @@ overall_wl$Putative_Whitelist <- overall_wl$Putative_Whitelist & vars_g_chip_fun
 vars_g_chip_func_filtered_wl <- cbind(vars_g_chip_func_filtered, wl_ns_df, wl_fs_df, wl_sg_df, wl_sp_df, overall_wl)
 
 vars_g_chip_func_filtered_wl <- unique(vars_g_chip_func_filtered_wl)  # Perform final removal of duplicate entries
+
+
+# ============= #
+# Write to file #
+# ============= #
 
 write.csv(vars_g_chip_func_filtered_wl, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Whitelist,], paste(sample_id, ".chip_wl_variants.csv", sep = ""), row.names = FALSE)
