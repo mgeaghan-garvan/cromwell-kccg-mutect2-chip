@@ -282,8 +282,20 @@ get_hprs <- function(seq, min_size = 5) {
   return(do.call(rbind, hpr_list))
 }
 
+# Should we look at homopolymer SNVs as well as INDELs?
+# NOTE: For now, we'll just be doing INDELs, but in the future we should make this configurable via CLI arguments
+HP_SNVS <- FALSE
+var_selection <- NA
+if (HP_SNVS) {
+  # Get all variants passing previous filters
+  var_selection <- vars$COMBINED_FILTER == "PASS"
+} else {
+  # Just retrieve INDELs
+  var_selection <- grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE)
+}
+
 # Create sub-set of variants that pass previous filters. Get basic variant information
-vars_pass <- vars[vars$COMBINED_FILTER == "PASS", c("Chr", "POS", "REF", "ALT")]
+vars_pass <- vars[var_selection, c("Chr", "POS", "REF", "ALT")]
 # Construct bed-formatted variant data-frame
 vars_pass$Start <- vars_pass$POS
 vars_pass$End <- vars_pass$Start + nchar(vars_pass$REF) - 1
