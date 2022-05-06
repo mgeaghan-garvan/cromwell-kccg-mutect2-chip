@@ -1392,7 +1392,13 @@ task WhitelistFilter {
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_source} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv ./whitelist_filter_files/transcript_protein_lengths.csv ~{ref_fasta}
+      SCRIPT_DIR=$PWD
+      cd whitelist
+
+      Rscript ./whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_source} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./chip_variant_definitions.csv ./transcript_protein_lengths.csv ~{ref_fasta}
+
+      mv *_variants.csv $SCRIPT_DIR/
+      cd $SCRIPT_DIR
     }
 
     runtime {

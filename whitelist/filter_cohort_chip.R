@@ -1,3 +1,5 @@
+source("./import/update_whitelist.R")
+
 args <- commandArgs(trailingOnly = TRUE)
 if (!(length(args) %in% c(1, 2))) {
   stop(paste(
@@ -88,10 +90,12 @@ for (i in 1:length(df_all_var_list)) {
   df_all_var_list[[i]]$Manual_Review <- as.logical(df_all_var_list[[i]]$Manual_Review)
   df_all_var_list[[i]]$Putative_Manual_Review <- as.logical(df_all_var_list[[i]]$Putative_Manual_Review)
 
-  df_all_var_list[[i]]$Manual_Review <- (df_all_var_list[[i]]$Manual_Review & df_all_var_list[[i]]$COMBINED_FILTER != "FAIL") | (df_all_var_list[[i]]$Whitelist & df_all_var_list[[i]]$COMBINED_FILTER == "MANUAL_REVIEW")
-  df_all_var_list[[i]]$Whitelist <- df_all_var_list[[i]]$Whitelist & df_all_var_list[[i]]$COMBINED_FILTER == "PASS"
-  df_all_var_list[[i]]$Putative_Manual_Review <- (df_all_var_list[[i]]$Putative_Manual_Review & df_all_var_list[[i]]$COMBINED_FILTER != "FAIL") | (df_all_var_list[[i]]$Putative_Whitelist & df_all_var_list[[i]]$COMBINED_FILTER == "MANUAL_REVIEW")
-  df_all_var_list[[i]]$Putative_Whitelist <- df_all_var_list[[i]]$Putative_Whitelist & df_all_var_list[[i]]$COMBINED_FILTER == "PASS"
+  new_whitelist <- update_whitelist(df_all_var_list[[i]][, c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review")], df_all_var_list[[i]]$COMBINED_FILTER)
+  df_all_var_list[[i]]$Manual_Review <- new_whitelist$Manual_Review
+  df_all_var_list[[i]]$Whitelist <- new_whitelist$Whitelist
+  df_all_var_list[[i]]$Putative_Manual_Review <- new_whitelist$Putative_Manual_Review
+  df_all_var_list[[i]]$Putative_Whitelist <- new_whitelist$Putative_Whitelist
+
   # Write to file
   new_csv_file <- paste(inputFiles_csv[[i]], ".cohort_wide_filter.all_variants.csv", sep = "")
   write.csv(df_all_var_list[[i]], new_csv_file, row.names = FALSE)
