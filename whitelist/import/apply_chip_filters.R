@@ -1,15 +1,15 @@
 apply_chip_filters <- function(df, match_ns_func, match_fs_func, match_sg_func, match_sp_func, parse_cond_func, parse_aa_change_func) {
     # Matching non-synonymous mutations (SNV, non-frameshift INDELs)
-    wl_ns <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Nonsynonymous", "Putative_Nonsynonymous", "AAChange.protChange", "AAChange.exon")], 1, match_ns, parse_cond_func = parse_cond, parse_aa_change_func = parse_aa_change)
+    wl_ns <- apply(df[, c("ExonicFunc.refGene", "Nonsynonymous", "Putative_Nonsynonymous", "AAChange.protChange", "AAChange.exon")], 1, match_ns_func, parse_cond_func = parse_cond_func, parse_aa_change_func = parse_aa_change_func)
 
     # Matching frameshift mutations
-    wl_fs <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Frameshift", "Putative_Frameshift", "AAChange.protChange", "AAChange.exon")], 1, match_fs, parse_cond_func = parse_cond, parse_aa_change_func = parse_aa_change)
+    wl_fs <- apply(df[, c("ExonicFunc.refGene", "Frameshift", "Putative_Frameshift", "AAChange.protChange", "AAChange.exon")], 1, match_fs_func, parse_cond_func = parse_cond_func, parse_aa_change_func = parse_aa_change_func)
 
     # Matching stop-gain mutations
-    wl_sg <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Stop_Gain", "Putative_Stop_Gain", "AAChange.protChange", "AAChange.exon")], 1, match_sg, parse_cond_func = parse_cond, parse_aa_change_func = parse_aa_change)
+    wl_sg <- apply(df[, c("ExonicFunc.refGene", "Stop_Gain", "Putative_Stop_Gain", "AAChange.protChange", "AAChange.exon")], 1, match_sg_func, parse_cond_func = parse_cond_func, parse_aa_change_func = parse_aa_change_func)
 
     # Matching splicing mutations
-    wl_sp <- apply(vars_g_chip_func_filtered[, c("Func.refGene", "Splicing", "Putative_Splicing", "GeneDetail.transcript", "GeneDetail.exon")], 1, match_sp, parse_cond_func = parse_cond)
+    wl_sp <- apply(df[, c("Func.refGene", "Splicing", "Putative_Splicing", "GeneDetail.transcript", "GeneDetail.exon")], 1, match_sp_func, parse_cond_func = parse_cond_func)
 
     # Add whitelist/manual review columns to data frame
     wl_ns_df <- data.frame(t(wl_ns))

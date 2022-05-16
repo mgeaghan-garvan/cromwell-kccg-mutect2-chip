@@ -15,6 +15,7 @@ source("./import/match_splicing.R")
 source("./import/apply_chip_filters.R")
 source("./import/apply_putative_filter.R")
 source("./import/update_whitelist.R")
+source("./import/protein_terminal.R")
 
 
 # ========================== #

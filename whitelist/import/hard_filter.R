@@ -1,8 +1,8 @@
-apply_hard_filters <- function(df) {
+apply_hard_filters <- function(df, tumor_sample_name) {
   # Filter by AD, DP, AF, F1R2/F2R1 VCF fields and gnomAD frequency
   get_format_field <- function(x, format_field) { grep(paste("^", x, "$", sep = ""), format_field, perl = TRUE) }
   # vars_stats <- apply(df[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, function(x) {
-  vars_stats <- apply(df[c("FORMAT", "TumorSample", "gnomAD_AF")], 1, function(x) {
+  vars_stats <- apply(df[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, function(x) {
     format_field <- strsplit(x[[1]], ":")[[1]]
     sample_field <- strsplit(x[[2]], ":")[[1]]
     gnomad_af <- as.numeric(x[[3]])

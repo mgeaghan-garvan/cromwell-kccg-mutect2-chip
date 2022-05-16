@@ -69,4 +69,5 @@ get_protein_terminal_status <- function(df, transcript_prot_file, parse_aa_chang
     ret <- as.character(unlist(ret))
     return(paste(ret, collapse = ","))
   }))
+  return(df)
 }
