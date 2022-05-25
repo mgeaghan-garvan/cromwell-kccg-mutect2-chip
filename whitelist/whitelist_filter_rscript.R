@@ -126,7 +126,30 @@ colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_co
 
 # Rename gnomad columns and get gnomad AF
 vars <- rename_gnomad_col(vars, gnomad_source)
-vars <- get_gnomad_af(vars, gnomad_source, gnomad_pop)
+vars <- get_gnomad_af(vars, gnomad_source, gnomad_pop, treat_missing_as_rare)
+
+# ============================================= #
+# Define regex strings for mutation definitions #
+# ============================================= #
+
+regex_list <- list(
+  all = "^all$",
+  c_terminal = "^c_term$",
+  exon_any = "^exon\\d+$",
+  exon_aa_insertion_specific = "^exon\\d+\\[ins[A-Z]\\]$",
+  range = "^\\d+\\-\\d+$",
+  substitution_specific = "^[A-Z]\\d+[A-Z]$",
+  substitution_any = "^[A-Z]\\d+$",
+  deletion_single = "^[A-Z]\\d+del$",
+  deletion_range = "^[A-Z]\\d+_[A-Z]\\d+del$",
+  insertion_specific = "^[A-Z]\\d+_[A-Z]\\d+ins[A-Z]+$",
+  insertion_any = "^[A-Z]\\d+_[A-Z]\\d+ins$",
+  deletion_insertion = "^[A-Z]\\d+_[A-Z]\\d+delins[A-Z]+$",
+  coding_range = "^c\\.\\d+-\\d+$",
+  coding_insertion_any = "^c\\.\\d+_\\d+ins$",
+  frameshift_any = "^[A-Z]\\d+fs$",
+  stop_gain = "^[A-Z]\\d+\\*$"
+)
 
 
 # ================== #
@@ -149,29 +172,56 @@ vars <- apply_homopolymer_filter(vars, fasta_file, HP_SNVS = FALSE)
 # PARSE ANNOVAR OUTPUT #
 # ==================== #
 
-# Split multi-gene variants
-vars_g <- as.data.frame(separate_rows(vars, Gene.refGene, sep = ";"))
-vars_g$AAChange.refGene <- apply(vars_g[, c("Gene.refGene", "AAChange.refGene")], 1, function(row) {
-  a <- strsplit(row[[2]], ",")[[1]]
-  aa <- a[grepl(paste("(^|:)", row[[1]], "(:|$)", sep = ""), a, perl = TRUE)]
-  aaa <- paste(aa, collapse = ",")
-  return(aaa)
-})
-vars_g <- unique(vars_g)  # Remove potential duplicate entries after splitting by gene name
-
-# Filter for CHIP genes
-vars_g_chip <- vars_g[vars_g$Gene.refGene %in% chip_vars$Gene,]
+# Split rows by RefSeq IDs in both GeneDetail.refGene (noncoding variant annotations, e.g. splicing variants) and AAChange.refGene (coding variant annotations)
+vars_g <- as.data.frame(separate_rows(vars, GeneDetail.refGene, sep = ";"))
+vars_g <- as.data.frame(separate_rows(vars_g, AAChange.refGene, sep = ","))
 
 # Filter variants for exonic or splicing variants
-vars_g_chip_func <- vars_g_chip[
+vars_g_func <- vars_g[
   (
-    grepl("exonic", vars_g_chip$Func.refGene, fixed = T) |
-      grepl("splicing", vars_g_chip$Func.refGene, fixed = T)
+    grepl("exonic", vars_g$Func.refGene, fixed = T) |
+      grepl("splicing", vars_g$Func.refGene, fixed = T)
   ),
 ]
 
+# Drop potential duplicates
+vars_g_func <- unique(vars_g_func)
+
+# Construct a column with the RefSeq IDs from both GeneDetail.refGene and AAChange.refGene, and split rows again on this column
+vars_g_func_acc <- unlist(apply(vars_g_func[c("AAChange.refGene", "GeneDetail.refGene")], 1, function(x) {
+  aa <- as.character(x[[1]])
+  gd <- as.character(x[[2]])
+  aagd <- paste(aa, gd, sep = ":")
+  ann <- strsplit(aagd, ":")[[1]]
+  acc <- grep("^N[MR]_\\d+(\\.\\d+)?$", ann, perl = TRUE, value = TRUE)
+  acc <- gsub("^(N[MR]_\\d+)(\\.\\d+)?$", "\\1", acc, perl = TRUE)
+  return(paste(acc, collapse = ";"))
+}))
+vars_g_func$Transcript.refGene <- vars_g_func_acc
+vars_g_func <- as.data.frame(separate_rows(vars_g_func, Transcript.refGene, sep = ";"))
+acc_func <- function(x) {
+  acc <- as.character(x[[1]])
+  ann <- as.character(x[[2]])
+  ret <- grep(paste("(^|:)", acc, "(:|$)", sep = ""), ann, perl = TRUE, value = TRUE)
+  if (length(ret) != 1) {
+    return("")
+  } else {
+    return(ret)
+  }
+}
+vars_g_func$AAChange.refGene <- unlist(apply(vars_g_func[c("Transcript.refGene", "AAChange.refGene")], 1, acc_func))
+vars_g_func$GeneDetail.refGene <- unlist(apply(vars_g_func[c("Transcript.refGene", "GeneDetail.refGene")], 1, acc_func))
+
+# Drop potential duplicates and rows without a RefSeq ID
+vars_g_func <- unique(vars_g_func[vars_g_func$Transcript.refGene != "",])
+
+
+# Filter for CHIP transcripts
+vars_g_chip_func <- vars_g_func[vars_g_func$Transcript.refGene %in% chip_vars$refseq_accession,]
+
+
 # Merge filtered variants and CHIP gene annotation data frames
-vars_g_chip_func <- merge(vars_g_chip_func, chip_vars, by.x = "Gene.refGene", by.y = "Gene")
+vars_g_chip_func <- merge(vars_g_chip_func, chip_vars, by.x = "Transcript.refGene", by.y = "refseq_accession")
 
 
 # =============================================== #

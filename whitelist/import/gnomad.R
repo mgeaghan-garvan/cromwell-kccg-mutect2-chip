@@ -40,7 +40,7 @@ rename_gnomad_col <- function(df, gnomad_source) {
     return(df)
 }
 
-get_gnomad_af <- function(df, gnomad_source, gnomad_pop) {
+get_gnomad_af <- function(df, gnomad_source, gnomad_pop, treat_missing_as_rare) {
     # Get gnomAD allele frequencies
     if (gnomad_source %in% c("genome,exome", "exome,genome")) {
         gnomad_pop_columns <- paste("gnomAD", c("genome", "exome"), gnomad_pop, sep = "_")
