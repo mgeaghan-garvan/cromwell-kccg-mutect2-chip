@@ -52,8 +52,7 @@ apply_homopolymer_filter <- function(df, fasta_file, HP_SNVS = FALSE) {
   vars_pass_fa <- scan("_tmp_pass.fa", character())
   if (!(length(vars_pass_fa) %% 2 == 0)) {
     # Something went wrong and the fasta file is improperly formatted (number of lines not a mulitple of 2)
-    print("WARNING: Could not successfully retrieve variant sequence contexts. Skipping...")
-    vars_pass$VAR_CONTEXT = ""
+    stop("ERROR: Could not successfully retrieve variant sequence contexts.")
   } else {
     pass_seq = list()
     i = 1
@@ -61,14 +60,10 @@ apply_homopolymer_filter <- function(df, fasta_file, HP_SNVS = FALSE) {
     for (s in vars_pass_fa) {
       if (i %% 2 == 1 && !grepl("^>", s, perl = TRUE)) {
         # Second of every pair of lines should not start with a ">" (should be the sequence itself)
-        print("WARNING: Could not successfully retrieve variant sequence contexts. Skipping...")
-        vars_pass$VAR_CONTEXT = ""
-        break
+        stop("ERROR: Could not successfully retrieve variant sequence contexts.")
       } else if (i %% 2 == 0 && grepl("^>", s, perl = TRUE)) {
         # First of every pair of lines should start with ">" (this is the sequence name)
-        print("WARNING: Could not successfully retrieve variant sequence contexts. Skipping...")
-        vars_pass$VAR_CONTEXT = ""
-        break
+        stop("ERROR: Could not successfully retrieve variant sequence contexts.")
       } else {
         if (i %% 2 == 1) {
           # Parse the sequence name: retrieve chr, start, and end positions

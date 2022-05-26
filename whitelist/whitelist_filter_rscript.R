@@ -6,6 +6,7 @@ library(stringr)
 source("./import/gnomad.R")
 source("./import/hard_filter.R")
 source("./import/homopolymers.R")
+source("./import/parse_annovar.R")
 source("./import/extract_var_details.R")
 source("./import/parse_chip_defs.R")
 source("./import/match_nonsynonymous.R")
@@ -157,7 +158,7 @@ regex_list <- list(
 # ================== #
 
 # Filter by AD, DP, AF, F1R2/F2R1 VCF fields and gnomAD frequency
-vars <- apply_hard_filters(vars, tumor_sample_name)
+vars_hf <- apply_hard_filters(vars, tumor_sample_name)
 
 
 # ================================================ #
@@ -165,122 +166,84 @@ vars <- apply_hard_filters(vars, tumor_sample_name)
 # ================================================ #
 
 # NOTE: For now, we'll just be doing INDELs (HP_SNVS = FALSE), but in the future we should make this configurable via CLI arguments
-vars <- apply_homopolymer_filter(vars, fasta_file, HP_SNVS = FALSE)
+vars_hf_hp <- apply_homopolymer_filter(vars_hf, fasta_file, HP_SNVS = FALSE)
 
 
 # ==================== #
 # PARSE ANNOVAR OUTPUT #
 # ==================== #
 
-# Split rows by RefSeq IDs in both GeneDetail.refGene (noncoding variant annotations, e.g. splicing variants) and AAChange.refGene (coding variant annotations)
-vars_g <- as.data.frame(separate_rows(vars, GeneDetail.refGene, sep = ";"))
-vars_g <- as.data.frame(separate_rows(vars_g, AAChange.refGene, sep = ","))
-
-# Filter variants for exonic or splicing variants
-vars_g_func <- vars_g[
-  (
-    grepl("exonic", vars_g$Func.refGene, fixed = T) |
-      grepl("splicing", vars_g$Func.refGene, fixed = T)
-  ),
-]
-
-# Drop potential duplicates
-vars_g_func <- unique(vars_g_func)
-
-# Construct a column with the RefSeq IDs from both GeneDetail.refGene and AAChange.refGene, and split rows again on this column
-vars_g_func_acc <- unlist(apply(vars_g_func[c("AAChange.refGene", "GeneDetail.refGene")], 1, function(x) {
-  aa <- as.character(x[[1]])
-  gd <- as.character(x[[2]])
-  aagd <- paste(aa, gd, sep = ":")
-  ann <- strsplit(aagd, ":")[[1]]
-  acc <- grep("^N[MR]_\\d+(\\.\\d+)?$", ann, perl = TRUE, value = TRUE)
-  acc <- gsub("^(N[MR]_\\d+)(\\.\\d+)?$", "\\1", acc, perl = TRUE)
-  return(paste(acc, collapse = ";"))
-}))
-vars_g_func$Transcript.refGene <- vars_g_func_acc
-vars_g_func <- as.data.frame(separate_rows(vars_g_func, Transcript.refGene, sep = ";"))
-acc_func <- function(x) {
-  acc <- as.character(x[[1]])
-  ann <- as.character(x[[2]])
-  ret <- grep(paste("(^|:)", acc, "(:|$)", sep = ""), ann, perl = TRUE, value = TRUE)
-  if (length(ret) != 1) {
-    return("")
-  } else {
-    return(ret)
-  }
-}
-vars_g_func$AAChange.refGene <- unlist(apply(vars_g_func[c("Transcript.refGene", "AAChange.refGene")], 1, acc_func))
-vars_g_func$GeneDetail.refGene <- unlist(apply(vars_g_func[c("Transcript.refGene", "GeneDetail.refGene")], 1, acc_func))
-
-# Drop potential duplicates and rows without a RefSeq ID
-vars_g_func <- unique(vars_g_func[vars_g_func$Transcript.refGene != "",])
-
+# Parse annovar output, split rows into one per transcript, and extract transcript accession IDs
+vars_ann <- parse_annovar(vars_hf_hp)
 
 # Filter for CHIP transcripts
-vars_g_chip_func <- vars_g_func[vars_g_func$Transcript.refGene %in% chip_vars$refseq_accession,]
+refseq_ensembl_suffix = "ensGene"  # change this to "refGene" if you want to use RefSeq IDs
+refseq_ensembl_chip_accession_column = "ensembl_accession"  # change this to "refseq_accession" if you want to use RefSeq IDs
+aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
+genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
+transcript <- paste("Transcript", refseq_ensembl_suffix, sep = ".")
 
+vars_chip <- vars_ann[vars_ann[[transcript]] %in% chip_vars[[refseq_ensembl_chip_accession_column]],]
 
 # Merge filtered variants and CHIP gene annotation data frames
-vars_g_chip_func <- merge(vars_g_chip_func, chip_vars, by.x = "Transcript.refGene", by.y = "refseq_accession")
+vars_chip <- merge(vars_chip, chip_vars, by.x = transcript, by.y = refseq_ensembl_chip_accession_column)
 
 
-# =============================================== #
-# Extract variant information from Annovar output #
-# =============================================== #
+# ============================================================================== #
+# Filter rows if chip mutation definitions match AAChange/GeneDetail column info #
+# ============================================================================== #
 
-vars_g_chip_func$GeneDetail.transcript <- unlist(apply(vars_g_chip_func[, c("GeneDetail.refGene", "Transcript_Accession")], 1, function(x) {
-  extractTranscript(x[1], x[2], ";")
-}))
 
-vars_g_chip_func$AAChange.transcript <- unlist(apply(vars_g_chip_func[, c("AAChange.refGene", "Transcript_Accession")], 1, function(x) {
-  extractTranscript(x[1], x[2], ",")
-}))
 
-vars_g_chip_func$AAChange.protChange <- unlist(lapply(vars_g_chip_func[, c("AAChange.transcript")], extractNonsyn))
 
-vars_g_chip_func$AAChange.exon <- unlist(lapply(vars_g_chip_func[, c("AAChange.transcript")], extractNonsynExon))
+# ========== OLD CODE ========== #
 
-vars_g_chip_func$GeneDetail.exon <- unlist(lapply(vars_g_chip_func[, c("GeneDetail.transcript")], extractSpliceExons ))
+
+vars_chip$AAChange.protChange <- unlist(lapply(vars_chip[, c("AAChange.transcript")], extractNonsyn))
+
+vars_chip$AAChange.exon <- unlist(lapply(vars_chip[, c("AAChange.transcript")], extractNonsynExon))
+
+vars_chip$GeneDetail.exon <- unlist(lapply(vars_chip[, c("GeneDetail.transcript")], extractSpliceExons ))
 
 # Remove variants with no matching affected transcript
-vars_g_chip_func_filtered <- vars_g_chip_func[!(
-  vars_g_chip_func$GeneDetail.transcript == "nan" &
-    vars_g_chip_func$AAChange.transcript == "nan" &
-    vars_g_chip_func$AAChange.protChange == "nan" &
-    vars_g_chip_func$AAChange.exon == "nan" &
-    vars_g_chip_func$GeneDetail.exon == "nan" &
-    !(vars_g_chip_func$Nonsynonymous %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Frameshift %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Stop_Gain %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Splicing %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Nonsynonymous %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Frameshift %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Stop_Gain %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Splicing %in% c("any", "c_term"))
+vars_chip_filtered <- vars_chip[!(
+  vars_chip$GeneDetail.transcript == "nan" &
+    vars_chip$AAChange.transcript == "nan" &
+    vars_chip$AAChange.protChange == "nan" &
+    vars_chip$AAChange.exon == "nan" &
+    vars_chip$GeneDetail.exon == "nan" &
+    !(vars_chip$Nonsynonymous %in% c("any", "c_term")) &
+    !(vars_chip$Frameshift %in% c("any", "c_term")) &
+    !(vars_chip$Stop_Gain %in% c("any", "c_term")) &
+    !(vars_chip$Splicing %in% c("any", "c_term")) &
+    !(vars_chip$Putative_Nonsynonymous %in% c("any", "c_term")) &
+    !(vars_chip$Putative_Frameshift %in% c("any", "c_term")) &
+    !(vars_chip$Putative_Stop_Gain %in% c("any", "c_term")) &
+    !(vars_chip$Putative_Splicing %in% c("any", "c_term"))
 ), ]
 
 
 # ============================================================== #
 # Get position along protein - add N- and C-terminal 10% columns #
 # ============================================================== #
-vars_g_chip_func_filtered <- get_protein_terminal_status(vars_g_chip_func_filtered, transcript_prot_file, parse_aa_change)
+vars_chip_filtered <- get_protein_terminal_status(vars_chip_filtered, transcript_prot_file, parse_aa_change)
 
 
 # ==================================================================== #
 # Apply CHIP variant definition filters and generate initial whitelist #
 # ==================================================================== #
 
-whitelist <- apply_chip_filters(vars_g_chip_func_filtered, match_ns, match_fs, match_sg, match_sp, parse_cond, parse_aa_change)
+whitelist <- apply_chip_filters(vars_chip_filtered, match_ns, match_fs, match_sg, match_sp, parse_cond, parse_aa_change)
 
 
 # ==================================================== #
 # Apply stricter hard filter to putative CHIP variants #
 # ==================================================== #
 
-vars_g_chip_func_filtered <- apply_putative_filter(vars_g_chip_func_filtered, whitelist)
+vars_chip_filtered <- apply_putative_filter(vars_chip_filtered, whitelist)
 
 # Update the overall whitelist filter columns to include the putative variant filter information
-whitelist$overall_wl <- update_whitelist(whitelist$overall_wl, vars_g_chip_func_filtered$COMBINED_FILTER)
+whitelist$overall_wl <- update_whitelist(whitelist$overall_wl, vars_chip_filtered$COMBINED_FILTER)
 
 
 # ================== #
@@ -288,18 +251,18 @@ whitelist$overall_wl <- update_whitelist(whitelist$overall_wl, vars_g_chip_func_
 # ================== #
 
 # Merge whitelist columns into main dataframe
-vars_g_chip_func_filtered_wl <- cbind(vars_g_chip_func_filtered, whitelist$wl_ns_df, whitelist$wl_fs_df, whitelist$wl_sg_df, whitelist$wl_sp_df, whitelist$overall_wl)
+vars_chip_filtered_wl <- cbind(vars_chip_filtered, whitelist$wl_ns_df, whitelist$wl_fs_df, whitelist$wl_sg_df, whitelist$wl_sp_df, whitelist$overall_wl)
 
 # Perform final removal of duplicate entries
-vars_g_chip_func_filtered_wl <- unique(vars_g_chip_func_filtered_wl)
+vars_chip_filtered_wl <- unique(vars_chip_filtered_wl)
 
 
 # ============= #
 # Write to file #
 # ============= #
 
-write.csv(vars_g_chip_func_filtered_wl, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Whitelist,], paste(sample_id, ".chip_wl_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Manual_Review,], paste(sample_id, ".chip_manual_review_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Putative_Whitelist,], paste(sample_id, ".chip_putative_wl_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Putative_Manual_Review,], paste(sample_id, ".chip_putative_manual_review_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered_wl, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered_wl[vars_chip_filtered_wl$Whitelist,], paste(sample_id, ".chip_wl_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered_wl[vars_chip_filtered_wl$Manual_Review,], paste(sample_id, ".chip_manual_review_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered_wl[vars_chip_filtered_wl$Putative_Whitelist,], paste(sample_id, ".chip_putative_wl_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered_wl[vars_chip_filtered_wl$Putative_Manual_Review,], paste(sample_id, ".chip_putative_manual_review_variants.csv", sep = ""), row.names = FALSE)
