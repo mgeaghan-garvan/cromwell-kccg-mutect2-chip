@@ -7,16 +7,19 @@ source("./import/gnomad.R")
 source("./import/hard_filter.R")
 source("./import/homopolymers.R")
 source("./import/parse_annovar.R")
-source("./import/extract_var_details.R")
-source("./import/parse_chip_defs.R")
-source("./import/match_nonsynonymous.R")
-source("./import/match_frameshift.R")
-source("./import/match_stopgain.R")
-source("./import/match_splicing.R")
-source("./import/apply_chip_filters.R")
-source("./import/apply_putative_filter.R")
+source("./import/match_mutation.R")
+
 source("./import/update_whitelist.R")
 source("./import/protein_terminal.R")
+
+# source("./import/extract_var_details.R")
+# source("./import/parse_chip_defs.R")
+# source("./import/match_nonsynonymous.R")
+# source("./import/match_frameshift.R")
+# source("./import/match_stopgain.R")
+# source("./import/match_splicing.R")
+# source("./import/apply_chip_filters.R")
+# source("./import/apply_putative_filter.R")
 
 
 # ========================== #
@@ -129,29 +132,6 @@ colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_co
 vars <- rename_gnomad_col(vars, gnomad_source)
 vars <- get_gnomad_af(vars, gnomad_source, gnomad_pop, treat_missing_as_rare)
 
-# ============================================= #
-# Define regex strings for mutation definitions #
-# ============================================= #
-
-regex_list <- list(
-  all = "^all$",
-  c_terminal = "^c_term$",
-  exon_any = "^exon\\d+$",
-  exon_aa_insertion_specific = "^exon\\d+\\[ins[A-Z]\\]$",
-  range = "^\\d+\\-\\d+$",
-  substitution_specific = "^[A-Z]\\d+[A-Z]$",
-  substitution_any = "^[A-Z]\\d+$",
-  deletion_single = "^[A-Z]\\d+del$",
-  deletion_range = "^[A-Z]\\d+_[A-Z]\\d+del$",
-  insertion_specific = "^[A-Z]\\d+_[A-Z]\\d+ins[A-Z]+$",
-  insertion_any = "^[A-Z]\\d+_[A-Z]\\d+ins$",
-  deletion_insertion = "^[A-Z]\\d+_[A-Z]\\d+delins[A-Z]+$",
-  coding_range = "^c\\.\\d+-\\d+$",
-  coding_insertion_any = "^c\\.\\d+_\\d+ins$",
-  frameshift_any = "^[A-Z]\\d+fs$",
-  stop_gain = "^[A-Z]\\d+\\*$"
-)
-
 
 # ================== #
 # Apply hard filters #
@@ -193,7 +173,12 @@ vars_chip <- merge(vars_chip, chip_vars, by.x = transcript, by.y = refseq_ensemb
 # Filter rows if chip mutation definitions match AAChange/GeneDetail column info #
 # ============================================================================== #
 
+vars_chip_filtered <- match_mut_def(vars_chip)
 
+
+# ==================================================== #
+# Apply stricter hard filter to putative CHIP variants #
+# ==================================================== #
 
 
 # ========== OLD CODE ========== #
