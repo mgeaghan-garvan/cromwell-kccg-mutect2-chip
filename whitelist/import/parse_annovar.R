@@ -1,4 +1,4 @@
-parse_annovar <- function(df, ensGene = TRUE, refGene = FALSE, filter = c("exonic", "splicing")) {
+parse_annovar <- function(df, vars_variant_func, ensGene = TRUE, refGene = FALSE, filter = c("exonic", "splicing")) {
   col_suffix <- ""
   trans_regex <- ""
   if (ensGene) {
@@ -21,9 +21,11 @@ parse_annovar <- function(df, ensGene = TRUE, refGene = FALSE, filter = c("exoni
   if (ensGene) {
     vars_g <- as.data.frame(separate_rows(df, GeneDetail.ensGene, sep = ";"))
     vars_g <- as.data.frame(separate_rows(vars_g, AAChange.ensGene, sep = ","))
+    vars_g <- as.data.frame(separate_rows(vars_g, AAChange.ensGene, sep = ";"))
   } else {
     vars_g <- as.data.frame(separate_rows(df, GeneDetail.refGene, sep = ";"))
     vars_g <- as.data.frame(separate_rows(vars_g, AAChange.refGene, sep = ","))
+    vars_g <- as.data.frame(separate_rows(vars_g, AAChange.refGene, sep = ";"))
   }
   
   # Filter variants for exonic or splicing variants
@@ -74,5 +76,24 @@ parse_annovar <- function(df, ensGene = TRUE, refGene = FALSE, filter = c("exoni
   
   # Drop potential duplicates and rows without a RefSeq ID
   vars_g_filter <- unique(vars_g_filter[vars_g_filter[[transcript]] != "",])
+  
+  # Split rows once again on the Func.refGene/Func.ensGene column
+  if (ensGene) {
+    vars_g_filter <- as.data.frame(separate_rows(vars_g_filter, Func.ensGene, sep = ";"))
+  } else {
+    vars_g_filter <- as.data.frame(separate_rows(vars_g_filter, Func.refGene, sep = ";"))
+  }
+  
+  # Merge with the variant_func dataframe
+  vars_g_filter <- merge(vars_g_filter, vars_variant_func, by.x = c(func, transcript, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt"), all.x = TRUE)
+  
+  # Filter variants again for exonic or splicing variants
+  if (!is.na(filter) && !is.null(filter)) {
+    vars_g_filter <- vars_g_filter[grepl(paste("^(", paste(filter, collapse = "|"), ")$", sep = ""), vars_g_filter[[func]], perl = TRUE),]
+  }
+  
+  # Drop potential duplicates again
+  vars_g_filter <- unique(vars_g_filter)
+  
   return(vars_g_filter)
 }

@@ -22,9 +22,9 @@ chip_def_regex_list <- list(
 )
 
 exonic_func_regex_list <- list(
-  frameshift = "^frameshift ",
-  stop_gain = "^stopgain$",
-  nonsynonymous = "^(nonsynonymous|nonframeshift) "
+  frameshift = "(^|;)frameshift ",
+  stop_gain = "(^|;)stopgain(;|$)",
+  nonsynonymous = "(^|;)(nonsynonymous|nonframeshift) "
 )
 
 
@@ -73,7 +73,7 @@ match_splicing <- function(df, refseq_ensembl_suffix = "ensGene") {
   aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
   genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
   
-  splicing_idx <- grepl("splicing", tmp_df[[func]], fixed = TRUE) & tmp_df$mutation_class == "splice_site"
+  splicing_idx <- tmp_df[[func]] == "splicing" & tmp_df$mutation_class == "splice_site"
   tmp_df_splicing <- tmp_df[splicing_idx,]
   tmp_df_nonsplicing <- tmp_df[!splicing_idx,]
   
@@ -82,4 +82,38 @@ match_splicing <- function(df, refseq_ensembl_suffix = "ensGene") {
   # ========================= #
   
   ret <- rbind(tmp_df_nonsplicing, tmp_df_splicing)
+  return(ret)
 }
+
+match_exonic <- function(df, refseq_ensembl_suffix = "ensGene") {
+  tmp_df <- df
+  if(!("CHIP_FILTER" %in% colnames(tmp_df))) {
+    tmp_df$CHIP_FILTER <- NA
+  }
+  
+  func <- paste("Func", refseq_ensembl_suffix, sep = ".")
+  aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
+
+  exonic_idx <- tmp_df[[func]] == "exonic" & tmp_df$mutation_class != "splice_site"
+  tmp_df_exonic <- tmp_df[exonic_idx,]
+  tmp_df_nonexonic <- tmp_df[!exonic_idx,]
+  
+  # ===== Do some stuff ===== #
+  
+  # ========================= #
+  
+  ret <- rbind(tmp_df_nonexonic, tmp_df_exonic)
+  return(ret)
+}
+
+# match_stop_gain <- function(df, refseq_ensembl_suffix = "ensGene") {
+#   
+# }
+# 
+# match_frameshift <- function(df, refseq_ensembl_suffix = "ensGene") {
+#   
+# }
+# 
+# match_nonsynonymous <- function(df, refseq_ensembl_suffix = "ensGene") {
+#   
+# }

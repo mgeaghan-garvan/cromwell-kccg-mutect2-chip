@@ -30,8 +30,9 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 9) {
   stop(paste(
     "Incorrect number of arguments!",
-    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",
+    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",
     "    ANNOVAR OUTPUT TABLE/VCF:         output txt and vcf files from Annovar.",
+    "    ANNOVAR VARIANT FUNCTION TABLE:   variant function output file from Annovar.",
     "    TUMOR SAMPLE NAME:                name of the tumor sample as recorded in the VCF file's column header line.",
     "    GNOMAD SOURCE:                    one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
     "    GNOMAD SUBPOPULATION CODE:        one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
@@ -43,13 +44,14 @@ if (length(args) != 9) {
 }
 annovar_text_out <- args[1]
 annovar_vcf_out <- args[2]
-tumor_sample_name <- args[3]
-gnomad_source <- args[4]
-gnomad_pop <- args[5]
-treat_missing_as_rare <- args[6]
-chip_def_file <- args[7]
-transcript_prot_file <- args[8]
-fasta_file <- args[9]
+annovar_variant_func_out <- args[3]
+tumor_sample_name <- args[4]
+gnomad_source <- args[5]
+gnomad_pop <- args[6]
+treat_missing_as_rare <- args[7]
+chip_def_file <- args[8]
+transcript_prot_file <- args[9]
+fasta_file <- args[10]
 
 
 # ============================ #
@@ -61,6 +63,9 @@ if (!file.exists(annovar_text_out)) {
 }
 if (!file.exists(annovar_vcf_out)) {
   stop("Input annovar vcf file does not exist.")
+}
+if (!file.exists(annovar_variant_func_out)) {
+  stop("Input annovar variant function file does not exist.")
 }
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
@@ -108,6 +113,17 @@ vars <- read.delim(annovar_text_out, sep = "\t", header = TRUE)
 vars$Sample <- sample_id
 vars$TumorSample <- tumor_sample_name
 
+# Load annovar variant function annotations
+vars_variant_func <- read.delim(annovar_variant_func_out, sep = "\t", header = FALSE)
+vars_variant_func <- unique(vars_variant_func[1:7])
+colnames(vars_variant_func) <- c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt")
+vars_variant_func$Transcript <- gsub("(ENST\\d+)([^\\d]|$)", ",\\1,", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func$Transcript <- gsub("^,", "", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func$Transcript <- gsub(",,+", ",", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func <- (vars_variant_func %>% separate_rows(Transcript, sep = ","))
+vars_variant_func <- vars_variant_func[grepl("^ENST\\d+$", vars_variant_func$Transcript),]
+vars_variant_func <- unique(vars_variant_func)
+
 # Load annovar vcf file
 vcf <- scan(annovar_vcf_out, character(), sep = "\n")
 vcf_header <- grep("^#CHROM", vcf, perl = TRUE, value = TRUE)
@@ -153,12 +169,22 @@ vars_hf_hp <- apply_homopolymer_filter(vars_hf, fasta_file, HP_SNVS = FALSE)
 # PARSE ANNOVAR OUTPUT #
 # ==================== #
 
+ensembl_refseq <- "ensembl"  # Use Ensembl IDs by default. Change this to "refseq" if you want to use RefSeq IDs
+ensGene <- TRUE
+refGene <- FALSE
+refseq_ensembl_suffix <- "ensGene"
+refseq_ensembl_chip_accession_column <- "ensembl_accession"
+if (ensembl_refseq == "refseq") {
+  ensGene <- FALSE
+  refGene <- TRUE
+  refseq_ensembl_suffix <- "refGene"
+  refseq_ensembl_chip_accession_column <- "refseq_accession"
+}
+
 # Parse annovar output, split rows into one per transcript, and extract transcript accession IDs
-vars_ann <- parse_annovar(vars_hf_hp)
+vars_ann <- parse_annovar(vars_hf_hp, vars_variant_func, ensGene = ensGene, refGene = refGene, filter = c("exonic", "splicing"))
 
 # Filter for CHIP transcripts
-refseq_ensembl_suffix = "ensGene"  # change this to "refGene" if you want to use RefSeq IDs
-refseq_ensembl_chip_accession_column = "ensembl_accession"  # change this to "refseq_accession" if you want to use RefSeq IDs
 aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
 genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
 transcript <- paste("Transcript", refseq_ensembl_suffix, sep = ".")
