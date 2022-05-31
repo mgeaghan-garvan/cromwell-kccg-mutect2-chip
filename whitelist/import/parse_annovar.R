@@ -85,7 +85,7 @@ parse_annovar <- function(df, vars_variant_func, ensGene = TRUE, refGene = FALSE
   }
   
   # Merge with the variant_func dataframe
-  vars_g_filter <- merge(vars_g_filter, vars_variant_func, by.x = c(func, transcript, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt"), all.x = TRUE)
+  vars_g_filter <- merge(vars_g_filter, vars_variant_func, by.x = c(func, transcript, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt"))
   
   # Filter variants again for exonic or splicing variants
   if (!is.na(filter) && !is.null(filter)) {
