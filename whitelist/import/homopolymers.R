@@ -222,5 +222,5 @@ apply_homopolymer_filter <- function(df, fasta_file, HP_SNVS = FALSE) {
       return("FAIL")
     }
   })
-  return(df)
+  return(unique(df))
 }

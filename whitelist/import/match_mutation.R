@@ -15,7 +15,8 @@ mutation_info_template = list(
   utr_intronic = NA,
   intron_offset_start = NA,
   intron_offset_end = NA,
-  fs_term = NA
+  fs_term = NA,
+  mutation_type = NA
 )
 
 chip_def_regex_list <- list(
@@ -31,7 +32,7 @@ chip_def_regex_list <- list(
   coding_range = "^c\\.(\\d+)-(\\d+)$",
   coding_insertion = "^c\\.(\\d+)_(\\d+)(ins)$",
   frameshift = "^([A-Z])(\\d+)fs$",
-  stop_gain = "^([A-Z])(\\d+)\\*$"
+  stop_gain_substitution = "^([A-Z])(\\d+)\\*$"
 )
 
 chip_def_regex_groups <- list(
@@ -94,7 +95,7 @@ chip_def_regex_groups <- list(
     ref_start = 1,
     ref_end = 1
   ),
-  stop_gain = list(
+  stop_gain_substitution = list(
     start = 2,
     end = 2,
     ref_start = 1,
@@ -109,7 +110,7 @@ exonic_func_regex_list <- list(
 )
 
 gene_detail_regex_list <- list(
-  sub = "^c\\.([\\-\\*])?(\\d+)([\\+\\-](\\d+))?([ACGT\\-]+)\\>([ACGT\\-]+)$",
+  sub = "^c\\.([\\*])?(\\d+)?([\\+\\-](\\d+))?([ACGT\\-]+)\\>([ACGT\\-]+)$",
   range = "^c\\.([\\*])?(\\d+)?([\\+\\-](\\d+))?_([\\*])?(\\d+)?([\\+\\-](\\d+))?(del|ins|delins)(\\-|[ACGT]+)$"
 )
 
@@ -232,6 +233,7 @@ parse_mutation <- function(mutation, regex_list, regex_groups, exon = NA) {
       # Move to next regex string if no match
       next
     }
+    ret$mutation_type <- mut_type
     rgx_groups <- regex_groups[[mut_type]]
     for (field in names(rgx_groups)) {
       # Iterate through the regex capture groups defined for the current mutation type
@@ -265,13 +267,20 @@ parse_aa_change <- function(aa_change) {
   info_list$mutation_coding <- grep("^c\\.", info, perl = TRUE, value = TRUE)
   info_list$mutation_protein <- grep("^p\\.", info, perl = TRUE, value = TRUE)
   exon <- gsub("^exon(\\d+)$", "\\1", grep("^exon", info, perl = TRUE, value = TRUE), perl = TRUE)
+  if (length(exon) != 1) {
+    exon <- NA
+  }
   info_list$mutation_coding_info <- parse_mutation(info_list$mutation_coding, aa_change_regex_list$coding, aa_change_regex_groups$coding, exon = exon)
   info_list$mutation_protein_info <- parse_mutation(info_list$mutation_protein, aa_change_regex_list$protein, aa_change_regex_groups$protein, exon = exon)
-  if (grepl(aa_change_regex$protein$frameshift, info_list$mutation_protein, perl = TRUE)) {
+  if (info_list$mutation_protein_info$mutation_type == "frameshift") {
     info_list$mutation_class <- "frameshift"
   } else if (!grepl("[X\\*]$", info_list$mutation_protein_info$ref_end, perl = TRUE) &&
              grepl("[X\\*]$", info_list$mutation_protein_info$alt, perl = TRUE)) {
     info_list$mutation_class <- "stop_gain"
+    if (info_list$mutation_protein_info$mutation_type == "sub") {
+      # Add nonsynonymous type flag for stop gain substitutions
+      info_list$nonsynonymous_type <- "substitution"
+    }
   } else if (!all(is.na(info_list$mutation_protein_info)) &&
              (
                is.na(info_list$mutation_protein_info$ref_start) ||
@@ -279,7 +288,7 @@ parse_aa_change <- function(aa_change) {
                info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt
              )) {
     info_list$mutation_class <- "nonsynonymous"
-    if (grepl(aa_change_regex$protein$sub, info_list$mutation_protein, perl = TRUE)) {
+    if (info_list$mutation_protein_info$mutation_type == "sub") {
       info_list$nonsynonymous_type <- "substitution"
     } else if (!is.na(info_list$mutation_protein_info$dupdelins)) {
       info_list$nonsynonymous_type <- info_list$mutation_protein_info$dupdelins
@@ -294,6 +303,9 @@ parse_gene_detail <- function(gene_detail) {
   info_list$transcript <- gsub("\\.\\d+$", "", grep("^ENST\\d+", info, perl = TRUE, value = TRUE), perl = TRUE)
   info_list$mutation <- grep("^c\\.", info, perl = TRUE, value = TRUE)
   exon <- gsub("^exon(\\d+)$", "\\1", grep("^exon", info, perl = TRUE, value = TRUE), perl = TRUE)
+  if (length(exon) != 1) {
+    exon <- NA
+  }
   info_list$mutation_coding_info <- parse_mutation(info_list$mutation, gene_detail_regex_list, gene_detail_regex_groups, exon = exon)
   if (!all(is.na(info_list$mutation_coding_info))) {
     info_list$mutation_class <- "splice_site"
@@ -340,6 +352,258 @@ parse_chip_def <- function(chip_def, mut_class = NA) {
   }
   return(info_list)
 }
+
+chip_def_match_funcs <- list(
+  all = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle "all" CHIP mutation definitions
+    args <- list(...)
+    
+    if (args$chip_mut_def == "all") {
+      return("PASS")
+    }
+    return("FAIL")
+  },
+  c_terminal = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle C-terminal mutations
+    args <- list(...)
+    
+    mut_in_c_term <- FALSE
+    if (
+      mut_chr == chip_mut_chr && (
+        (args$chip_mut_c_term_start <= args$mut_start && args$mut_start <= args$chip_mut_c_term_end) ||
+        (args$chip_mut_c_term_start <= args$mut_end && args$mut_end <= args$chip_mut_c_term_end) ||
+        (args$mut_start <= args$chip_mut_c_term_start && args$mut_end >= args$chip_mut_c_term_end)
+      )
+    ) {
+      mut_in_c_term <- TRUE
+    }
+    if (args$chip_mut_def == "c_term") {
+      if (mut_in_c_term) {
+        # C-terminal mutations pass if the CHIP mutation is defined as a C-terminal mutation
+        return("PASS")
+      } else {
+        # Non-C-terminal mutations fail if the CHIP mutation is defined as a C-terminal mutation
+        return("FAIL")
+      }
+    } else if (mut_in_c_term) {
+      # C-terminal mutations fail if the CHIP mutation is NOT defined as a C-terminal mutation
+      return("FAIL")
+    }
+  },
+  exon = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle CHIP mutations defined by any mutation in a given exon
+    if (mut_class == "splice_site" && !is.na(gene_detail_info$mutation_coding_info$exon && gene_detail_info$mutation_coding_info$exon == chip_info$mutation_info$exon)) {
+      return("PASS")
+    } else if (!is.na(aa_change_info$mutation_protein_info$exon) && aa_change_info$mutation_protein_info$exon == chip_info$mutation_info$exon) {
+      return("PASS")
+    } else {
+      return("FAIL")
+    }
+  },
+  exon_aa_insertion = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle CHIP mutations defined by specific amino acid insertions in a given exon
+    if (!is.na(aa_change_info$mutation_protein_info$exon) && aa_change_info$mutation_protein_info$exon == chip_info$mutation_info$exon) {
+      # Mutation has valid exon recorded and matches the CHIP definition exon
+      if (!is.na(aa_change_info$mutation_protein_info$dupdelins) && aa_change_info$mutation_protein_info$dupdelins == "ins" && !is.na(aa_change_info$mutation_protein_info$alt) && aa_change_info$mutation_protein_info$alt == chip_info$mutation_info$alt) {
+        # Mutation is an insertion and the alternate allele matches the CHIP definition
+        return("PASS")
+      }
+    }
+    return("FAIL")
+  },
+  range = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle amino acid ranges
+    if (!is.na(aa_change_info$mutation_protein_info$start) &&
+        !is.na(aa_change_info$mutation_protein_info$end) &&
+        (
+          (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$start && aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$end) ||
+          (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$end && aa_change_info$mutation_protein_info$end <= chip_info$mutation_info$end) ||
+          (aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$start && aa_change_info$mutation_protein_info$end >= chip_info$mutation_info$end)
+        )) {
+      # Passes if mutation amino acid range overlaps with defined CHIP mutation amino acid range
+      return("PASS")
+    }
+    return("FAIL")
+  },
+  substitution = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle simple substitutions
+    if (!is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "substitution") {
+      if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$ref_start != aa_change_info$mutation_protein_info$ref_start) {
+        return("FAIL")
+      }
+      if (is.na(chip_info$mutation_info$alt)) {
+        return("PASS")
+      } else if (chip_info$mutation_info$alt == aa_change_info$mutation_protein_info$alt) {
+        return("PASS")
+      } else {
+        return("FAIL")
+      }
+    }
+    return("FAIL")
+  },
+  deletion = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle deletions
+    if (!is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "del") {
+      if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$ref_start != aa_change_info$mutation_protein_info$ref_start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$end != aa_change_info$mutation_protein_info$end) {
+        return("FAIL")
+      }
+      if (!is.na(aa_change_info$mutation_protein_info$ref_end) && chip_info$mutation_info$ref_end != aa_change_info$mutation_protein_info$ref_end) {
+        return("FAIL")
+      }
+      return("PASS")
+    }
+    return("FAIL")
+  },
+  insertion = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle insertions
+    if (!is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "ins") {
+      if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$ref_start != aa_change_info$mutation_protein_info$ref_start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$end != aa_change_info$mutation_protein_info$end) {
+        return("FAIL")
+      }
+      if (!is.na(aa_change_info$mutation_protein_info$ref_end) && chip_info$mutation_info$ref_end != aa_change_info$mutation_protein_info$ref_end) {
+        return("FAIL")
+      }
+      if (is.na(chip_info$mutation_info$alt)) {
+        return("PASS")
+      } else if (chip_info$mutation_info$alt == aa_change_info$mutation_protein_info$alt) {
+        return("PASS")
+      } else {
+        return("FAIL")
+      }
+    }
+    return("FAIL")
+  },
+  deletion_insertion = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle deletion-insertion events
+    if (!is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "delins") {
+      if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$ref_start != aa_change_info$mutation_protein_info$ref_start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$end != aa_change_info$mutation_protein_info$end) {
+        return("FAIL")
+      }
+      if (!is.na(aa_change_info$mutation_protein_info$ref_end) && chip_info$mutation_info$ref_end != aa_change_info$mutation_protein_info$ref_end) {
+        return("FAIL")
+      }
+      if (is.na(chip_info$mutation_info$alt)) {
+        return("PASS")
+      } else if (chip_info$mutation_info$alt == aa_change_info$mutation_protein_info$alt) {
+        return("PASS")
+      } else {
+        return("FAIL")
+      }
+    }
+    return("FAIL")
+  },
+  coding_range = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle coding sequence ranges
+    mut_info <- NA
+    if (mut_class == "splice_site" && !all(is.na(gene_detail_info$mutation_coding_info))) {
+      mut_info <- gene_detail_info$mutation_coding_info
+    } else if (!all(is.na(aa_change_info$mutation_coding_info))) {
+      mut_info <- aa_change_info$mutation_coding_info
+    } else {
+      return("FAIL")
+    }
+    
+    if (is.na(mut_info)) {
+      return("FAIL")
+    }
+    
+    if (is.na(mut_info$start)) {
+      return("FAIL")
+    }
+    if (is.na(mut_info$end)) {
+      if (chip_info$mutation_info$start <= mut_info$start && mut_info$start <= chip_info$mutation_info_end) {
+        return("PASS")
+      } else {
+        return("FAIL")
+      }
+    } else {
+      if ((chip_info$mutation_info$start <= mut_info$start && mut_info$start <= chip_info$mutation_info_end) ||
+          (chip_info$mutation_info$start <= mut_info$end && mut_info$end <= chip_info$mutation_info_end) ||
+          (mut_info$start <= chip_info$mutation_info$start && mut_info$end >= chip_info$mutation_info$end)) {
+        return("PASS")
+      } else {
+        return("FAIL")
+      }
+    }
+    return("FAIL")
+  },
+  coding_insertion = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle coding insertions
+    mut_info <- NA
+    if (mut_class == "splice_site" && !is.na(gene_detail_info$mutation_coding_info$dupdelins) && gene_detail_info$mutation_coding_info$dupdelins == "ins") {
+      mut_info <- gene_detail_info$mutation_coding_info
+    } else if (!is.na(aa_change_info$mutation_coding_info$dupdelins) && aa_change_info$mutation_coding_info$dupdelins == "ins") {
+      mut_info <- aa_change_info$mutation_coding_info
+    } else {
+      return("FAIL")
+    }
+    
+    if (is.na(mut_info)) {
+      return("FAIL")
+    }
+    
+    if (chip_info$mutation_info$start == mut_info$start && chip_info$mutation_info$end == mut_info$end) {
+      return("PASS")
+    } else {
+      return("FAIL")
+    }
+    return("FAIL")
+  },
+  frameshift = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle frameshift events
+    if (mut_class == "frameshift") {
+      if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$ref_start != aa_change_info$mutation_protein_info$ref_start) {
+        return("FAIL")
+      }
+      return("PASS")
+    }
+    return("FAIL")
+  },
+  stop_gain_substitution = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
+    # Handle stop gain events
+    if (mut_class == "stop_gain" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "substitution") {
+      if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
+        return("FAIL")
+      }
+      if (chip_info$mutation_info$ref_start != aa_change_info$mutation_protein_info$ref_start) {
+        return("FAIL")
+      }
+      if (is.na(aa_change_info$mutation_protein_info$alt)) {
+        return("FAIL")
+      }
+      if (aa_change_info$mutation_protein_info$alt %in% c("X", "*")) {
+        return("PASS")
+      } else {
+        return("FAIL")
+      }
+    }
+    return("FAIL")
+  }
+)
 
 
 # ======================== #
@@ -397,129 +661,21 @@ match_mut_def <- function(df, refseq_ensembl_suffix = "ensGene") {
       return("FAIL")
     }
     
-    # Handle C-terminal mutations - do this FIRST
-    mut_in_c_term <- FALSE
-    if (
-      mut_chr == chip_mut_chr && (
-        (chip_mut_c_term_start <= mut_start && mut_start <= chip_mut_c_term_end) ||
-        (chip_mut_c_term_start <= mut_end && mut_end <= chip_mut_c_term_end)
-      )
-    ) {
-      mut_in_c_term <- TRUE
-    }
-    if (chip_mut_def == "c_term") {
-      if (mut_in_c_term) {
-        # C-terminal mutations pass if the CHIP mutation is defined as a C-terminal mutation
-        return("PASS")
-      } else {
-        # Non-C-terminal mutations fail if the CHIP mutation is defined as a C-terminal mutation
-        return("FAIL")
-      }
-    } else if (mut_in_c_term) {
-      # C-terminal mutations fail if the CHIP mutation is NOT defined as a C-terminal mutation
-      return("FAIL")
-    }
-    
-    # Handle "all" CHIP mutation definitions
-    if (chip_mut_def == "all") {
-      return("PASS")
-    }
-    
-    # Handle CHIP mutations defined by any mutation in a given exon
-    if (chip_info$mutation_type == "exon") {
-      if (mut_class == "splice_site" && !is.na(gene_detail_info$mutation_coding_info$exon && gene_detail_info$mutation_coding_info$exon == chip_info$mutation_info$exon)) {
-        return("PASS")
-      } else if (!is.na(aa_change_info$mutation_protein_info$exon) && aa_change_info$mutation_protein_info$exon == chip_info$mutation_info$exon) {
-        return("PASS")
-      } else {
-        return("FAIL")
-      }
-    }
-    
-    # Handle CHIP mutations defined by specific amino acid insertions in a given exon
-    if (chip_info$mutation_type == "exon_aa_insertion") {
-      if (!is.na(aa_change_info$mutation_protein_info$exon) && aa_change_info$mutation_protein_info$exon == chip_info$mutation_info$exon) {
-        # Mutation has valid exon recorded and matches the CHIP definition exon
-        if (!is.na(aa_change_info$mutation_protein_info$dupdelins) && aa_change_info$mutation_protein_info$dupdelins == "ins" && !is.na(aa_change_info$mutation_protein_info$alt) && aa_change_info$mutation_protein_info$alt == chip_info$mutation_info$alt) {
-          # Mutation is an insertion and the alternate allele matches the CHIP definition
-          return("PASS")
-        }
-      }
-      return("FAIL")
-    }
-    
-    # Handle amino acid ranges
-    if (chip_info$mutation_type == "range") {
-      if (!is.na(aa_change_info$mutation_protein_info$start) &&
-          !is.na(aa_change_info$mutation_protein_info$end) &&
-          (
-            (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$start && aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$end) ||
-            (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$end && aa_change_info$mutation_protein_info$end <= chip_info$mutation_info$end)
-          )) {
-        # Passes if mutation amino acid range overlaps with defined CHIP mutation amino acid range
-        return("PASS")
-      }
-    }
-    
-    # Handle simple substitutions
-    if (chip_info$mutation_type == "substitution" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "sub") {
-      
-    }
-    
-    # Handle deletions
-    if (chip_info$mutation_type == "deletion" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "del") {
-      
-    }
-    
-    # Handle insertions
-    if (chip_info$mutation_type == "insertion" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "ins") {
-      
-    }
-    
-    # Handle deletion-insertion events
-    if (chip_info$mutation_type == "deletion_insertion" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "delins") {
-      
-    }
-    
-    # Handle coding sequence ranges
-    if (chip_info$mutation_type == "coding_range") {
-      if (mut_class == "splice_site" && !all(is.na(gene_detail_info$mutation_coding_info))) {
-        
-      } else if (!all(is.na(aa_change_info$mutation_coding_info))) {
-        
-      } else {
-        return("FAIL")
-      }
-    }
-    
-    # Handle coding insertions
-    if (chip_info$mutation_type == "coding_insertion") {
-      if (mut_class == "splice_site" && !is.na(gene_detail_info$mutation_coding_info$dupdelins) && gene_detail_info$mutation_coding_info$dupdelins == "ins") {
-        
-      } else if (!is.na(aa_change_info$mutation_coding_info) && aa_change_info$mutation_coding_info == "ins") {
-        
-      } else {
-        return("FAIL")
-      }
-    }
-    
-    # Handle frameshift events
-    if (chip_info$mutation_type == "frameshift" && mut_class == "frameshift") {
-      
-    }
-    
-    # Handle stop gain events
-    if (chip_info$mutation_type == "stop_gain" && mut_class == "stop_gain") {
-      
-    }
-    
-    # If there haven't been any matches at this point, default to FAIL
-    return("FAIL")
+    # Call one of the functions stored in the list chip_def_match_funcs.
+    # These functions are paired with the mutually-exclusive regex strings defined in chip_def_regex_list,
+    # and the name of each regex string and matched function are stored in chip_info$mutation_type.
+    return(chip_def_match_funcs[[chip_info$mutation_type]](
+      chip_info = chip_info,
+      aa_change_info = aa_change_info,
+      gene_detail_info = gene_detail_info,
+      mut_class = mut_class,
+      chip_mut_c_term_start = chip_mut_c_term_start,
+      chip_mut_c_term_end = chip_mut_c_term_end,
+      mut_start = mut_start,
+      mut_end = mut_end,
+      chip_mut_def = chip_mut_def
+    ))
   }))
-  
-  # ===== Placeholder code =====
-  tmp_df$CHIP_FILTER <- "PASS"  # Possible values: PASS, MANUAL_REVIEW, and FAIL
-  # ===== End placeholder code ===== #
   
   # Update combined filter column
   tmp_df$COMBINED_FILTER <- apply(tmp_df[c("COMBINED_FILTER", "CHIP_FILTER")], 1, function(x) {
