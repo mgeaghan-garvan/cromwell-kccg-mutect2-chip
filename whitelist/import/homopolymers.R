@@ -26,7 +26,7 @@ get_hprs <- function(seq, min_size = 5) {
   return(do.call(rbind, hpr_list))
 }
 
-apply_homopolymer_filter <- function(df, fasta_file, HP_SNVS = FALSE) {
+apply_homopolymer_filter <- function(df, fasta_file, exonic_func_col, HP_SNVS = FALSE) {
   # Should we look at homopolymer SNVs as well as INDELs?
   # NOTE: For now, we'll just be doing INDELs (HP_SNVS = FALSE), but in the future we should make this configurable via CLI arguments
   var_selection <- NA
@@ -35,7 +35,7 @@ apply_homopolymer_filter <- function(df, fasta_file, HP_SNVS = FALSE) {
     var_selection <- df$COMBINED_FILTER == "PASS"
   } else {
     # Just retrieve INDELs
-    var_selection <- grepl("(insertion|deletion)", df$ExonicFunc.refGene, perl = TRUE)
+    var_selection <- grepl("(insertion|deletion)", df[[exonic_func_col]], perl = TRUE)
   }
   
   # Create sub-set of variants that pass previous filters. Get basic variant information

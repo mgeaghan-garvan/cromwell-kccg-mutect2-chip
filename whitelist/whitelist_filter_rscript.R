@@ -102,17 +102,6 @@ vars <- read.delim(annovar_text_out, sep = "\t", header = TRUE)
 vars$Sample <- sample_id
 vars$TumorSample <- tumor_sample_name
 
-# Load annovar variant function annotations
-vars_variant_func <- read.delim(annovar_variant_func_out, sep = "\t", header = FALSE)
-vars_variant_func <- unique(vars_variant_func[1:7])
-colnames(vars_variant_func) <- c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt")
-vars_variant_func$Transcript <- gsub("(ENST\\d+)([^\\d]|$)", ",\\1,", vars_variant_func$Transcript, perl = TRUE)
-vars_variant_func$Transcript <- gsub("^,", "", vars_variant_func$Transcript, perl = TRUE)
-vars_variant_func$Transcript <- gsub(",,+", ",", vars_variant_func$Transcript, perl = TRUE)
-vars_variant_func <- (vars_variant_func %>% separate_rows(Transcript, sep = ","))
-vars_variant_func <- vars_variant_func[grepl("^ENST\\d+$", vars_variant_func$Transcript),]
-vars_variant_func <- unique(vars_variant_func)
-
 # Load annovar vcf file
 vcf <- scan(annovar_vcf_out, character(), sep = "\n")
 vcf_header <- grep("^#CHROM", vcf, perl = TRUE, value = TRUE)
@@ -146,38 +135,59 @@ vars <- get_gnomad_af(vars, gnomad_source, gnomad_pop, treat_missing_as_rare)
 vars_hf <- apply_hard_filters(vars, tumor_sample_name)
 
 
+# =========================================== #
+# Select between using RefSeq and Ensembl IDs #
+# =========================================== #
+
+ensembl_refseq <- "refseq"  # Use Ensembl IDs by default. Change this to "refseq" if you want to use RefSeq IDs
+ensGene <- TRUE
+refGene <- FALSE
+refseq_ensembl_suffix <- "ensGene"
+refseq_ensembl_chip_accession_column <- "ensembl_accession"
+refseq_ensembl_variant_func_regex_sub <- "(ENST\\d+)([^\\d]|$)"
+refseq_ensembl_variant_func_regex_match <- "^ENST\\d+$"
+if (ensembl_refseq == "refseq") {
+  ensGene <- FALSE
+  refGene <- TRUE
+  refseq_ensembl_suffix <- "refGene"
+  refseq_ensembl_chip_accession_column <- "refseq_accession"
+  refseq_ensembl_variant_func_regex_sub <- "(NM_\\d+)([^\\d]|$)"
+  refseq_ensembl_variant_func_regex_match <- "^NM_\\d+$"
+}
+
+aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
+genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
+transcript <- paste("Transcript", refseq_ensembl_suffix, sep = ".")
+exonic_func <- paste("ExonicFunc", refseq_ensembl_suffix, sep = ".")
+
+
 # ================================================ #
 # Apply filters to variants in homopolymer regions #
 # ================================================ #
 
 # NOTE: For now, we'll just be doing INDELs (HP_SNVS = FALSE), but in the future we should make this configurable via CLI arguments
-vars_hf_hp <- apply_homopolymer_filter(vars_hf, fasta_file, HP_SNVS = FALSE)
+vars_hf_hp <- apply_homopolymer_filter(vars_hf, fasta_file, exonic_func_col = exonic_func, HP_SNVS = FALSE)
 
 
 # ==================== #
 # PARSE ANNOVAR OUTPUT #
 # ==================== #
 
-ensembl_refseq <- "ensembl"  # Use Ensembl IDs by default. Change this to "refseq" if you want to use RefSeq IDs
-ensGene <- TRUE
-refGene <- FALSE
-refseq_ensembl_suffix <- "ensGene"
-refseq_ensembl_chip_accession_column <- "ensembl_accession"
-if (ensembl_refseq == "refseq") {
-  ensGene <- FALSE
-  refGene <- TRUE
-  refseq_ensembl_suffix <- "refGene"
-  refseq_ensembl_chip_accession_column <- "refseq_accession"
-}
+# Load annovar variant function annotations
+vars_variant_func <- read.delim(annovar_variant_func_out, sep = "\t", header = FALSE)
+vars_variant_func <- unique(vars_variant_func[1:7])
+colnames(vars_variant_func) <- c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt")
+vars_variant_func$Transcript <- gsub(refseq_ensembl_variant_func_regex_sub, ",\\1,", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func$Transcript <- gsub("^,", "", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func$Transcript <- gsub(",,+", ",", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func <- (vars_variant_func %>% separate_rows(Transcript, sep = ","))
+vars_variant_func <- vars_variant_func[grepl(refseq_ensembl_variant_func_regex_match, vars_variant_func$Transcript),]
+vars_variant_func <- unique(vars_variant_func)
 
 # Parse annovar output, split rows into one per transcript, and extract transcript accession IDs
 vars_ann <- parse_annovar(vars_hf_hp, vars_variant_func, ensGene = ensGene, refGene = refGene, filter = c("exonic", "splicing"))
 
 # Filter for CHIP transcripts
-aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
-genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
-transcript <- paste("Transcript", refseq_ensembl_suffix, sep = ".")
-
 vars_chip <- vars_ann[vars_ann[[transcript]] %in% chip_vars[[refseq_ensembl_chip_accession_column]],]
 
 # Merge filtered variants and CHIP gene annotation data frames
@@ -188,7 +198,7 @@ vars_chip <- merge(vars_chip, chip_vars, by.x = transcript, by.y = refseq_ensemb
 # Filter rows if chip mutation definitions match AAChange/GeneDetail column info #
 # ============================================================================== #
 
-vars_chip_filtered <- match_mut_def(vars_chip)
+vars_chip_filtered <- match_mut_def(vars_chip, refseq_ensembl_suffix = refseq_ensembl_suffix)
 
 
 # ==================================================== #

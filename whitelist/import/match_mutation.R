@@ -369,7 +369,7 @@ chip_def_match_funcs <- list(
     
     mut_in_c_term <- FALSE
     if (
-      mut_chr == chip_mut_chr && (
+      args$mut_chr == args$chip_mut_chr && (
         (args$chip_mut_c_term_start <= args$mut_start && args$mut_start <= args$chip_mut_c_term_end) ||
         (args$chip_mut_c_term_start <= args$mut_end && args$mut_end <= args$chip_mut_c_term_end) ||
         (args$mut_start <= args$chip_mut_c_term_start && args$mut_end >= args$chip_mut_c_term_end)
