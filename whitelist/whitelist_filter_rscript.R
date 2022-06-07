@@ -16,7 +16,7 @@ source("./import/apply_putative_filter.R")
 # ========================== #
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 9) {
+if (length(args) != 10) {
   stop(paste(
     "Incorrect number of arguments!",
     "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",

@@ -272,7 +272,9 @@ parse_aa_change <- function(aa_change) {
   }
   info_list$mutation_coding_info <- parse_mutation(info_list$mutation_coding, aa_change_regex_list$coding, aa_change_regex_groups$coding, exon = exon)
   info_list$mutation_protein_info <- parse_mutation(info_list$mutation_protein, aa_change_regex_list$protein, aa_change_regex_groups$protein, exon = exon)
-  if (info_list$mutation_protein_info$mutation_type == "frameshift") {
+  if (is.na(info_list$mutation_protein_info$mutation_type)) {
+    return(info_list)  # No AA change, nothing more to do
+  } else if (info_list$mutation_protein_info$mutation_type == "frameshift") {
     info_list$mutation_class <- "frameshift"
   } else if (!grepl("[X\\*]$", info_list$mutation_protein_info$ref_end, perl = TRUE) &&
              grepl("[X\\*]$", info_list$mutation_protein_info$alt, perl = TRUE)) {
