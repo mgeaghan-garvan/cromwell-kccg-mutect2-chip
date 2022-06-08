@@ -1,4 +1,4 @@
-parse_annovar <- function(df, vars_variant_func, ensGene = TRUE, refGene = FALSE, filter = c("exonic", "splicing")) {
+parse_annovar <- function(df, vars_variant_func, vars_variant_exonic_func, ensGene = TRUE, refGene = FALSE, filter = c("exonic", "splicing")) {
   col_suffix <- ""
   trans_regex <- ""
   if (ensGene) {
@@ -15,6 +15,7 @@ parse_annovar <- function(df, vars_variant_func, ensGene = TRUE, refGene = FALSE
   aachange <- paste("AAChange", col_suffix, sep = ".")
   genedetail <- paste("GeneDetail", col_suffix, sep = ".")
   func <- paste("Func", col_suffix, sep = ".")
+  exonic_func <- paste("ExonicFunc", col_suffix, sep = ".")
   transcript <- paste("Transcript", col_suffix, sep = ".")
   
   # Split rows by RefSeq or Ensembl IDs in both GeneDetail (noncoding variant annotations, e.g. splicing variants) and AAChange (coding variant annotations)
@@ -91,6 +92,19 @@ parse_annovar <- function(df, vars_variant_func, ensGene = TRUE, refGene = FALSE
   if (!is.na(filter) && !is.null(filter)) {
     vars_g_filter <- vars_g_filter[grepl(paste("^(", paste(filter, collapse = "|"), ")$", sep = ""), vars_g_filter[[func]], perl = TRUE),]
   }
+  
+  # Drop potential duplicates again
+  vars_g_filter <- unique(vars_g_filter)
+  
+  # Guess what - splitting again, now on the ExonicFunc column!
+  if (ensGene) {
+    vars_g_filter <- as.data.frame(separate_rows(vars_g_filter, ExonicFunc.ensGene, sep = ";"))
+  } else {
+    vars_g_filter <- as.data.frame(separate_rows(vars_g_filter, ExonicFunc.refGene, sep = ";"))
+  }
+  
+  # Merge with the exonic_variant_func dataframe
+  vars_g_filter <- merge(vars_g_filter, vars_variant_exonic_func, by.x = c(exonic_func, aachange, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("ExonicFunc", "AAChange", "Chr", "Start", "End", "Ref", "Alt"))
   
   # Drop potential duplicates again
   vars_g_filter <- unique(vars_g_filter)

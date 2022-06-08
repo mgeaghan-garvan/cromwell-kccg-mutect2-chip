@@ -16,7 +16,7 @@ mutation_info_template = list(
   intron_offset_start = NA,
   intron_offset_end = NA,
   fs_term = NA,
-  mutation_type = NA
+  mutation_pattern = NA
 )
 
 chip_def_regex_list <- list(
@@ -224,19 +224,19 @@ aa_change_regex_groups <- list(
 
 parse_mutation <- function(mutation, regex_list, regex_groups, exon = NA) {
   ret <- mutation_info_template
-  for (mut_type in names(regex_list)) {
+  for (mut_pattern in names(regex_list)) {
     # Iterate through each (mutally exclusive) mutation regex string
-    rgx <- regex_list[[mut_type]]
+    rgx <- regex_list[[mut_pattern]]
     # Try and match the mutation string to the current regex string
     m <- str_match(mutation, rgx)
     if (all(is.na(m))) {
       # Move to next regex string if no match
       next
     }
-    ret$mutation_type <- mut_type
-    rgx_groups <- regex_groups[[mut_type]]
+    ret$mutation_pattern <- mut_pattern
+    rgx_groups <- regex_groups[[mut_pattern]]
     for (field in names(rgx_groups)) {
-      # Iterate through the regex capture groups defined for the current mutation type
+      # Iterate through the regex capture groups defined for the current mutation pattern
       idx <- rgx_groups[[field]]
       if (is.na(idx) || !is.numeric(idx)) {
         next
@@ -260,7 +260,7 @@ parse_mutation <- function(mutation, regex_list, regex_groups, exon = NA) {
   return(ret)
 }
 
-parse_aa_change <- function(aa_change) {
+parse_aa_change <- function(aa_change, exonic_func) {
   info <- strsplit(aa_change, ":", fixed = TRUE)[[1]]
   info_list <- list(transcript = NA, mutation_class = NA, mutation_coding = NA, mutation_protein = NA, nonsynonymous_type = NA)
   info_list$transcript = gsub("\\.\\d+$", "", grep("^ENST\\d+", info, perl = TRUE, value = TRUE), perl = TRUE)
@@ -272,26 +272,29 @@ parse_aa_change <- function(aa_change) {
   }
   info_list$mutation_coding_info <- parse_mutation(info_list$mutation_coding, aa_change_regex_list$coding, aa_change_regex_groups$coding, exon = exon)
   info_list$mutation_protein_info <- parse_mutation(info_list$mutation_protein, aa_change_regex_list$protein, aa_change_regex_groups$protein, exon = exon)
-  if (is.na(info_list$mutation_protein_info$mutation_type)) {
-    return(info_list)  # No AA change, nothing more to do
-  } else if (info_list$mutation_protein_info$mutation_type == "frameshift") {
+  if (is.na(info_list$mutation_protein_info$mutation_pattern) ||
+      grepl("^(unknown|synonymous.*)$", exonic_func, perl = TRUE)) {
+    # No valid AA change, nothing more to do
+    return(info_list)
+  } else if (grepl("^frameshift", exonic_func, perl = TRUE)) {
+    # Framshift flagged by annovar
     info_list$mutation_class <- "frameshift"
-  } else if (!grepl("[X\\*]$", info_list$mutation_protein_info$ref_end, perl = TRUE) &&
-             grepl("[X\\*]$", info_list$mutation_protein_info$alt, perl = TRUE)) {
+  } else if (grepl("^stopgain$", exonic_func, perl = TRUE)) {
+    # Stop gain flagged by annovar
     info_list$mutation_class <- "stop_gain"
-    if (info_list$mutation_protein_info$mutation_type == "sub") {
-      # Add nonsynonymous type flag for stop gain substitutions
-      info_list$nonsynonymous_type <- "substitution"
+    if (info_list$mutation_protein_info$mutation_pattern == "sub") {
+      # Add additional nonsynonymous type flag for stop gain substitutions
+      info_list$nonsynonymous_type <- "sub"
     }
-  } else if (!all(is.na(info_list$mutation_protein_info)) &&
-             (
-               is.na(info_list$mutation_protein_info$ref_start) ||
-               is.na(info_list$mutation_protein_info$alt) ||
-               info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt
-             )) {
+  } else if (is.na(info_list$mutation_protein_info$ref_start) ||
+             is.na(info_list$mutation_protein_info$alt) ||
+             info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt
+             ) {
+    # Remaining variants (where ref and alt AAs don't match) are classed as 'nonsynonymous'
     info_list$mutation_class <- "nonsynonymous"
-    if (info_list$mutation_protein_info$mutation_type == "sub") {
-      info_list$nonsynonymous_type <- "substitution"
+    # Add additional nonsynonymous type flag (sub, dup, del, ins)
+    if (info_list$mutation_protein_info$mutation_pattern == "sub") {
+      info_list$nonsynonymous_type <- "sub"
     } else if (!is.na(info_list$mutation_protein_info$dupdelins)) {
       info_list$nonsynonymous_type <- info_list$mutation_protein_info$dupdelins
     }
@@ -319,22 +322,22 @@ parse_chip_def <- function(chip_def, mut_class = NA) {
   info_list <- list()
   info_list$mutation_class <- mut_class
   info_list$mutation <- chip_def
-  info_list$mutation_type <- NA
+  info_list$mutation_pattern <- NA
   info_list$mutation_info <- mutation_info_template
-  for (mut_type in names(chip_def_regex_list)) {
+  for (mut_pattern in names(chip_def_regex_list)) {
     # Iterate through each (mutally exclusive) chip definition regex string
-    rgx <- chip_def_regex_list[[mut_type]]
+    rgx <- chip_def_regex_list[[mut_pattern]]
     # Try and match the chip definition string to the current regex string
     m <- str_match(info_list$mutation, rgx)
     if (all(is.na(m))) {
       # Move to next regex string if no match
       next
     }
-    # Record mutation type
-    info_list$mutation_type <- mut_type
-    rgx_groups <- chip_def_regex_groups[[mut_type]]
+    # Record mutation pattern
+    info_list$mutation_pattern <- mut_pattern
+    rgx_groups <- chip_def_regex_groups[[mut_pattern]]
     for (field in names(rgx_groups)) {
-      # Iterate through the regex capture groups defined for the current mutation type
+      # Iterate through the regex capture groups defined for the current mutation pattern
       idx <- rgx_groups[[field]]
       if (is.na(idx) || !is.numeric(idx)) {
         next
@@ -358,37 +361,17 @@ parse_chip_def <- function(chip_def, mut_class = NA) {
 chip_def_match_funcs <- list(
   all = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
     # Handle "all" CHIP mutation definitions
-    args <- list(...)
-    
-    if (args$chip_mut_def == "all") {
-      return("PASS")
-    }
-    return("FAIL")
+    return("PASS")
   },
   c_terminal = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
     # Handle C-terminal mutations
     args <- list(...)
     
-    mut_in_c_term <- FALSE
-    if (
-      args$mut_chr == args$chip_mut_chr && (
-        (args$chip_mut_c_term_start <= args$mut_start && args$mut_start <= args$chip_mut_c_term_end) ||
-        (args$chip_mut_c_term_start <= args$mut_end && args$mut_end <= args$chip_mut_c_term_end) ||
-        (args$mut_start <= args$chip_mut_c_term_start && args$mut_end >= args$chip_mut_c_term_end)
-      )
-    ) {
-      mut_in_c_term <- TRUE
-    }
-    if (args$chip_mut_def == "c_term") {
-      if (mut_in_c_term) {
-        # C-terminal mutations pass if the CHIP mutation is defined as a C-terminal mutation
-        return("PASS")
-      } else {
-        # Non-C-terminal mutations fail if the CHIP mutation is defined as a C-terminal mutation
-        return("FAIL")
-      }
-    } else if (mut_in_c_term) {
-      # C-terminal mutations fail if the CHIP mutation is NOT defined as a C-terminal mutation
+    if (args$mut_in_c_term) {
+      # C-terminal mutations pass if the CHIP mutation is defined as a C-terminal mutation
+      return("PASS")
+    } else {
+      # Non-C-terminal mutations fail if the CHIP mutation is defined as a C-terminal mutation
       return("FAIL")
     }
   },
@@ -429,7 +412,7 @@ chip_def_match_funcs <- list(
   },
   substitution = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
     # Handle simple substitutions
-    if (!is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "substitution") {
+    if (!is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "sub") {
       if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
         return("FAIL")
       }
@@ -587,7 +570,7 @@ chip_def_match_funcs <- list(
   },
   stop_gain_substitution = function(chip_info, aa_change_info, gene_detail_info, mut_class, ...) {
     # Handle stop gain events
-    if (mut_class == "stop_gain" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "substitution") {
+    if (mut_class == "stop_gain" && !is.na(aa_change_info$nonsynonymous_type) && aa_change_info$nonsynonymous_type == "sub") {
       if (chip_info$mutation_info$start != aa_change_info$mutation_protein_info$start) {
         return("FAIL")
       }
@@ -616,23 +599,25 @@ match_mut_def <- function(df, refseq_ensembl_suffix = "ensGene") {
   aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
   genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
   func <- paste("Func", refseq_ensembl_suffix, sep = ".")
+  exonic_func <- paste("ExonicFunc", refseq_ensembl_suffix, sep = ".")
 
   tmp_df <- df
-  tmp_df$CHIP_FILTER <- unlist(apply(tmp_df[c(genedetail, aachange, func, "Chr", "Start", "End", "mutation_class", "mutation_definition", "chr", "c_term_genomic_start", "c_term_genomic_end")], 1, function(x) {
+  tmp_df$CHIP_FILTER <- unlist(apply(tmp_df[c(genedetail, aachange, func, exonic_func, "Chr", "Start", "End", "mutation_class", "mutation_definition", "chr", "c_term_genomic_start", "c_term_genomic_end")], 1, function(x) {
     gene_detail <- as.character(x[[1]])
     aa_change <- as.character(x[[2]])
     mut_func <- as.character(x[[3]])
-    mut_chr <- as.character(x[[4]])
-    mut_start <- as.character(x[[5]])
-    mut_end <- as.character(x[[6]])
-    chip_mut_class <- as.character(x[[7]])
-    chip_mut_def <- as.character(x[[8]])
-    chip_mut_chr <- as.character(x[[9]])
-    chip_mut_c_term_start <- as.numeric(x[[10]])
-    chip_mut_c_term_end <- as.numeric(x[[11]])
+    mut_exonic_func <- as.character(x[[4]])
+    mut_chr <- as.character(x[[5]])
+    mut_start <- as.character(x[[6]])
+    mut_end <- as.character(x[[7]])
+    chip_mut_class <- as.character(x[[8]])
+    chip_mut_def <- as.character(x[[9]])
+    chip_mut_chr <- as.character(x[[10]])
+    chip_mut_c_term_start <- as.numeric(x[[11]])
+    chip_mut_c_term_end <- as.numeric(x[[12]])
     
     gene_detail_info <- parse_gene_detail(gene_detail)
-    aa_change_info <- parse_aa_change(aa_change)
+    aa_change_info <- parse_aa_change(aa_change, mut_exonic_func)
     chip_info <- parse_chip_def(chip_mut_def, chip_mut_class)
     
     # Determine mutation class
@@ -648,11 +633,13 @@ match_mut_def <- function(df, refseq_ensembl_suffix = "ensGene") {
       return("FAIL")
     }
     
-    # Handle nonsynonymous missense mutations
+    # Rename mutation class for nonsynonymous missense mutations from "nonsynonymous" to "missense"
+    # when being compared against a "missense" mutation defined in the CHIP definitions file
+    # so it won't be discarded due to a class mismatch in the next step
     if (chip_mut_class == "missense" &&
         mut_class == "nonsynonymous" &&
         !is.na(aa_change_info$nonsynonymous_type) &&
-        aa_change_info$nonsynonymous_type == "substitution" &&
+        aa_change_info$nonsynonymous_type == "sub" &&
         !is.na(aa_change_info$mutation_protein_info$ref_start) &&
         !is.na(aa_change_info$mutation_protein_info$alt)) {
       mut_class <- "missense"
@@ -663,10 +650,27 @@ match_mut_def <- function(df, refseq_ensembl_suffix = "ensGene") {
       return("FAIL")
     }
     
+    # Determine if mutation is in the c-terminal region
+    mut_in_c_term <- FALSE
+    if (
+      mut_chr == chip_mut_chr && (
+        (chip_mut_c_term_start <= mut_start && mut_start <= chip_mut_c_term_end) ||
+        (chip_mut_c_term_start <= mut_end && mut_end <= chip_mut_c_term_end) ||
+        (mut_start <= chip_mut_c_term_start && mut_end >= chip_mut_c_term_end)
+      )
+    ) {
+      mut_in_c_term <- TRUE
+    }
+    
+    # If the CHIP definition is NOT "c_term", then any c-terminal mutations should FAIL
+    if (chip_mut_def == "c_term" && mut_in_c_term) {
+      return("FAIL")
+    }
+    
     # Call one of the functions stored in the list chip_def_match_funcs.
     # These functions are paired with the mutually-exclusive regex strings defined in chip_def_regex_list,
-    # and the name of each regex string and matched function are stored in chip_info$mutation_type.
-    return(chip_def_match_funcs[[chip_info$mutation_type]](
+    # and the name of each regex string and matched function are stored in chip_info$mutation_pattern.
+    return(chip_def_match_funcs[[chip_info$mutation_pattern]](
       chip_info = chip_info,
       aa_change_info = aa_change_info,
       gene_detail_info = gene_detail_info,
@@ -675,7 +679,7 @@ match_mut_def <- function(df, refseq_ensembl_suffix = "ensGene") {
       chip_mut_c_term_end = chip_mut_c_term_end,
       mut_start = mut_start,
       mut_end = mut_end,
-      chip_mut_def = chip_mut_def
+      mut_in_c_term = mut_in_c_term
     ))
   }))
   

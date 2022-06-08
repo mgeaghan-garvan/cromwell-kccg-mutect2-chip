@@ -16,31 +16,33 @@ source("./import/apply_putative_filter.R")
 # ========================== #
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 10) {
+if (length(args) != 11) {
   stop(paste(
     "Incorrect number of arguments!",
-    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",
-    "    ANNOVAR OUTPUT TABLE/VCF:         output txt and vcf files from Annovar.",
-    "    ANNOVAR VARIANT FUNCTION TABLE:   variant function output file from Annovar.",
-    "    TUMOR SAMPLE NAME:                name of the tumor sample as recorded in the VCF file's column header line.",
-    "    GNOMAD SOURCE:                    one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
-    "    GNOMAD SUBPOPULATION CODE:        one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
-    "    TREAT MISSING AF AS RARE:         'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
-    "    CHIP DEFINITION FILE:             csv file containing CHIP variant definitions",
-    "    TRANSCRIPT PROTEIN LENGTHS FILE:  a file containing three columns: RefSeq transcript ID, HGNC gene symbol, protein length",
-    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have been aligned.",
+    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <ANNOVAR VARIANT EXONIC FUNCTION TABLE> <ENSEMBL REFSEQ> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <FASTA REFERENCE FILE>",
+    "    ANNOVAR OUTPUT TABLE/VCF:                output txt and vcf files from Annovar.",
+    "    ANNOVAR VARIANT FUNCTION TABLE:          variant function output file from Annovar.",
+    "    ANNOVAR VARIANT EXONIC FUNCTION TABLE:   variant exonic function output file from Annovar.",
+    "    ENSEMBL REFSEQ:                          either 'ensembl' or 'refseq', specifying which annotation to use when matching against CHIP definitions.",
+    "    TUMOR SAMPLE NAME:                       name of the tumor sample as recorded in the VCF file's column header line.",
+    "    GNOMAD SOURCE:                           one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
+    "    GNOMAD SUBPOPULATION CODE:               one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
+    "    TREAT MISSING AF AS RARE:                'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
+    "    CHIP DEFINITION FILE:                    csv file containing CHIP variant definitions",
+    "    FASTA REFERENCE FILE:                    the FASTA reference to which the samples have been aligned.",
     sep = "\n"))
 }
 annovar_text_out <- args[1]
 annovar_vcf_out <- args[2]
 annovar_variant_func_out <- args[3]
-tumor_sample_name <- args[4]
-gnomad_source <- args[5]
-gnomad_pop <- args[6]
-treat_missing_as_rare <- args[7]
-chip_def_file <- args[8]
-transcript_prot_file <- args[9]
-fasta_file <- args[10]
+annovar_variant_exonic_func_out <- args[4]
+ensembl_refseq <- args[5]
+tumor_sample_name <- args[6]
+gnomad_source <- args[7]
+gnomad_pop <- args[8]
+treat_missing_as_rare <- args[9]
+chip_def_file <- args[10]
+fasta_file <- args[11]
 
 
 # ============================ #
@@ -55,6 +57,12 @@ if (!file.exists(annovar_vcf_out)) {
 }
 if (!file.exists(annovar_variant_func_out)) {
   stop("Input annovar variant function file does not exist.")
+}
+if (!file.exists(annovar_variant_exonic_func_out)) {
+  stop("Input annovar variant exonic function file does not exist.")
+}
+if (!(ensembl_refseq %in% c("ensembl", "refseq"))) {
+  stop("Must specify either 'ensembl' or 'refseq' annotation to use.")
 }
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
@@ -139,7 +147,7 @@ vars_hf <- apply_hard_filters(vars, tumor_sample_name)
 # Select between using RefSeq and Ensembl IDs #
 # =========================================== #
 
-ensembl_refseq <- "refseq"  # Use Ensembl IDs by default. Change this to "refseq" if you want to use RefSeq IDs
+# ensembl_refseq <- "refseq"  # Use Ensembl IDs by default. Change this to "refseq" if you want to use RefSeq IDs
 ensGene <- TRUE
 refGene <- FALSE
 refseq_ensembl_suffix <- "ensGene"
@@ -165,8 +173,7 @@ exonic_func <- paste("ExonicFunc", refseq_ensembl_suffix, sep = ".")
 # Apply filters to variants in homopolymer regions #
 # ================================================ #
 
-# NOTE: For now, we'll just be doing INDELs (HP_SNVS = FALSE), but in the future we should make this configurable via CLI arguments
-vars_hf_hp <- apply_homopolymer_filter(vars_hf, fasta_file, exonic_func_col = exonic_func, HP_SNVS = FALSE)
+vars_hf_hp <- apply_homopolymer_indel_filter(vars_hf, fasta_file)
 
 
 # ==================== #
@@ -184,8 +191,16 @@ vars_variant_func <- (vars_variant_func %>% separate_rows(Transcript, sep = ",")
 vars_variant_func <- vars_variant_func[grepl(refseq_ensembl_variant_func_regex_match, vars_variant_func$Transcript),]
 vars_variant_func <- unique(vars_variant_func)
 
+# Load annovar variant exonic function annotations
+vars_variant_exonic_func <- read.delim(annovar_variant_exonic_func_out, sep = "\t", header = FALSE)
+vars_variant_exonic_func <- unique(vars_variant_exonic_func[2:8])
+colnames(vars_variant_exonic_func) <- c("ExonicFunc", "AAChange", "Chr", "Start", "End", "Ref", "Alt")
+vars_variant_exonic_func$AAChange <- gsub(",$", "", vars_variant_exonic_func$AAChange, perl = TRUE)
+vars_variant_exonic_func <- (vars_variant_exonic_func %>% separate_rows(AAChange, sep = ","))
+vars_variant_exonic_func <- unique(vars_variant_exonic_func)
+
 # Parse annovar output, split rows into one per transcript, and extract transcript accession IDs
-vars_ann <- parse_annovar(vars_hf_hp, vars_variant_func, ensGene = ensGene, refGene = refGene, filter = c("exonic", "splicing"))
+vars_ann <- parse_annovar(vars_hf_hp, vars_variant_func, vars_variant_exonic_func, ensGene = ensGene, refGene = refGene, filter = c("exonic", "splicing"))
 
 # Filter for CHIP transcripts
 vars_chip <- vars_ann[vars_ann[[transcript]] %in% chip_vars[[refseq_ensembl_chip_accession_column]],]
