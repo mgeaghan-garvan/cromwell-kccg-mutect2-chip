@@ -43,6 +43,7 @@ workflow Mutect2CHIP_CHIP_Multi {
         Int whitelist_cpu = 1
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
+        Boolean whitelist_use_ensembl_annotation = false
         String gnomad_pop = "AF"
         String whitelist_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
         File whitelist_archive
@@ -81,6 +82,7 @@ workflow Mutect2CHIP_CHIP_Multi {
                 whitelist_cpu = whitelist_cpu,
                 treat_missing_as_rare = treat_missing_as_rare,
                 whitelist_genome = whitelist_genome,
+                whitelist_use_ensembl_annotation = whitelist_use_ensembl_annotation,
                 gnomad_pop = gnomad_pop,
                 whitelist_docker = whitelist_docker,
                 whitelist_archive = whitelist_archive,
@@ -98,12 +100,13 @@ workflow Mutect2CHIP_CHIP_Multi {
     }
 
     output {
-        Array[File] out_whitelist_annovar_vcf = Mutect2CHIP_CHIP.out_whitelist_annovar_vcf 
-        Array[File] out_whitelist_annovar_table = Mutect2CHIP_CHIP.out_whitelist_annovar_table 
+        Array[File] out_whitelist_annovar_vcf = Mutect2CHIP_CHIP.out_whitelist_annovar_vcf
+        Array[File] out_whitelist_annovar_table = Mutect2CHIP_CHIP.out_whitelist_annovar_table
         Array[File] out_whitelist_filter_output_allvariants_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_allvariants_csv
-        Array[File] out_whitelist_filter_output_wl_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_wl_csv
-        Array[File] out_whitelist_filter_output_manual_review_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_manual_review_csv
-        Array[File] out_whitelist_filter_output_putative_wl_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_putative_wl_csv
-        Array[File] out_whitelist_filter_output_putative_manual_review_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_putative_manual_review_csv
+        Array[File] out_whitelist_filter_output_allvariantsfiltered_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_allvariantsfiltered_csv
+        Array[File] out_whitelist_filter_output_exonicsplicingvariants_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_exonicsplicingvariants_csv
+        Array[File] out_whitelist_filter_output_chiptranscriptvariants_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_chiptranscriptvariants_csv
+        Array[File] out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv
+        Array[File] out_whitelist_filter_output_putativefilter_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_putativefilter_csv
     }
 }

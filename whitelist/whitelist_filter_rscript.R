@@ -67,9 +67,6 @@ if (!(ensembl_refseq %in% c("ensembl", "refseq"))) {
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
 }
-if (!file.exists(transcript_prot_file)) {
-  stop("Protein length file does not exist.")
-}
 if (!file.exists(fasta_file)) {
   stop("FASTA reference file does not exist.")
 }

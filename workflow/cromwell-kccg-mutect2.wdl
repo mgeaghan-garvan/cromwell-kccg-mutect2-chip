@@ -556,7 +556,7 @@ workflow Mutect2CHIP {
         String whitelist_annovar_protocols = if (whitelist_genome) then "refGene,ensGene,gnomad211_genome,gnomad211_exome" else "refGene,ensGene,gnomad211_exome"
         String whitelist_annovar_operations = if (whitelist_genome) then "g,g,f,f" else "g,g,f"
         String additional_arguments = '-argument "-exonicsplicing -transcript_function -separate,-exonicsplicing -transcript_function -separate,'
-        additional_arguments = if (whitelist_genome) then additional_arguments + ',"' else additional_arguments + '"'
+        String additional_arguments_final = if (whitelist_genome) then additional_arguments + ',"' else additional_arguments + '"'
         call Annovar as WhitelistAnnovar {
             input:
                 mem_mb = 4000,
@@ -570,6 +570,7 @@ workflow Mutect2CHIP {
                 label = "whitelist_annovar_out",
                 annovar_protocols = whitelist_annovar_protocols,
                 annovar_operations = whitelist_annovar_operations,
+                annovar_additional_arguments = additional_arguments_final,
                 runtime_params = standard_runtime
         }
 
@@ -615,10 +616,11 @@ workflow Mutect2CHIP {
         File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
         File? out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
-        File? out_whitelist_filter_output_wl_csv = WhitelistFilter.whitelist_filter_output_wl_csv
-        File? out_whitelist_filter_output_manual_review_csv = WhitelistFilter.whitelist_filter_output_manual_review_csv
-        File? out_whitelist_filter_output_putative_wl_csv = WhitelistFilter.whitelist_filter_output_putative_wl_csv
-        File? out_whitelist_filter_output_putative_manual_review_csv = WhitelistFilter.whitelist_filter_output_putative_manual_review_csv
+        File? out_whitelist_filter_output_allvariantsfiltered_csv = WhitelistFilter.whitelist_filter_output_allvariantsfiltered_csv
+        File? out_whitelist_filter_output_exonicsplicingvariants_csv = WhitelistFilter.whitelist_filter_output_exonicsplicingvariants_csv
+        File? out_whitelist_filter_output_chiptranscriptvariants_csv = WhitelistFilter.whitelist_filter_output_chiptranscriptvariants_csv
+        File? out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv = WhitelistFilter.whitelist_filter_output_chiptranscriptvariantsfiltered_csv
+        File? out_whitelist_filter_output_putativefilter_csv = WhitelistFilter.whitelist_filter_output_putativefilter_csv
     }
 }
 
@@ -1265,13 +1267,16 @@ task VEP {
         OPT_VAR_DEFINED="~{loftee_ancestor_fai_def}"
         OPT_VAR_DEFINED="~{loftee_ancestor_gzi_def}"
 
-        mkdir -p /tmp/.vep/cache
-        tar -xzvf ~{cache_archive} -C /tmp/.vep/cache/
+        TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
+        mkdir -p ${TMPDIR_RND}
+
+        mkdir -p ${TMPDIR_RND}/.vep/cache
+        tar -xzvf ~{cache_archive} -C ${TMPDIR_RND}/.vep/cache/
         # this seems necessary on GCP - running into permissions errors.
         # TODO: find a better solution
-        cp ~{fasta} /tmp/ref_fasta.fasta
+        cp ~{fasta} ${TMPDIR_RND}/ref_fasta.fasta
         vep \
-            --dir_cache /tmp/.vep/cache \
+            --dir_cache ${TMPDIR_RND}/.vep/cache \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1281,7 +1286,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
-            --fasta /tmp/ref_fasta.fasta \
+            --fasta ${TMPDIR_RND}/ref_fasta.fasta \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
@@ -1335,22 +1340,25 @@ task Annovar {
     command {
       set -euo pipefail
 
-      cd /tmp
+      TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
+      mkdir -p ${TMPDIR_RND}
+
+      cd ${TMPDIR_RND}
 
       tar -xzvf ~{annovar_archive}
 
       cd -
 
-      chmod +x /tmp/annovar_files/convert2annovar.pl
-      chmod +x /tmp/annovar_files/table_annovar.pl
-      chmod +x /tmp/annovar_files/annotate_variation.pl
-      chmod +x /tmp/annovar_files/coding_change.pl
-      chmod +x /tmp/annovar_files/retrieve_seq_from_fasta.pl
-      chmod +x /tmp/annovar_files/variants_reduction.pl
+      chmod +x ${TMPDIR_RND}/annovar_files/convert2annovar.pl
+      chmod +x ${TMPDIR_RND}/annovar_files/table_annovar.pl
+      chmod +x ${TMPDIR_RND}/annovar_files/annotate_variation.pl
+      chmod +x ${TMPDIR_RND}/annovar_files/coding_change.pl
+      chmod +x ${TMPDIR_RND}/annovar_files/retrieve_seq_from_fasta.pl
+      chmod +x ${TMPDIR_RND}/annovar_files/variants_reduction.pl
 
-      perl /tmp/annovar_files/table_annovar.pl \
+      perl ${TMPDIR_RND}/annovar_files/table_annovar.pl \
         ~{vcf_input} \
-        /tmp/annovar_files \
+        ${TMPDIR_RND}/annovar_files \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -protocol ~{annovar_protocols} \

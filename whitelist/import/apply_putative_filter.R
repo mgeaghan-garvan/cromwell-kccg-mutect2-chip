@@ -1,5 +1,9 @@
 apply_putative_filter <- function(df) {
   tmp_df <- df
+  if (dim(tmp_df)[1] == 0) {
+    tmp_df$PUTATIVE_FILTER <- character(0)
+    return(tmp_df)
+  }
   tmp_df$PUTATIVE_FILTER <- apply(tmp_df[, c("putative", "AD", "F1R2", "F2R1", "VAF")], 1, function(x) {
     p <- as.logical(x[[1]])
     ad <- as.integer(strsplit(x[[2]], ",")[[1]])
