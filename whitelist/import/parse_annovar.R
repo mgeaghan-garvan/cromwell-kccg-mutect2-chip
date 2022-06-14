@@ -96,7 +96,7 @@ parse_annovar <- function(df, vars_variant_func, vars_variant_exonic_func, ensGe
   # Drop potential duplicates again
   vars_g_filter <- unique(vars_g_filter)
   
-  # Guess what - splitting again, now on the ExonicFunc column!
+  # Splitting again, now on the ExonicFunc column
   if (ensGene) {
     vars_g_filter <- as.data.frame(separate_rows(vars_g_filter, ExonicFunc.ensGene, sep = ";"))
   } else {
@@ -104,7 +104,15 @@ parse_annovar <- function(df, vars_variant_func, vars_variant_exonic_func, ensGe
   }
   
   # Merge with the exonic_variant_func dataframe
-  vars_g_filter <- merge(vars_g_filter, vars_variant_exonic_func, by.x = c(exonic_func, aachange, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("ExonicFunc", "AAChange", "Chr", "Start", "End", "Ref", "Alt"))
+  # First split dataframe into exonic- and splicing-only variants
+  exonic_select <- vars_g_filter[[exonic_func]] %in% vars_variant_exonic_func$ExonicFunc
+  vars_g_filter_exonic <- vars_g_filter[exonic_select,]
+  vars_g_filter_splicing <- vars_g_filter[!exonic_select,]
+  # Only perform merge on exonic variants
+  # otherwise we would be discarding the splicing variants as they have no entry in the vars_variant_exonic_func dataframe
+  vars_g_filter_exonic <- merge(vars_g_filter_exonic, vars_variant_exonic_func, by.x = c(exonic_func, aachange, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("ExonicFunc", "AAChange", "Chr", "Start", "End", "Ref", "Alt"))
+  # Recombine data frames
+  vars_g_filter <- rbind(vars_g_filter_exonic, vars_g_filter_splicing)
   
   # Drop potential duplicates again
   vars_g_filter <- unique(vars_g_filter)

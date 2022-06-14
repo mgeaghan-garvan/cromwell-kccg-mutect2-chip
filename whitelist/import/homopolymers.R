@@ -28,7 +28,8 @@ get_hprs <- function(seq, min_size = 5) {
 
 apply_homopolymer_indel_filter <- function(df, fasta_file) {
   # Select all INDELs, i.e. either REF or ALT VCF columns are > 1bp long
-  var_selection <- (nchar(df$REF) > 1 | nchar(df$ALT) > 1)
+  var_selection <- (unlist(lapply(strsplit(df$REF, ","), function(x) { any(nchar(x) > 1) })) |
+                       unlist(lapply(strsplit(df$ALT, ","), function(x) { any(nchar(x) > 1) })))
   
   # Create sub-set of variants that are INDELs. Get basic variant information
   vars_pass <- df[var_selection, c("Chr", "POS", "REF", "ALT")]
