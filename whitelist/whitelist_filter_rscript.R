@@ -6,6 +6,7 @@ library(stringr)
 source("./import/gnomad.R")
 source("./import/hard_filter.R")
 source("./import/homopolymers.R")
+source("./import/somaticism_filter.R")
 source("./import/parse_annovar.R")
 source("./import/match_mutation.R")
 source("./import/apply_putative_filter.R")
@@ -16,10 +17,10 @@ source("./import/apply_putative_filter.R")
 # ========================== #
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 11) {
+if (length(args) != 12) {
   stop(paste(
     "Incorrect number of arguments!",
-    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <ANNOVAR VARIANT EXONIC FUNCTION TABLE> <ENSEMBL REFSEQ> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <FASTA REFERENCE FILE>",
+    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <ANNOVAR VARIANT EXONIC FUNCTION TABLE> <ENSEMBL REFSEQ> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <FASTA REFERENCE FILE> <SOMATICISM FILTER TRANSCRIPTS>",
     "    ANNOVAR OUTPUT TABLE/VCF:                output txt and vcf files from Annovar.",
     "    ANNOVAR VARIANT FUNCTION TABLE:          variant function output file from Annovar.",
     "    ANNOVAR VARIANT EXONIC FUNCTION TABLE:   variant exonic function output file from Annovar.",
@@ -30,6 +31,7 @@ if (length(args) != 11) {
     "    TREAT MISSING AF AS RARE:                'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
     "    CHIP DEFINITION FILE:                    csv file containing CHIP variant definitions",
     "    FASTA REFERENCE FILE:                    the FASTA reference to which the samples have been aligned.",
+    "    SOMATICISM FILTER TRANSCRIPTS:           text file containing transcript IDs (one per line) to be subjected to the somaticism filter (to remove likely germline mutations).",
     sep = "\n"))
 }
 annovar_text_out <- args[1]
@@ -43,6 +45,7 @@ gnomad_pop <- args[8]
 treat_missing_as_rare <- args[9]
 chip_def_file <- args[10]
 fasta_file <- args[11]
+somaticism_file <- args[12]
 
 
 # ============================ #
@@ -69,6 +72,9 @@ if (!file.exists(chip_def_file)) {
 }
 if (!file.exists(fasta_file)) {
   stop("FASTA reference file does not exist.")
+}
+if (!file.exists(somaticism_file)) {
+  stop("Somaticism filter transcripts file does not exist.")
 }
 if (!(gnomad_source %in% c("exome", "genome", "exome,genome", "genome,exome"))) {
   stop("Invalid gnomAD source.")
@@ -172,7 +178,6 @@ exonic_func <- paste("ExonicFunc", refseq_ensembl_suffix, sep = ".")
 
 vars_hf_hp <- apply_homopolymer_indel_filter(vars_hf, fasta_file)
 
-
 # ==================== #
 # PARSE ANNOVAR OUTPUT #
 # ==================== #
@@ -199,8 +204,20 @@ vars_variant_exonic_func <- unique(vars_variant_exonic_func)
 # Parse annovar output, split rows into one per transcript, and extract transcript accession IDs
 vars_ann <- parse_annovar(vars_hf_hp, vars_variant_func, vars_variant_exonic_func, ensGene = ensGene, refGene = refGene, filter = c("exonic", "splicing"))
 
+
+# ==================================================================================== #
+# Apply somaticism filter to transcripts defined in somaticism filter transcripts file #
+# ==================================================================================== #
+
+vars_ann_som <- apply_somaticism_filter(vars_ann, somaticism_file, transcript)
+
+
+# ================= #
+# Apply CHIP filter #
+# ================= #
+
 # Filter for CHIP transcripts
-vars_chip <- vars_ann[vars_ann[[transcript]] %in% chip_vars[[refseq_ensembl_chip_accession_column]],]
+vars_chip <- vars_ann_som[vars_ann_som[[transcript]] %in% chip_vars[[refseq_ensembl_chip_accession_column]],]
 
 # Merge filtered variants and CHIP gene annotation data frames
 vars_chip <- merge(vars_chip, chip_vars, by.x = transcript, by.y = refseq_ensembl_chip_accession_column)
@@ -226,7 +243,7 @@ vars_chip_filtered_put <- apply_putative_filter(vars_chip_filtered)
 
 write.csv(vars, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_hf_hp, paste(sample_id, ".all_variants.pre_filtered.csv", sep = ""), row.names = FALSE)
-write.csv(vars_ann, paste(sample_id, ".exonic_splicing_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_ann_som, paste(sample_id, ".exonic_splicing_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip, paste(sample_id, ".chip_transcript_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip_filtered, paste(sample_id, ".chip_transcript_variants.filtered.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip_filtered_put, paste(sample_id, ".chip_transcript_variants.filtered.putative_filter.csv", sep = ""), row.names = FALSE)

@@ -1268,15 +1268,15 @@ task VEP {
         OPT_VAR_DEFINED="~{loftee_ancestor_gzi_def}"
 
         TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
-        mkdir -p ${TMPDIR_RND}
+        mkdir -p $TMPDIR_RND
 
-        mkdir -p ${TMPDIR_RND}/.vep/cache
-        tar -xzvf ~{cache_archive} -C ${TMPDIR_RND}/.vep/cache/
+        mkdir -p $TMPDIR_RND/.vep/cache
+        tar -xzvf ~{cache_archive} -C $TMPDIR_RND/.vep/cache/
         # this seems necessary on GCP - running into permissions errors.
         # TODO: find a better solution
-        cp ~{fasta} ${TMPDIR_RND}/ref_fasta.fasta
+        cp ~{fasta} $TMPDIR_RND/ref_fasta.fasta
         vep \
-            --dir_cache ${TMPDIR_RND}/.vep/cache \
+            --dir_cache $TMPDIR_RND/.vep/cache \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1286,7 +1286,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
-            --fasta ${TMPDIR_RND}/ref_fasta.fasta \
+            --fasta $TMPDIR_RND/ref_fasta.fasta \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
@@ -1341,24 +1341,24 @@ task Annovar {
       set -euo pipefail
 
       TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
-      mkdir -p ${TMPDIR_RND}
+      mkdir -p $TMPDIR_RND
 
-      cd ${TMPDIR_RND}
+      cd $TMPDIR_RND
 
       tar -xzvf ~{annovar_archive}
 
       cd -
 
-      chmod +x ${TMPDIR_RND}/annovar_files/convert2annovar.pl
-      chmod +x ${TMPDIR_RND}/annovar_files/table_annovar.pl
-      chmod +x ${TMPDIR_RND}/annovar_files/annotate_variation.pl
-      chmod +x ${TMPDIR_RND}/annovar_files/coding_change.pl
-      chmod +x ${TMPDIR_RND}/annovar_files/retrieve_seq_from_fasta.pl
-      chmod +x ${TMPDIR_RND}/annovar_files/variants_reduction.pl
+      chmod +x $TMPDIR_RND/annovar_files/convert2annovar.pl
+      chmod +x $TMPDIR_RND/annovar_files/table_annovar.pl
+      chmod +x $TMPDIR_RND/annovar_files/annotate_variation.pl
+      chmod +x $TMPDIR_RND/annovar_files/coding_change.pl
+      chmod +x $TMPDIR_RND/annovar_files/retrieve_seq_from_fasta.pl
+      chmod +x $TMPDIR_RND/annovar_files/variants_reduction.pl
 
-      perl ${TMPDIR_RND}/annovar_files/table_annovar.pl \
+      perl $TMPDIR_RND/annovar_files/table_annovar.pl \
         ~{vcf_input} \
-        ${TMPDIR_RND}/annovar_files \
+        $TMPDIR_RND/annovar_files \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -protocol ~{annovar_protocols} \
@@ -1435,7 +1435,8 @@ task WhitelistFilter {
         ~{gnomad_pop} \
         ~{treat_missing_as_rare_str} \
         ./chip_variant_definitions.csv \
-        ~{ref_fasta}
+        ~{ref_fasta} \
+        ./somaticism_filter_transcripts.txt
 
       mv *_variants.csv *_variants.*.csv $SCRIPT_DIR/
       cd $SCRIPT_DIR
