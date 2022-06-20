@@ -65,9 +65,9 @@ apply_homopolymer_indel_filter <- function(df, fasta_file) {
           chr <- gsub("^>", "", chr, perl = TRUE)
           start <- gsub(".*\\:", "", name, perl = TRUE)
           start <- gsub("\\-.*", "", start, perl = TRUE)
-          start <- as.integer(start) + 11
+          start <- format(as.integer(start) + 11, scientific = FALSE)
           end <- gsub(".*\\-", "", name, perl = TRUE)
-          end <- as.integer(end) - 10
+          end <- format(as.integer(end) - 10, scientific = FALSE)
           pass_seq[[j]] <- c(chr, start, end, "")
           i <- i + 1
         } else if (i %% 2 == 0) {
@@ -81,6 +81,8 @@ apply_homopolymer_indel_filter <- function(df, fasta_file) {
     # Merge results into a single dataframe, rename the columns, and format the position columns as integers
     pass_seq <- as.data.frame(do.call(rbind, pass_seq))
     colnames(pass_seq) <- c("Chr", "Start", "End", "VAR_SEQ_CONTEXT")
+    pass_seq$Start <- as.integer(pass_seq$Start)
+    pass_seq$End <- as.integer(pass_seq$End)
     vars_pass$Start <- as.integer(vars_pass$Start)
     vars_pass$End <- as.integer(vars_pass$End)
     vars_pass <- merge(vars_pass, pass_seq, all.x = TRUE)
