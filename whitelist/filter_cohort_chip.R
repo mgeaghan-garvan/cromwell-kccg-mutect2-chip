@@ -1,5 +1,3 @@
-source("./import/update_whitelist.R")
-
 args <- commandArgs(trailingOnly = TRUE)
 if (!(length(args) %in% c(1, 2))) {
   stop(paste(
