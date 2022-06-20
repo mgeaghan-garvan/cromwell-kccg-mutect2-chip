@@ -169,14 +169,14 @@ sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBNAME_TO_SED/${DBNAME}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
     -e "s/CALL_CACHING_TO_SED/${ENABLECACHING}/g" \
-    ./workflow/mutect2.conf
+    ./mutect2.conf
 sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBPORT_TO_SED/${DBPORT}/g" \
     -e "s/DBNAME_TO_SED/${DBNAME}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
     -e "s/GCP_PROJECT_TO_SED/${GCP_PROJECT}/g" \
     -e "s/CROMWELL_ROOT_TO_SED/${CROMWELL_ROOT}/g" \
-    ./workflow/mutect2.google.conf
+    ./mutect2.google.conf
 if [ "${PLATFORM}" == "GCP" ]
 then
     # Set the GCP service account details
@@ -187,7 +187,7 @@ then
         EMAIL=$(awk 'NR==1' .service_account.email.txt | tr -d '\n')
         sed -i -e "s#ROOT_PATH_TO_SED#${PWD}#g" \
             -e "s/GCP_SA_EMAIL_TO_SED/${EMAIL}/g" \
-            ./workflow/mutect2.google.conf
+            ./mutect2.google.conf
     else
         echo "NO GCP SERVICE ACCOUNT DETAILS PROVIDED!"
         exit 0
