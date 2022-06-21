@@ -5,7 +5,7 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-d|--dryrun] [-m|--multi]"
+    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-P|--priority DX_PRIORITY] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
     echo -e "\tRUN_NAME:             (GCP only) Name of the run.                                  (Default: 'run')."
     echo -e "\tCROMWELL_PORT:        Port where Cromwell is running (ignored for DNAnexus runs).  (Default: '8007')"
@@ -15,6 +15,7 @@ helpmsg() {
     echo -e "\tDX_INPUT_JSON:        (DNAnexus only) Path to local input JSON file."
     echo -e "\tDX_BATCH_INPUT_FILE:  (DNAnexus only) (Optional) Path to local TSV file for batch runs. When supplied, each sample will be submitted as a separate job to DNAnexus. See README.md and input/inputFiles.tsv for further information on the required format."
     echo -e "\tDX_OUTPUT_PATH:       (DNAnexus only) Output path on DNAnexus platform."
+    echo -e "\tDX_PRIORITY:          (DNAnexus only) Priority for DNAnexus run ('high' 'normal', 'low'; default: 'low')."
     echo -e "\t[-d|--dryrun]:        Print settings to screen without making changes."
 }
 
@@ -37,6 +38,7 @@ DX_PATH_TO_WORKFLOW=""
 DX_INPUT_JSON=""
 DX_BATCH_INPUT_FILE=""
 DX_OUTPUT_PATH=""
+DX_PRIORITY="low"
 
 # Arguments
 POSITIONAL=()
@@ -100,6 +102,11 @@ while [[ $# -gt 0 ]]; do
                         shift
                         shift
                         ;;
+                -P|--priority)
+                        DX_PRIORITY="$2"
+                        shift
+                        shift
+                        ;;
                 -d|--dryrun)
                         DRYRUN="1"
                         shift
@@ -126,6 +133,7 @@ if [ "${PLATFORM}" == "DX" ]; then
     echo "DNAnexus input JSON = ${DX_INPUT_JSON}"
     echo "DNAnexus batch file = ${DX_BATCH_INPUT_FILE}"
     echo "DNAnexus output     = ${DX_OUTPUT_PATH}"
+    echo "DNAnexus priority   = ${DX_PRIORITY}"
 fi
 if [[ -n $1 ]]; then
         echo "Remaining arguments: "
@@ -135,21 +143,22 @@ fi
 if [ "${PLATFORM}" == "DX" ]
 then
     # Run checks to make sure all the information is provided to run on DNAnexus
-    if [ "${DX_PATH_TO_WORKFLOW}" == "" ] || [ "${DX_INPUT_JSON}" == "" ] || [ "${DX_OUTPUT_PATH}" == "" ]
+    if [ "${DX_PATH_TO_WORKFLOW}" == "" ] || [ "${DX_INPUT_JSON}" == "" ] || [ "${DX_OUTPUT_PATH}" == "" ] || [ "${DX_PRIORITY}" == "" ]
     then
         echo "Missing DNAnexus configuration information. Exiting."
         exit 1
     fi
     if [ ! -f "${DX_INPUT_JSON}" ]; then echo "Invalid path to input JSON file!"; exit 1; fi
     if [ "${DX_BATCH_INPUT_FILE}" != "" ] && [ ! -f "${DX_BATCH_INPUT_FILE}" ]; then echo "Invalid path to batch TSV file!"; exit 1; fi
+    if [ "${DX_PRIORITY}" != "low" ] && [ "${DX_PRIORITY}" != "normal" ] &&[ "${DX_PRIORITY}" != "high" ]; then DX_PRIORITY="low"; fi
     # Construct command to generate DNAnexus run script(s)
     CMD=""
     mkdir -p ./scripts/dx
     if [ "${DX_BATCH_INPUT_FILE}" == "" ]
     then
-        CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${DX_INPUT_JSON} -d ${DX_OUTPUT_PATH} -w ${DX_PATH_TO_WORKFLOW} -o ./scripts/dx/_dx_run.sh"
+        CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${DX_INPUT_JSON} -d ${DX_OUTPUT_PATH} -w ${DX_PATH_TO_WORKFLOW} -p ${DX_PRIORITY} -o ./scripts/dx/_dx_run.sh"
     else
-        CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${DX_INPUT_JSON} -b ${DX_BATCH_INPUT_FILE} -d ${DX_OUTPUT_PATH} -w ${DX_PATH_TO_WORKFLOW} -o ./scripts/dx/_dx_run.sh"
+        CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${DX_INPUT_JSON} -b ${DX_BATCH_INPUT_FILE} -d ${DX_OUTPUT_PATH} -w ${DX_PATH_TO_WORKFLOW} -p ${DX_PRIORITY} -o ./scripts/dx/_dx_run.sh"
     fi
     if [ "${DRYRUN}" == "1" ]
     then
