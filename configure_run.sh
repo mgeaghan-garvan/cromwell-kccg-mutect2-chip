@@ -5,13 +5,17 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-d|--dryrun] [-m|--multi]"
+    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
-    echo -e "\tRUN_NAME:      Name of the run.                                            (Default: 'run')."
-    echo -e "\tCROMWELL_PORT: Port where Cromwell should run.                             (Default: '8007')"
-    echo -e "\tPLATFORM:      Platform on which workflow should be run.                   (Options: 'HPC', 'GCP'. Default: 'HPC')"
-    echo -e "\t[-m|--multi]:  Run in multi-sample batch mode (requires inputFiles.tsv)."
-    echo -e "\t[-d|--dryrun]: Print settings to screen without making changes."
+    echo -e "\tRUN_NAME:             (GCP only) Name of the run.                                  (Default: 'run')."
+    echo -e "\tCROMWELL_PORT:        Port where Cromwell is running (ignored for DNAnexus runs).  (Default: '8007')"
+    echo -e "\tPLATFORM:             Platform on which workflow should be run.                    (Options: 'HPC', 'GCP', 'DX'. Default: 'HPC')"
+    echo -e "\t[-m|--multi]:         Run in multi-sample batch mode (requires an input TSV file; see README.md and input/inputFiles.tsv for further information on the required format; ignored for DNAnexus runs)."
+    echo -e "\tDX_WORKFLOW_PATH:     (DNAnexus only) Path to workflow on DNAnexus platform."
+    echo -e "\tDX_INPUT_JSON:        (DNAnexus only) Path to local input JSON file."
+    echo -e "\tDX_BATCH_INPUT_FILE:  (DNAnexus only) (Optional) Path to local TSV file for batch runs. When supplied, each sample will be submitted as a separate job to DNAnexus. See README.md and input/inputFiles.tsv for further information on the required format."
+    echo -e "\tDX_OUTPUT_PATH:       (DNAnexus only) Output path on DNAnexus platform."
+    echo -e "\t[-d|--dryrun]:        Print settings to screen without making changes."
 }
 
 # Display help message if there are no arguments
@@ -109,10 +113,14 @@ done
 
 set -- "${POSITIONAL[@]}"
 
-echo "Run name            = ${RUNNAME}"
-echo "Cromwell port       = ${CROMPORT}"
 echo "Platform            = ${PLATFORM}"
-echo "Multi-sample mode   = ${MULTI}"
+if [ "${PLATFORM}" == "GCP" ]; then
+    echo "Run name            = ${RUNNAME}"
+fi
+if [ "${PLATFORM}" != "DX" ]; then
+    echo "Cromwell port       = ${CROMPORT}"
+    echo "Multi-sample mode   = ${MULTI}"
+fi
 if [ "${PLATFORM}" == "DX" ]; then
     echo "DNAnexus workflow   = ${DX_PATH_TO_WORKFLOW}"
     echo "DNAnexus input JSON = ${DX_INPUT_JSON}"
@@ -141,12 +149,12 @@ then
     then
         CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${DX_INPUT_JSON} -d ${DX_OUTPUT_PATH} -w ${DX_PATH_TO_WORKFLOW} -o ./scripts/dx/_dx_run.sh"
     else
-        CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${INPUT_JSON} -b ${BATCH_INPUT_FILE} -d ${OUTPUT_PATH} -w ${PATH_TO_WORKFLOW} -o ./scripts/dx/_dx_run.sh"
+        CMD="python3 ./scripts/generate_dx_run_cmd.py -j ${DX_INPUT_JSON} -b ${DX_BATCH_INPUT_FILE} -d ${DX_OUTPUT_PATH} -w ${DX_PATH_TO_WORKFLOW} -o ./scripts/dx/_dx_run.sh"
     fi
     if [ "${DRYRUN}" == "1" ]
     then
             # Echo python command to generate run script(s)
-            "Command to generate DNAnexus run script(s):"
+            echo "Command to generate DNAnexus run script(s):"
             echo ${CMD}
     else
         # Create DNAnexus input JSON file(s)
