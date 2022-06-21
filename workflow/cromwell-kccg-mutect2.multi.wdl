@@ -236,12 +236,13 @@ workflow Mutect2CHIP_Multi {
         Array[File?] out_vep_vcf = Mutect2CHIP.out_vep_vcf 
         Array[File?] out_annovar_vcf = Mutect2CHIP.out_annovar_vcf
         Array[File?] out_annovar_table = Mutect2CHIP.out_annovar_table
-        Array[File?] out_whitelist_annovar_vcf = Mutect2CHIP.out_whitelist_annovar_vcf 
-        Array[File?] out_whitelist_annovar_table = Mutect2CHIP.out_whitelist_annovar_table 
+        Array[File?] out_whitelist_annovar_vcf = Mutect2CHIP.out_whitelist_annovar_vcf
+        Array[File?] out_whitelist_annovar_table = Mutect2CHIP.out_whitelist_annovar_table
         Array[File?] out_whitelist_filter_output_allvariants_csv = Mutect2CHIP.out_whitelist_filter_output_allvariants_csv
-        Array[File?] out_whitelist_filter_output_wl_csv = Mutect2CHIP.out_whitelist_filter_output_wl_csv
-        Array[File?] out_whitelist_filter_output_manual_review_csv = Mutect2CHIP.out_whitelist_filter_output_manual_review_csv
-        Array[File?] out_whitelist_filter_output_putative_wl_csv = Mutect2CHIP.out_whitelist_filter_output_putative_wl_csv
-        Array[File?] out_whitelist_filter_output_putative_manual_review_csv = Mutect2CHIP.out_whitelist_filter_output_putative_manual_review_csv
+        Array[File?] out_whitelist_filter_output_allvariantsfiltered_csv = Mutect2CHIP.out_whitelist_filter_output_allvariantsfiltered_csv
+        Array[File?] out_whitelist_filter_output_exonicsplicingvariants_csv = Mutect2CHIP.out_whitelist_filter_output_exonicsplicingvariants_csv
+        Array[File?] out_whitelist_filter_output_chiptranscriptvariants_csv = Mutect2CHIP.out_whitelist_filter_output_chiptranscriptvariants_csv
+        Array[File?] out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv = Mutect2CHIP.out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv
+        Array[File?] out_whitelist_filter_output_putativefilter_csv = Mutect2CHIP.out_whitelist_filter_output_putativefilter_csv
     }
 }
