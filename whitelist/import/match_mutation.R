@@ -257,6 +257,13 @@ parse_mutation <- function(mutation, regex_list, regex_groups, exon = NA) {
   if (!is.na(exon)) {
     ret$exon <- exon
   }
+  # Ensure integer fields (e.g. start and end positions) are stored as integers and not strings
+  ret$start <- as.integer(ret$start)
+  ret$end <- as.integer(ret$end)
+  ret$exon <- as.integer(ret$exon)
+  ret$intron_offset_start <- as.integer(ret$intron_offset_start)
+  ret$intron_offset_end <- as.integer(ret$intron_offset_end)
+  ret$fs_term <- as.integer(ret$fs_term)
   return(ret)
 }
 
