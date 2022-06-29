@@ -11,3 +11,6 @@ configure_cromwell.py
 **/.DS_Store
 input_dx.json
 _dx_run.sh
+whitelist/test/
+_tmp_pass.*
+.Rhistory

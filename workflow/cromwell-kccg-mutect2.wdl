@@ -200,6 +200,7 @@ workflow Mutect2CHIP {
         File? whitelist_filter_archive
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
+        Boolean whitelist_use_ensembl_annotation = false
         String gnomad_pop = "AF"
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
 
@@ -552,8 +553,10 @@ workflow Mutect2CHIP {
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
         String sample_id = basename(basename(chip_detection_input_vcf, ".gz"), ".vcf")
         String tumor_sample_name = M2.tumor_sample[0]  # M2 is scattered over intervals, all entries in the Array[String] "tumor_sample" will be identical
-        String whitelist_annovar_protocols = if (whitelist_genome) then "refGene,gnomad211_genome,gnomad211_exome" else "refGene,gnomad211_exome"
-        String whitelist_annovar_operations = if (whitelist_genome) then "g,f,f" else "g,f"
+        String whitelist_annovar_protocols = if (whitelist_genome) then "refGene,ensGene,gnomad211_genome,gnomad211_exome" else "refGene,ensGene,gnomad211_exome"
+        String whitelist_annovar_operations = if (whitelist_genome) then "g,g,f,f" else "g,g,f"
+        String additional_arguments = '-argument "-exonicsplicing -transcript_function -separate,-exonicsplicing -transcript_function -separate,'
+        String additional_arguments_final = if (whitelist_genome) then additional_arguments + ',"' else additional_arguments + '"'
         call Annovar as WhitelistAnnovar {
             input:
                 mem_mb = 4000,
@@ -567,10 +570,13 @@ workflow Mutect2CHIP {
                 label = "whitelist_annovar_out",
                 annovar_protocols = whitelist_annovar_protocols,
                 annovar_operations = whitelist_annovar_operations,
+                annovar_additional_arguments = additional_arguments_final,
                 runtime_params = standard_runtime
         }
 
         String whitelist_exome_only_or_both = if (whitelist_genome) then "genome,exome" else "exome"
+        File var_func_input = if (whitelist_use_ensembl_annotation) then select_first([WhitelistAnnovar.annovar_output_ensgene_variant_function]) else select_first([WhitelistAnnovar.annovar_output_refgene_variant_function])
+        File var_exonic_func_input = if (whitelist_use_ensembl_annotation) then select_first([WhitelistAnnovar.annovar_output_ensgene_variant_exonic_function]) else select_first([WhitelistAnnovar.annovar_output_refgene_variant_exonic_function])
 
         call WhitelistFilter {
             input:
@@ -579,11 +585,14 @@ workflow Mutect2CHIP {
                 cpu = 1,
                 whitelist_filter_docker = whitelist_filter_docker,
                 tumor_sample_name = tumor_sample_name,
-                treat_missing_as_rare = treat_missing_as_rare,
+                use_ensembl_annotation = whitelist_use_ensembl_annotation,
                 gnomad_source = whitelist_exome_only_or_both,
                 gnomad_pop = gnomad_pop,
+                treat_missing_as_rare = treat_missing_as_rare,
                 txt_input = WhitelistAnnovar.annovar_output_file_table,
                 vcf_input = WhitelistAnnovar.annovar_output_file_vcf,
+                var_func_input = var_func_input,
+                var_exonic_func_input = var_exonic_func_input,
                 ref_name = annovar_assembly,
                 ref_fasta = ref_fasta,
                 whitelist_filter_archive = whitelist_filter_archive_file,
@@ -607,10 +616,11 @@ workflow Mutect2CHIP {
         File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
         File? out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
-        File? out_whitelist_filter_output_wl_csv = WhitelistFilter.whitelist_filter_output_wl_csv
-        File? out_whitelist_filter_output_manual_review_csv = WhitelistFilter.whitelist_filter_output_manual_review_csv
-        File? out_whitelist_filter_output_putative_wl_csv = WhitelistFilter.whitelist_filter_output_putative_wl_csv
-        File? out_whitelist_filter_output_putative_manual_review_csv = WhitelistFilter.whitelist_filter_output_putative_manual_review_csv
+        File? out_whitelist_filter_output_allvariantsfiltered_csv = WhitelistFilter.whitelist_filter_output_allvariantsfiltered_csv
+        File? out_whitelist_filter_output_exonicsplicingvariants_csv = WhitelistFilter.whitelist_filter_output_exonicsplicingvariants_csv
+        File? out_whitelist_filter_output_chiptranscriptvariants_csv = WhitelistFilter.whitelist_filter_output_chiptranscriptvariants_csv
+        File? out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv = WhitelistFilter.whitelist_filter_output_chiptranscriptvariantsfiltered_csv
+        File? out_whitelist_filter_output_putativefilter_csv = WhitelistFilter.whitelist_filter_output_putativefilter_csv
     }
 }
 
@@ -1257,13 +1267,16 @@ task VEP {
         OPT_VAR_DEFINED="~{loftee_ancestor_fai_def}"
         OPT_VAR_DEFINED="~{loftee_ancestor_gzi_def}"
 
-        mkdir -p /tmp/.vep/cache
-        tar -xzvf ~{cache_archive} -C /tmp/.vep/cache/
+        TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
+        mkdir -p $TMPDIR_RND
+
+        mkdir -p $TMPDIR_RND/.vep/cache
+        tar -xzvf ~{cache_archive} -C $TMPDIR_RND/.vep/cache/
         # this seems necessary on GCP - running into permissions errors.
         # TODO: find a better solution
-        cp ~{fasta} /tmp/ref_fasta.fasta
+        cp ~{fasta} $TMPDIR_RND/ref_fasta.fasta
         vep \
-            --dir_cache /tmp/.vep/cache \
+            --dir_cache $TMPDIR_RND/.vep/cache \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1273,7 +1286,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
-            --fasta /tmp/ref_fasta.fasta \
+            --fasta $TMPDIR_RND/ref_fasta.fasta \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
@@ -1318,6 +1331,7 @@ task Annovar {
       String ref_name = "hg38"
       String annovar_protocols = "cosmic70"
       String annovar_operations = "f"
+      String annovar_additional_arguments = ""
       Runtime runtime_params
     }
 
@@ -1326,26 +1340,33 @@ task Annovar {
     command {
       set -euo pipefail
 
-      cd /tmp
+      TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
+      mkdir -p $TMPDIR_RND
+
+      cd $TMPDIR_RND
 
       tar -xzvf ~{annovar_archive}
 
       cd -
 
-      chmod +x /tmp/annovar_files/convert2annovar.pl
-      chmod +x /tmp/annovar_files/table_annovar.pl
-      chmod +x /tmp/annovar_files/annotate_variation.pl
-      chmod +x /tmp/annovar_files/coding_change.pl
-      chmod +x /tmp/annovar_files/retrieve_seq_from_fasta.pl
-      chmod +x /tmp/annovar_files/variants_reduction.pl
+      chmod +x $TMPDIR_RND/annovar_files/convert2annovar.pl
+      chmod +x $TMPDIR_RND/annovar_files/table_annovar.pl
+      chmod +x $TMPDIR_RND/annovar_files/annotate_variation.pl
+      chmod +x $TMPDIR_RND/annovar_files/coding_change.pl
+      chmod +x $TMPDIR_RND/annovar_files/retrieve_seq_from_fasta.pl
+      chmod +x $TMPDIR_RND/annovar_files/variants_reduction.pl
 
-      perl /tmp/annovar_files/table_annovar.pl ~{vcf_input} /tmp/annovar_files \
+      perl $TMPDIR_RND/annovar_files/table_annovar.pl \
+        ~{vcf_input} \
+        $TMPDIR_RND/annovar_files \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
-        -remove \
         -protocol ~{annovar_protocols} \
         -operation ~{annovar_operations} \
-        -nastring . -vcfinput
+        -nastring . \
+        -vcfinput \
+        -polish \
+        ~{annovar_additional_arguments}
     }
 
     runtime {
@@ -1363,6 +1384,10 @@ task Annovar {
     output {
       File annovar_output_file_vcf = file_prefix + ".hg38_multianno.vcf"
       File annovar_output_file_table = file_prefix + ".hg38_multianno.txt"
+      File? annovar_output_refgene_variant_function = file_prefix + ".refGene.variant_function"
+      File? annovar_output_ensgene_variant_function = file_prefix + ".ensGene.variant_function"
+      File? annovar_output_refgene_variant_exonic_function = file_prefix + ".refGene.exonic_variant_function"
+      File? annovar_output_ensgene_variant_exonic_function = file_prefix + ".ensGene.exonic_variant_function"
     }
 }
 
@@ -1373,11 +1398,14 @@ task WhitelistFilter {
       Int cpu = 1
       String whitelist_filter_docker
       String tumor_sample_name
+      Boolean use_ensembl_annotation = false
       String gnomad_source = "genome,exome"
       String gnomad_pop = "AF"
       Boolean treat_missing_as_rare = true
       File txt_input
       File vcf_input
+      File var_func_input
+      File var_exonic_func_input
       String ref_name
       File ref_fasta
       File whitelist_filter_archive
@@ -1386,13 +1414,32 @@ task WhitelistFilter {
 
     String file_prefix = basename(txt_input, "_multianno.txt")
     String treat_missing_as_rare_str = if (treat_missing_as_rare) then "TRUE" else "FALSE"
+    String ensembl_refseq = if (use_ensembl_annotation) then "ensembl" else "refseq"
 
     command {
       set -euo pipefail
 
       tar -xzvf ~{whitelist_filter_archive}
 
-      Rscript ./whitelist_filter_files/whitelist_filter_rscript.R ~{txt_input} ~{vcf_input} ~{tumor_sample_name} ~{gnomad_source} ~{gnomad_pop} ~{treat_missing_as_rare_str} ./whitelist_filter_files/chip_variant_definitions.csv ./whitelist_filter_files/transcript_protein_lengths.csv ~{ref_fasta}
+      SCRIPT_DIR=$PWD
+      cd whitelist
+
+      Rscript ./whitelist_filter_rscript.R \
+        ~{txt_input} \
+        ~{vcf_input} \
+        ~{var_func_input} \
+        ~{var_exonic_func_input} \
+        ~{ensembl_refseq} \
+        ~{tumor_sample_name} \
+        ~{gnomad_source} \
+        ~{gnomad_pop} \
+        ~{treat_missing_as_rare_str} \
+        ./chip_variant_definitions.csv \
+        ~{ref_fasta} \
+        ./somaticism_filter_transcripts.txt
+
+      mv *_variants.csv *_variants.*.csv $SCRIPT_DIR/
+      cd $SCRIPT_DIR
     }
 
     runtime {
@@ -1408,10 +1455,11 @@ task WhitelistFilter {
 
     output {
       File whitelist_filter_output_allvariants_csv = file_prefix + ".all_variants.csv"
-      File whitelist_filter_output_wl_csv = file_prefix + ".chip_wl_variants.csv"
-      File whitelist_filter_output_manual_review_csv = file_prefix + ".chip_manual_review_variants.csv"
-      File whitelist_filter_output_putative_wl_csv = file_prefix + ".chip_putative_wl_variants.csv"
-      File whitelist_filter_output_putative_manual_review_csv = file_prefix + ".chip_putative_manual_review_variants.csv"
+      File whitelist_filter_output_allvariantsfiltered_csv = file_prefix + ".all_variants.pre_filtered.csv"
+      File whitelist_filter_output_exonicsplicingvariants_csv = file_prefix + ".exonic_splicing_variants.csv"
+      File whitelist_filter_output_chiptranscriptvariants_csv = file_prefix + ".chip_transcript_variants.csv"
+      File whitelist_filter_output_chiptranscriptvariantsfiltered_csv = file_prefix + ".chip_transcript_variants.filtered.csv"
+      File whitelist_filter_output_putativefilter_csv = file_prefix + ".chip_transcript_variants.filtered.putative_filter.csv"
     }
 }
 

@@ -39,6 +39,7 @@
     "Mutect2CHIP_Multi.annovar_assembly": "hg38",
     "Mutect2CHIP_Multi.treat_missing_as_rare": true,
     "Mutect2CHIP_Multi.whitelist_genome": true,
+    "Mutect2CHIP_Multi.whitelist_use_ensembl_annotation": false,
     "Mutect2CHIP_Multi.gnomad_pop": "AF",
     "Mutect2CHIP_Multi.annovar_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
     "Mutect2CHIP_Multi.whitelist_filter_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4",
