@@ -5,11 +5,12 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-P|--priority DX_PRIORITY] [-d|--dryrun] [-m|--multi]"
+    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-g|--gcpout GCP_OUT_PATH] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-P|--priority DX_PRIORITY] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
     echo -e "\tRUN_NAME:             (GCP only) Name of the run.                                  (Default: 'run')."
     echo -e "\tCROMWELL_PORT:        Port where Cromwell is running (ignored for DNAnexus runs).  (Default: '8007')"
     echo -e "\tPLATFORM:             Platform on which workflow should be run.                    (Options: 'HPC', 'GCP', 'DX'. Default: 'HPC')"
+    echo -e "\tGCP_OUT_PATH:         (GCP only) Path on GCP to place final output files."
     echo -e "\t[-m|--multi]:         Run in multi-sample batch mode (requires an input TSV file; see README.md and input/inputFiles.tsv for further information on the required format; ignored for DNAnexus runs)."
     echo -e "\tDX_WORKFLOW_PATH:     (DNAnexus only) Path to workflow on DNAnexus platform."
     echo -e "\tDX_INPUT_JSON:        (DNAnexus only) Path to local input JSON file."
@@ -34,6 +35,7 @@ CROMPORT="8007"
 PLATFORM="HPC"
 MULTI="FALSE"
 DRYRUN="0"
+GCP_OUT_PATH=""
 DX_PATH_TO_WORKFLOW=""
 DX_INPUT_JSON=""
 DX_BATCH_INPUT_FILE=""
@@ -82,6 +84,11 @@ while [[ $# -gt 0 ]]; do
                         MULTI="TRUE"
                         shift
                         ;;
+                -g|--gcpout)
+                        GCP_OUT_PATH="$2"
+                        shift
+                        shift
+                        ;;
                 -w|--workflow)
                         DX_PATH_TO_WORKFLOW="$2"
                         shift
@@ -123,6 +130,7 @@ set -- "${POSITIONAL[@]}"
 echo "Platform            = ${PLATFORM}"
 if [ "${PLATFORM}" == "GCP" ]; then
     echo "Run name            = ${RUNNAME}"
+    echo "GCP output path     = ${GCP_OUT_PATH}"
 fi
 if [ "${PLATFORM}" != "DX" ]; then
     echo "Cromwell port       = ${CROMPORT}"
@@ -181,10 +189,13 @@ then
         exit 0
 fi
 
+if [ "${PLATFORM}" == "DX" ] && [ "${GCP_OUT_PATH}" == "" ]; then "Missing GCP output path."; exit 1; fi
+
 # Configure options files
 # '#' delimiters are used to enable path substitution
 sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.json
 sed -i -e "s#PWD_TO_SED#${PWD}#g" -e "s/ID_TO_SED/${RUNNAME}/g" ./workflow/options.google.json
+sed -i -e "s#CROMWELL_OUT_TO_SED#${GCP_OUT_PATH}#g" -e "s/ID_TO_SED/${RUNNAME}/g" ./workflow/options.google.json
 
 # Set up output directories
 mkdir -p workflow_out
