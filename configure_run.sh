@@ -189,7 +189,7 @@ then
         exit 0
 fi
 
-if [ "${PLATFORM}" == "DX" ] && [ "${GCP_OUT_PATH}" == "" ]; then "Missing GCP output path."; exit 1; fi
+if [ "${PLATFORM}" == "GCP" ] && [ "${GCP_OUT_PATH}" == "" ]; then "Missing GCP output path."; exit 1; fi
 
 # Configure options files
 # '#' delimiters are used to enable path substitution
