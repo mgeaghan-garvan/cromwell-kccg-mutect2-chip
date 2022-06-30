@@ -163,6 +163,10 @@ CROMWELL_BN="$(basename ${CROMWELL})"
 if [ "${CACHING}" == "TRUE" ]; then ENABLECACHING="true"; else ENABLECACHING="false"; fi
 if [ "${PLATFORM}" == "GCP" ] && [ "${CROMWELL_ROOT}" == "" ]; then echo "NO CROMWELL ROOT PROVIDED FOR GCP RUN!"; exit 0; fi
 if [ "${PLATFORM}" == "GCP" ] && [ "${GCP_PROJECT}" == "" ]; then echo "NO GCP PROJECT PROVIDED FOR GCP RUN!"; exit 0; fi
+
+# Strip leading 'gs://' from CROMWELL_ROOT
+CROMWELL_ROOT=$(echo ${CROMWELL_ROOT} | sed -e 's#^gs://##g')
+
 # Set the MySQL hostname, port, and database name
 sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBPORT_TO_SED/${DBPORT}/g" \
@@ -175,7 +179,7 @@ sed -i -e "s/DBHOST_TO_SED/${DBHOST}/g" \
     -e "s/DBNAME_TO_SED/${DBNAME}/g" \
     -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" \
     -e "s/GCP_PROJECT_TO_SED/${GCP_PROJECT}/g" \
-    -e "s/CROMWELL_ROOT_TO_SED/${CROMWELL_ROOT}/g" \
+    -e "s#CROMWELL_ROOT_TO_SED#${CROMWELL_ROOT}#g" \
     ./mutect2.google.conf
 if [ "${PLATFORM}" == "GCP" ]
 then

@@ -192,10 +192,13 @@ fi
 if [ "${PLATFORM}" == "GCP" ] && [ "${GCP_OUT_PATH}" == "" ]; then "Missing GCP output path."; exit 1; fi
 
 # Configure options files
+
+# Strip leading 'gs://' from GCP_OUT_PATH
+GCP_OUT_PATH=$(echo ${GCP_OUT_PATH} | sed -e 's#^gs://##g')
+
 # '#' delimiters are used to enable path substitution
 sed -i -e "s#PWD_TO_SED#${PWD}#g" ./workflow/options.json
-sed -i -e "s#PWD_TO_SED#${PWD}#g" -e "s/ID_TO_SED/${RUNNAME}/g" ./workflow/options.google.json
-sed -i -e "s#CROMWELL_OUT_TO_SED#${GCP_OUT_PATH}#g" -e "s/ID_TO_SED/${RUNNAME}/g" ./workflow/options.google.json
+sed -i -e "s#PWD_TO_SED#${PWD}#g" -e "s/ID_TO_SED/${RUNNAME}/g" -e "s#CROMWELL_OUT_TO_SED#${GCP_OUT_PATH}#g" ./workflow/options.google.json
 
 # Set up output directories
 mkdir -p workflow_out
