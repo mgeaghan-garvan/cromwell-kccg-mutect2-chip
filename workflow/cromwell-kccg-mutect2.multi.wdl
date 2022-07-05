@@ -125,6 +125,7 @@ workflow Mutect2CHIP_Multi {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 4
+        Boolean use_sys_tmp_dir = true
     
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -219,7 +220,8 @@ workflow Mutect2CHIP_Multi {
                 emergency_extra_disk = emergency_extra_disk,
                 large_input_to_output_multiplier = large_input_to_output_multiplier,
                 small_input_to_output_multiplier = small_input_to_output_multiplier,
-                cram_to_bam_multiplier = cram_to_bam_multiplier
+                cram_to_bam_multiplier = cram_to_bam_multiplier,
+                use_sys_tmp_dir = use_sys_tmp_dir
         }
     }
 
