@@ -15,5 +15,6 @@
     "Mutect2CHIP_Annovar_Multi.small_task_disk":  100,
     "Mutect2CHIP_Annovar_Multi.command_mem_padding":  1000,
     "Mutect2CHIP_Annovar_Multi.boot_disk_size":  12,
-    "Mutect2CHIP_Annovar_Multi.emergency_extra_disk": 0
+    "Mutect2CHIP_Annovar_Multi.emergency_extra_disk": 0,
+    "Mutect2CHIP_Annovar_Multi.use_sys_tmp_dir": true
 }

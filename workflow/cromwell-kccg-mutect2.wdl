@@ -225,6 +225,7 @@ workflow Mutect2CHIP {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 1
+        Boolean use_sys_tmp_dir = true
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -519,6 +520,7 @@ workflow Mutect2CHIP {
                 loftee_conservation_sql = vep_loftee_conservation_sql,
                 mem_mb = vep_mem,
                 cpus = n_vep_cpus,
+                use_sys_tmp_dir = use_sys_tmp_dir,
                 runtime_params = standard_runtime
         }
     }
@@ -540,6 +542,7 @@ workflow Mutect2CHIP {
                 ref_name = annovar_assembly,
                 annovar_protocols = annovar_protocols,
                 annovar_operations = annovar_operations,
+                use_sys_tmp_dir = use_sys_tmp_dir,
                 runtime_params = standard_runtime
         }
     }
@@ -571,6 +574,7 @@ workflow Mutect2CHIP {
                 annovar_protocols = whitelist_annovar_protocols,
                 annovar_operations = whitelist_annovar_operations,
                 annovar_additional_arguments = additional_arguments_final,
+                use_sys_tmp_dir = use_sys_tmp_dir,
                 runtime_params = standard_runtime
         }
 
@@ -1247,6 +1251,7 @@ task VEP {
         Int mem_mb = 32000
         Int? buffer_size
         Int loftee_buffer_size = 1
+        Boolean use_sys_tmp_dir = true
         Runtime runtime_params
     }
 
@@ -1261,13 +1266,14 @@ task VEP {
     String loftee_ancestor_fai_def = if defined(loftee_ancestor_fai) then "defined" else "undefined"
     String loftee_ancestor_gzi_def = if defined(loftee_ancestor_gzi) then "defined" else "undefined"
 
+    String tmp_dir = if (use_sys_tmp_dir) then "/tmp" else "./tmp"
 
     command {
         # DNAnexus compatability: echo optional index filenames to ensure they get localized
         OPT_VAR_DEFINED="~{loftee_ancestor_fai_def}"
         OPT_VAR_DEFINED="~{loftee_ancestor_gzi_def}"
 
-        TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
+        TMPDIR_RND="~{tmp_dir}/$(echo $RANDOM | md5sum | head -c 20)"
         mkdir -p $TMPDIR_RND
 
         mkdir -p $TMPDIR_RND/.vep/cache
@@ -1332,15 +1338,19 @@ task Annovar {
       String annovar_protocols = "cosmic70"
       String annovar_operations = "f"
       String annovar_additional_arguments = ""
+
+      Boolean use_sys_tmp_dir = true
       Runtime runtime_params
     }
 
     String file_prefix = sample_id + "." + label
 
+    String tmp_dir = if (use_sys_tmp_dir) then "/tmp" else "./tmp"
+
     command {
       set -euo pipefail
 
-      TMPDIR_RND="/tmp/$(echo $RANDOM | md5sum | head -c 20)"
+      TMPDIR_RND="~{tmp_dir}/$(echo $RANDOM | md5sum | head -c 20)"
       mkdir -p $TMPDIR_RND
 
       cd $TMPDIR_RND

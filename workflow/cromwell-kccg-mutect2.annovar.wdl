@@ -44,6 +44,7 @@ workflow Mutect2CHIP_Annovar {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
+        Boolean use_sys_tmp_dir = true
     }
 
     Int preemptible_or_default = select_first([preemptible, 2])
@@ -76,6 +77,7 @@ workflow Mutect2CHIP_Annovar {
             ref_name = ref_name,
             annovar_protocols = annovar_protocols,
             annovar_operations = annovar_operations,
+            use_sys_tmp_dir = use_sys_tmp_dir,
             runtime_params = standard_runtime
     }
 

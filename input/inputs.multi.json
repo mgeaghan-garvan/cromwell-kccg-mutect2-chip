@@ -64,5 +64,6 @@
     "Mutect2CHIP_Multi.emergency_extra_disk": 0,
     "Mutect2CHIP_Multi.large_input_to_output_multiplier": 2.25,
     "Mutect2CHIP_Multi.small_input_to_output_multiplier": 2.0,
-    "Mutect2CHIP_Multi.cram_to_bam_multiplier": 6.0
+    "Mutect2CHIP_Multi.cram_to_bam_multiplier": 6.0,
+    "Mutect2CHIP_Multi.use_sys_tmp_dir": true
 }

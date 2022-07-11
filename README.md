@@ -58,7 +58,7 @@ First, clone the repository to a suitable location.
 ```bash
 # Clone the repository into your working directory
 git clone https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2-chip.git
-cd cromwell-kccg-mutect2
+cd cromwell-kccg-mutect2/server
 ```
 
 ##### Using a Google Service Account
@@ -156,12 +156,12 @@ Now configure the run by running configure_run.sh.
 ./configure_run.sh -d [OPTIONS]
 
 # When ready, run the configuration script with desired settings:
-DB_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
+RUN_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
 CROMWELL_PORT=8007
 PLATFORM=GCP
 
-./configure_cromwell.sh \
-    -n ${DB_NAME} \
+./configure_run.sh \
+    -n ${RUN_NAME} \
     -p ${CROMWELL_PORT} \
     -f ${PLATFORM} \
     -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
@@ -220,7 +220,7 @@ cat input/inputs.pon.json
     }
 
 # Create the PoN
-./create_pon.sh
+./run.sh -m pon
 ```
 
 #### Running the workflow
@@ -229,17 +229,20 @@ Once everything is set up and configured, run the workflow as follows:
 
 ```bash
 # Submit the workflow to Cromwell
-# Run one of the following scripts:
+# Run the pipeline in one of the following modes:
 
 # Option 1: run the full pipeline (BAM --> somatic variant calling --> CHIP detection)
-./run.sh
+RUNMODE=full
 
 # Option 2: only run the CHIP detection stage
-./run_chip_only.sh
+RUNMODE=chip
 
 # Option 3: only run VEP or Annovar annotation
-./run_vep_only.sh
-./run_annovar_only.sh
+RUNMODE=annovar
+# RUNMODE=vep
+
+# Then execute the run script in the appropriate mode
+./run.sh -m ${RUNMODE}
 ```
 
 You can check on the state of the run by re-attaching the Cromwell screen session:
@@ -250,13 +253,7 @@ screen -r "CromwellPort${CROMWELL_PORT}"
 
 #### Aborting the workflow
 
-To abort the workflow, simply run the following:
-
-```bash
-python3 abort.py
-```
-
-Alternatively, you can directly run the abort script by passing it the run ID. This is the ID returned in JSON format when submitting the workflow. It can be found in run_id.txt.
+To abort the workflow, run the abort script by passing it the run ID. This is the ID returned in JSON format when submitting the workflow. It can be found in run_id.txt.
 
 ```bash
 cat run_id.txt
@@ -377,16 +374,33 @@ Use the input templates in the ```input/``` directory to configure the pipeline,
 }
 ```
 
-#### Running the pipeline on DNAnexus
-
-Finally, to run the pipeline, first ensure you have Python 3 installed and available on your PATH. Then, run the following:
+Ensure you have Python 3 installed and available on your PATH. Then, run the configuration script to create the DNAnexus submission script(s).
 
 ```bash
-./run_dx.sh -i input/<INPUT JSON FILE> -o <PROJECT NAME>:/PATH/TO/ANALYSIS/OUTPUT -w <PROJECT NAME>:/PATH/TO/WORKFLOW
+./configure_run.sh \
+    -f DX \
+    -w <DNAnexus workflow path> \
+    -i <Input JSON file> \
+    -o <DNAnexus output path> \
+    -b <Local input TSV file>  # This is optional (see below)
 ```
 
-For example, to run the main, single-sample pipeline loated in the DNAnexus project ```project-G7Q2GLb5FXyKGpYj4SpgKfk3``` at ```/workflows/single_sample/Mutect2CHIP``` using the configuration in ```input/inputs.json```, and to output the data to ```/output/run_1```:
+##### Submitting multiple samples to DNAnexus
+You can use the ```-b``` flag for configure_run.sh to configure the run to submit each sample in a batch as a separate job to DNAnexus. In this way, if a sample fails, the other samples won't be affected. The argument to the -b flag is the same inputFiles.tsv file you would supply for a batch run on Cromwell. NOTE: when running the pipeline in this way, you need to supply the corresponding single sample JSON file and DNAnexus workflow to the ```-i``` flag, since the pipeline is actually running multiple single-sample mode runs in parallel. For example:
 
 ```bash
-./run_dx.sh -i input/inputs.json -o project-G7Q2GLb5FXyKGpYj4SpgKfk3:/output/run_1/ -w project-G7Q2GLb5FXyKGpYj4SpgKfk3:/workflows/single_sample/Mutect2CHIP
+./configure_run.sh \
+    -f DX \
+    -w project-X7Gjf3BJbVIJABcd1234KI95:/workflow/Mutect2CHIP \
+    -i ./input/inputs.json \
+    -o project-X7Gjf3BJbVIJABcd1234KI95:/output \
+    -b ./input/inputFiles.tsv
+```
+
+#### Running the pipeline on DNAnexus
+
+Finally, to run the pipeline, run the following:
+
+```bash
+./run.sh -m dx
 ```

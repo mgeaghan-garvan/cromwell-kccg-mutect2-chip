@@ -11,6 +11,7 @@ def check_args(args=None):
     parser.add_argument("-b", "--batch", help="Path to a batch input TSV file for running multiple single-sample workflows in parallel. See the README and the template file at ./input/inputFiles.tsv for information on the required format.", default="", type=str)
     parser.add_argument("-d", "--destination", help="Path to output directory on the DNAnexus platform.", required=True, type=str)
     parser.add_argument("-w", "--workflow", help="Path to workflow on the DNAnexus platform.", required=True, type=str)
+    parser.add_argument("-p", "--priority", help="Priority for DNAnexus run ('high', 'normal', 'low'; default: 'low').", default="low", choices=['high', 'normal', 'low'], type=str)
     parser.add_argument("-o", "--output", help="Path to bash file to output run command to. Default: _dx_run.sh.", default="_dx_run.sh", type=str)
     arguments = parser.parse_args(args)
     return arguments
@@ -95,7 +96,7 @@ def main(args):
         with open(out_file, 'w') as f:
             f.write("#!/bin/bash\n")
             destination = re.sub("/$", "", args.destination)
-            f.write(f"dx run --priority low --yes --destination {destination}/{str(i)}/ \\\n    ")
+            f.write(f"dx run --priority {args.priority} --yes --destination {destination}/{str(i)}/ \\\n    ")
             for k in new_data.keys():
                 f.write(f"-i{k}=\"{new_data[k]}\" \\\n    ")
             f.write(args.workflow)
