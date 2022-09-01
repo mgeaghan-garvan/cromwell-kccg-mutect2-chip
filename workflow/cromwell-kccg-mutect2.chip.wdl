@@ -130,10 +130,10 @@ workflow Mutect2CHIP_CHIP {
     output {
         File out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
-        File out_whitelist_annovar_output_refgene_variant_function = WhitelistAnnovar.annovar_output_refgene_variant_function
-        File out_whitelist_annovar_output_ensgene_variant_function = WhitelistAnnovar.annovar_output_ensgene_variant_function
-        File out_whitelist_annovar_output_refgene_variant_exonic_function = WhitelistAnnovar.annovar_output_refgene_variant_exonic_function
-        File out_whitelist_annovar_output_ensgene_variant_exonic_function = WhitelistAnnovar.annovar_output_ensgene_variant_exonic_function
+        File? out_whitelist_annovar_output_refgene_variant_function = WhitelistAnnovar.annovar_output_refgene_variant_function
+        File? out_whitelist_annovar_output_ensgene_variant_function = WhitelistAnnovar.annovar_output_ensgene_variant_function
+        File? out_whitelist_annovar_output_refgene_variant_exonic_function = WhitelistAnnovar.annovar_output_refgene_variant_exonic_function
+        File? out_whitelist_annovar_output_ensgene_variant_exonic_function = WhitelistAnnovar.annovar_output_ensgene_variant_exonic_function
         File out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
         File out_whitelist_filter_output_allvariantsfiltered_csv = WhitelistFilter.whitelist_filter_output_allvariantsfiltered_csv
         File out_whitelist_filter_output_exonicsplicingvariants_csv = WhitelistFilter.whitelist_filter_output_exonicsplicingvariants_csv
