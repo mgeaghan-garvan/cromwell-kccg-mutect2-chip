@@ -240,6 +240,10 @@ workflow Mutect2CHIP_Multi {
         Array[File?] out_annovar_table = Mutect2CHIP.out_annovar_table
         Array[File?] out_whitelist_annovar_vcf = Mutect2CHIP.out_whitelist_annovar_vcf
         Array[File?] out_whitelist_annovar_table = Mutect2CHIP.out_whitelist_annovar_table
+        Array[File?] out_whitelist_annovar_output_refgene_variant_function = Mutect2CHIP.out_whitelist_annovar_output_refgene_variant_function
+        Array[File?] out_whitelist_annovar_output_ensgene_variant_function = Mutect2CHIP.out_whitelist_annovar_output_ensgene_variant_function
+        Array[File?] out_whitelist_annovar_output_refgene_variant_exonic_function = Mutect2CHIP.out_whitelist_annovar_output_refgene_variant_exonic_function
+        Array[File?] out_whitelist_annovar_output_ensgene_variant_exonic_function = Mutect2CHIP.out_whitelist_annovar_output_ensgene_variant_exonic_function
         Array[File?] out_whitelist_filter_output_allvariants_csv = Mutect2CHIP.out_whitelist_filter_output_allvariants_csv
         Array[File?] out_whitelist_filter_output_allvariantsfiltered_csv = Mutect2CHIP.out_whitelist_filter_output_allvariantsfiltered_csv
         Array[File?] out_whitelist_filter_output_exonicsplicingvariants_csv = Mutect2CHIP.out_whitelist_filter_output_exonicsplicingvariants_csv
