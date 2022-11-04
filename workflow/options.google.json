@@ -4,9 +4,9 @@
     "write_to_cache": true,
     "read_from_cache": true,
     "use_relative_output_paths": true,
-    "final_workflow_outputs_dir": "gs://kccgsomvar/cromwell/workflow_out_ID_TO_SED",
-    "final_workflow_log_dir": "gs://kccgsomvar/cromwell/workflow_logs_ID_TO_SED",
-    "final_call_logs_dir": "gs://kccgsomvar/cromwell/workflow_call_logs_ID_TO_SED",
+    "final_workflow_outputs_dir": "gs://CROMWELL_OUT_TO_SED/cromwell/workflow_out_ID_TO_SED",
+    "final_workflow_log_dir": "gs://CROMWELL_OUT_TO_SED/cromwell/workflow_logs_ID_TO_SED",
+    "final_call_logs_dir": "gs://CROMWELL_OUT_TO_SED/cromwell/workflow_call_logs_ID_TO_SED",
     "workflow_log_dir": "PWD_TO_SED/gcp_logs",
     "delete_intermediate_output_files": true
 }

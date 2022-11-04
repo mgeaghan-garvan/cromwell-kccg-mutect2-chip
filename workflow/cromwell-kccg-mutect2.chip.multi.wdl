@@ -43,6 +43,7 @@ workflow Mutect2CHIP_CHIP_Multi {
         Int whitelist_cpu = 1
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
+        Boolean whitelist_use_ensembl_annotation = false
         String gnomad_pop = "AF"
         String whitelist_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
         File whitelist_archive
@@ -59,6 +60,7 @@ workflow Mutect2CHIP_CHIP_Multi {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
+        Boolean use_sys_tmp_dir = true
     }
 
     Array[Array[String]] input_vcfs = read_tsv(input_vcf_list)
@@ -81,6 +83,7 @@ workflow Mutect2CHIP_CHIP_Multi {
                 whitelist_cpu = whitelist_cpu,
                 treat_missing_as_rare = treat_missing_as_rare,
                 whitelist_genome = whitelist_genome,
+                whitelist_use_ensembl_annotation = whitelist_use_ensembl_annotation,
                 gnomad_pop = gnomad_pop,
                 whitelist_docker = whitelist_docker,
                 whitelist_archive = whitelist_archive,
@@ -93,17 +96,23 @@ workflow Mutect2CHIP_CHIP_Multi {
                 small_task_disk = small_task_disk,
                 command_mem_padding = command_mem_padding,
                 boot_disk_size = boot_disk_size,
-                emergency_extra_disk = emergency_extra_disk
+                emergency_extra_disk = emergency_extra_disk,
+                use_sys_tmp_dir = use_sys_tmp_dir
         }
     }
 
     output {
-        Array[File] out_whitelist_annovar_vcf = Mutect2CHIP_CHIP.out_whitelist_annovar_vcf 
-        Array[File] out_whitelist_annovar_table = Mutect2CHIP_CHIP.out_whitelist_annovar_table 
+        Array[File] out_whitelist_annovar_vcf = Mutect2CHIP_CHIP.out_whitelist_annovar_vcf
+        Array[File] out_whitelist_annovar_table = Mutect2CHIP_CHIP.out_whitelist_annovar_table
+        Array[File?] out_whitelist_annovar_output_refgene_variant_function = Mutect2CHIP_CHIP.out_whitelist_annovar_output_refgene_variant_function
+        Array[File?] out_whitelist_annovar_output_ensgene_variant_function = Mutect2CHIP_CHIP.out_whitelist_annovar_output_ensgene_variant_function
+        Array[File?] out_whitelist_annovar_output_refgene_variant_exonic_function = Mutect2CHIP_CHIP.out_whitelist_annovar_output_refgene_variant_exonic_function
+        Array[File?] out_whitelist_annovar_output_ensgene_variant_exonic_function = Mutect2CHIP_CHIP.out_whitelist_annovar_output_ensgene_variant_exonic_function
         Array[File] out_whitelist_filter_output_allvariants_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_allvariants_csv
-        Array[File] out_whitelist_filter_output_wl_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_wl_csv
-        Array[File] out_whitelist_filter_output_manual_review_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_manual_review_csv
-        Array[File] out_whitelist_filter_output_putative_wl_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_putative_wl_csv
-        Array[File] out_whitelist_filter_output_putative_manual_review_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_putative_manual_review_csv
+        Array[File] out_whitelist_filter_output_allvariantsfiltered_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_allvariantsfiltered_csv
+        Array[File] out_whitelist_filter_output_exonicsplicingvariants_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_exonicsplicingvariants_csv
+        Array[File] out_whitelist_filter_output_chiptranscriptvariants_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_chiptranscriptvariants_csv
+        Array[File] out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv
+        Array[File] out_whitelist_filter_output_putativefilter_csv = Mutect2CHIP_CHIP.out_whitelist_filter_output_putativefilter_csv
     }
 }

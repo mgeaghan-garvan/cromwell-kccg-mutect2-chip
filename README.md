@@ -58,7 +58,7 @@ First, clone the repository to a suitable location.
 ```bash
 # Clone the repository into your working directory
 git clone https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2-chip.git
-cd cromwell-kccg-mutect2
+cd cromwell-kccg-mutect2/server
 ```
 
 ##### Using a Google Service Account
@@ -156,12 +156,12 @@ Now configure the run by running configure_run.sh.
 ./configure_run.sh -d [OPTIONS]
 
 # When ready, run the configuration script with desired settings:
-DB_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
+RUN_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
 CROMWELL_PORT=8007
 PLATFORM=GCP
 
-./configure_cromwell.sh \
-    -n ${DB_NAME} \
+./configure_run.sh \
+    -n ${RUN_NAME} \
     -p ${CROMWELL_PORT} \
     -f ${PLATFORM} \
     -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
@@ -220,7 +220,7 @@ cat input/inputs.pon.json
     }
 
 # Create the PoN
-./create_pon.sh
+./run.sh -m pon
 ```
 
 #### Running the workflow
@@ -229,17 +229,20 @@ Once everything is set up and configured, run the workflow as follows:
 
 ```bash
 # Submit the workflow to Cromwell
-# Run one of the following scripts:
+# Run the pipeline in one of the following modes:
 
 # Option 1: run the full pipeline (BAM --> somatic variant calling --> CHIP detection)
-./run.sh
+RUNMODE=full
 
 # Option 2: only run the CHIP detection stage
-./run_chip_only.sh
+RUNMODE=chip
 
 # Option 3: only run VEP or Annovar annotation
-./run_vep_only.sh
-./run_annovar_only.sh
+RUNMODE=annovar
+# RUNMODE=vep
+
+# Then execute the run script in the appropriate mode
+./run.sh -m ${RUNMODE}
 ```
 
 You can check on the state of the run by re-attaching the Cromwell screen session:
@@ -250,13 +253,7 @@ screen -r "CromwellPort${CROMWELL_PORT}"
 
 #### Aborting the workflow
 
-To abort the workflow, simply run the following:
-
-```bash
-python3 abort.py
-```
-
-Alternatively, you can directly run the abort script by passing it the run ID. This is the ID returned in JSON format when submitting the workflow. It can be found in run_id.txt.
+To abort the workflow, run the abort script by passing it the run ID. This is the ID returned in JSON format when submitting the workflow. It can be found in run_id.txt.
 
 ```bash
 cat run_id.txt
@@ -276,15 +273,41 @@ If you need to start from scratch, you can choose to delete and re-create the Cr
 
 ### Running on Terra
 
-#### TODO: finish this section
+Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. All that is required is to:
 
-Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. Instead, all that is required is to:
-
-1. Upload the relevant workflow up to the Terra platform.
-2. Generate the appropriate input JSON file as described above.
-    1. Ensure that all files are uploaded to a GCP bucket and that their gs:// URLs are entered into the input JSON file.
-3. Upload the input JSON file to Terra.
+1. Create a workspace on Terra
+2. Add the workflow(s) to the Terra workspace.
+3. Upload all requisite files to a GCP bucket.
+    1. If running in batch mode, ensure the inputFiles.tsv files is uploaded to GCP as well.
+    2. Ensure all input files are recorded in the input JSON file with their gs:// URLs.
+4. Upload the input JSON file to the Terra workspace.
 5. Run the workflow on Terra.
+
+#### Terra workspace
+
+This workflow is already hosted on Terra in a [private workspace](https://app.terra.bio/#workspaces/terra-kccg-production/terra-kccg-somvar-pipeline). If you have access to this workspace, you can go ahead and start running the pipeline (see below).
+
+For setting up your own workspace, see [this Google Docs document](https://docs.google.com/document/d/1pZVTxjRJfAyWYiFWmmF_o31lORQ8a-xmqdK1zE3RDyk) for detailed instructions on setting up a Terra workspace. In short, a billing account on GCP is required to be linked with a billing account on Terra, to which the new workspace can be added. A Terra group must also be created, containing any Terra users that wish to run the pipeline, and the group's firecloud email added as a "Storage Object Creator" and "Storage Object Viewer" on any GCP buckets used to host data as part of the workflow.
+
+Once set up, the workflows can be added to Terra via Dockstore. Dockstore monitors a public git repository containing the workflows and supplies these workflows for Terra to use. The public repository of this pipeline is available [here](https://github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip), and is already hosted on Dockstore for use with Terra. To add the workflow to Terra:
+
+1. Go to the Terra workspace.
+2. Go to the "Workflows" tab.
+3. Click on "Find a Workflow".
+4. Click on "Dockstore" under "Find Additional Workflows".
+5. Search for the workflows with "github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip". Click on the link to the desired workflow.
+6. Click on "Terra" under the "Launch with" section.
+7. Set the workflow name and pick a destination workspace, then click "Import".
+
+#### Setting up and running a workflow
+
+As mentioned above, first ensure that all requisite files, including the inputFiles.tsv containing paths to all BAMs/CRAMs/VCFs for batch runs are present in a GCP bucket to which the Terra workspace has access. Once data has been uploaded to GCP:
+
+1. Go to the Terra workspace.
+2. Go to the "Workflows" tab.
+3. Click on the relevant workflow.
+4. Under the "Inputs" tab, drag and drop the input JSON file, or search for it by clicking on "upload json". Alternatively, the input fields can be filled out manually.
+5. Click on "Run Analysis".
 
 ### Running on DNAnexus
 
@@ -351,16 +374,33 @@ Use the input templates in the ```input/``` directory to configure the pipeline,
 }
 ```
 
-#### Running the pipeline on DNAnexus
-
-Finally, to run the pipeline, first ensure you have Python 3 installed and available on your PATH. Then, run the following:
+Ensure you have Python 3 installed and available on your PATH. Then, run the configuration script to create the DNAnexus submission script(s).
 
 ```bash
-./run_dx.sh -i input/<INPUT JSON FILE> -o <PROJECT NAME>:/PATH/TO/ANALYSIS/OUTPUT -w <PROJECT NAME>:/PATH/TO/WORKFLOW
+./configure_run.sh \
+    -f DX \
+    -w <DNAnexus workflow path> \
+    -i <Input JSON file> \
+    -o <DNAnexus output path> \
+    -b <Local input TSV file>  # This is optional (see below)
 ```
 
-For example, to run the main, single-sample pipeline loated in the DNAnexus project ```project-G7Q2GLb5FXyKGpYj4SpgKfk3``` at ```/workflows/single_sample/Mutect2CHIP``` using the configuration in ```input/inputs.json```, and to output the data to ```/output/run_1```:
+##### Submitting multiple samples to DNAnexus
+You can use the ```-b``` flag for configure_run.sh to configure the run to submit each sample in a batch as a separate job to DNAnexus. In this way, if a sample fails, the other samples won't be affected. The argument to the -b flag is the same inputFiles.tsv file you would supply for a batch run on Cromwell. NOTE: when running the pipeline in this way, you need to supply the corresponding single sample JSON file and DNAnexus workflow to the ```-i``` flag, since the pipeline is actually running multiple single-sample mode runs in parallel. For example:
 
 ```bash
-./run_dx.sh -i input/inputs.json -o project-G7Q2GLb5FXyKGpYj4SpgKfk3:/output/run_1/ -w project-G7Q2GLb5FXyKGpYj4SpgKfk3:/workflows/single_sample/Mutect2CHIP
+./configure_run.sh \
+    -f DX \
+    -w project-X7Gjf3BJbVIJABcd1234KI95:/workflow/Mutect2CHIP \
+    -i ./input/inputs.json \
+    -o project-X7Gjf3BJbVIJABcd1234KI95:/output \
+    -b ./input/inputFiles.tsv
+```
+
+#### Running the pipeline on DNAnexus
+
+Finally, to run the pipeline, run the following:
+
+```bash
+./run.sh -m dx
 ```

@@ -36,6 +36,8 @@ workflow Mutect2CHIP_Annovar_Multi {
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         File annovar_archive
         String ref_name = "hg38"
+        String annovar_protocols = "cosmic70"
+        String annovar_operations = "f"
         # runtime parameters
         Int? preemptible
         Int? max_retries
@@ -46,6 +48,7 @@ workflow Mutect2CHIP_Annovar_Multi {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
+        Boolean use_sys_tmp_dir = true
     }
 
     Array[Array[String]] input_vcfs = read_tsv(input_vcf_list)
@@ -62,6 +65,8 @@ workflow Mutect2CHIP_Annovar_Multi {
                 annovar_docker = annovar_docker,
                 annovar_archive = annovar_archive,
                 ref_name = ref_name,
+                annovar_protocols = annovar_protocols,
+                annovar_operations = annovar_operations,
                 preemptible = preemptible,
                 max_retries = max_retries,
                 small_task_cpu = small_task_cpu,
@@ -69,7 +74,8 @@ workflow Mutect2CHIP_Annovar_Multi {
                 small_task_disk = small_task_disk,
                 command_mem_padding = command_mem_padding,
                 boot_disk_size = boot_disk_size,
-                emergency_extra_disk = emergency_extra_disk
+                emergency_extra_disk = emergency_extra_disk,
+                use_sys_tmp_dir = use_sys_tmp_dir
         }
     }
 

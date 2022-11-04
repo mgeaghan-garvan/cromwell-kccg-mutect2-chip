@@ -2,31 +2,55 @@
 library(tidyr)
 library(stringr)
 
-# Check command-line arguments
+# Source R scripts
+source("./import/gnomad.R")
+source("./import/hard_filter.R")
+source("./import/homopolymers.R")
+source("./import/somaticism_filter.R")
+source("./import/parse_annovar.R")
+source("./import/match_mutation.R")
+source("./import/apply_putative_filter.R")
+
+
+# ========================== #
+# Get command-line arguments #
+# ========================== #
+
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 9) {
+if (length(args) != 12) {
   stop(paste(
     "Incorrect number of arguments!",
-    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <TRANSCRIPT PROTEIN LENGTHS FILE> <FASTA REFERENCE FILE>",
-    "    ANNOVAR OUTPUT TABLE/VCF:         output txt and vcf files from Annovar.",
-    "    TUMOR SAMPLE NAME:                name of the tumor sample as recorded in the VCF file's column header line.",
-    "    GNOMAD SOURCE:                    one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
-    "    GNOMAD SUBPOPULATION CODE:        one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
-    "    TREAT MISSING AF AS RARE:         'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
-    "    CHIP DEFINITION FILE:             csv file containing CHIP variant definitions",
-    "    TRANSCRIPT PROTEIN LENGTHS FILE:  a file containing three columns: RefSeq transcript ID, HGNC gene symbol, protein length",
-    "    FASTA REFERENCE FILE:             the FASTA reference to which the samples have been aligned.",
+    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <ANNOVAR VARIANT EXONIC FUNCTION TABLE> <ENSEMBL REFSEQ> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <FASTA REFERENCE FILE> <SOMATICISM FILTER TRANSCRIPTS>",
+    "    ANNOVAR OUTPUT TABLE/VCF:                output txt and vcf files from Annovar.",
+    "    ANNOVAR VARIANT FUNCTION TABLE:          variant function output file from Annovar.",
+    "    ANNOVAR VARIANT EXONIC FUNCTION TABLE:   variant exonic function output file from Annovar.",
+    "    ENSEMBL REFSEQ:                          either 'ensembl' or 'refseq', specifying which annotation to use when matching against CHIP definitions.",
+    "    TUMOR SAMPLE NAME:                       name of the tumor sample as recorded in the VCF file's column header line.",
+    "    GNOMAD SOURCE:                           one of 'exome', 'genome', 'exome,genome', or 'genome,exome' (must be in the same order as when running annovar)",
+    "    GNOMAD SUBPOPULATION CODE:               one of 'AF' (all), 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'",
+    "    TREAT MISSING AF AS RARE:                'TRUE' = variants not annotated in gnomAD are assumed to be rare and are given an allele frequency of 0; 'FALSE' = variants not annotated in gnomAD will not pass the gnomAD hard filter.",
+    "    CHIP DEFINITION FILE:                    csv file containing CHIP variant definitions",
+    "    FASTA REFERENCE FILE:                    the FASTA reference to which the samples have been aligned.",
+    "    SOMATICISM FILTER TRANSCRIPTS:           text file containing transcript IDs (one per line) to be subjected to the somaticism filter (to remove likely germline mutations).",
     sep = "\n"))
 }
 annovar_text_out <- args[1]
 annovar_vcf_out <- args[2]
-tumor_sample_name <- args[3]
-gnomad_source <- args[4]
-gnomad_pop <- args[5]
-treat_missing_as_rare <- args[6]
-chip_def_file <- args[7]
-transcript_prot_file <- args[8]
-fasta_file <- args[9]
+annovar_variant_func_out <- args[3]
+annovar_variant_exonic_func_out <- args[4]
+ensembl_refseq <- args[5]
+tumor_sample_name <- args[6]
+gnomad_source <- args[7]
+gnomad_pop <- args[8]
+treat_missing_as_rare <- args[9]
+chip_def_file <- args[10]
+fasta_file <- args[11]
+somaticism_file <- args[12]
+
+
+# ============================ #
+# Check command-line arguments #
+# ============================ #
 
 if (!file.exists(annovar_text_out)) {
   stop("Input annovar table file does not exist.")
@@ -34,14 +58,23 @@ if (!file.exists(annovar_text_out)) {
 if (!file.exists(annovar_vcf_out)) {
   stop("Input annovar vcf file does not exist.")
 }
+if (!file.exists(annovar_variant_func_out)) {
+  stop("Input annovar variant function file does not exist.")
+}
+if (!file.exists(annovar_variant_exonic_func_out)) {
+  stop("Input annovar variant exonic function file does not exist.")
+}
+if (!(ensembl_refseq %in% c("ensembl", "refseq"))) {
+  stop("Must specify either 'ensembl' or 'refseq' annotation to use.")
+}
 if (!file.exists(chip_def_file)) {
   stop("Chip variant definition file does not exist.")
 }
-if (!file.exists(transcript_prot_file)) {
-  stop("Protein length file does not exist.")
-}
 if (!file.exists(fasta_file)) {
   stop("FASTA reference file does not exist.")
+}
+if (!file.exists(somaticism_file)) {
+  stop("Somaticism filter transcripts file does not exist.")
 }
 if (!(gnomad_source %in% c("exome", "genome", "exome,genome", "genome,exome"))) {
   stop("Invalid gnomAD source.")
@@ -63,6 +96,11 @@ if (!grepl(annovar_vcf_out_regex, annovar_vcf_out, perl = TRUE)) {
   stop("Invalid input annovar vcf file. Must be an annovar vcf output ('*_multianno.vcf').")
 }
 
+
+# ========= #
+# Load data #
+# ========= #
+
 # Load CHIP variant/gene lists
 chip_vars <- read.csv(chip_def_file)
 
@@ -71,7 +109,7 @@ sample_id <- gsub(annovar_text_out_regex, "", annovar_text_out, perl = TRUE)
 sample_id <- gsub("^.*\\/([^\\/]+)$", "\\1", sample_id, perl = TRUE)
 
 # Load annovar variant annotations
-vars <- read.table(annovar_text_out, sep = "\t", header = TRUE)
+vars <- read.delim(annovar_text_out, sep = "\t", header = TRUE)
 vars$Sample <- sample_id
 vars$TumorSample <- tumor_sample_name
 
@@ -81,23 +119,10 @@ vcf_header <- grep("^#CHROM", vcf, perl = TRUE, value = TRUE)
 vcf_header <- gsub("^#", "", vcf_header, perl = TRUE)
 vcf_header <- strsplit(vcf_header, "\t")[[1]]
 
-# Ensure the following columns are present
-req_cols <- c("Chr", "Start", "End", "Ref", "Alt", "Func.refGene", "Gene.refGene", "GeneDetail.refGene", "ExonicFunc.refGene", "AAChange.refGene")
-if (gnomad_source == "genome,exome") {
-  gnomad_g_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
-  gnomad_e_cols <- c("AF.1", "AF_popmax.1", "AF_male.1", "AF_female.1", "AF_raw.1", "AF_afr.1", "AF_sas.1", "AF_amr.1", "AF_eas.1", "AF_nfe.1", "AF_fin.1", "AF_asj.1", "AF_oth.1", "non_topmed_AF_popmax.1", "non_neuro_AF_popmax.1", "non_cancer_AF_popmax.1", "controls_AF_popmax.1")
-  req_cols <- c(req_cols, gnomad_g_cols, gnomad_e_cols)
-} else if (gnomad_source == "exome,genome") {
-  gnomad_e_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
-  gnomad_g_cols <- c("AF.1", "AF_popmax.1", "AF_male.1", "AF_female.1", "AF_raw.1", "AF_afr.1", "AF_sas.1", "AF_amr.1", "AF_eas.1", "AF_nfe.1", "AF_fin.1", "AF_asj.1", "AF_oth.1", "non_topmed_AF_popmax.1", "non_neuro_AF_popmax.1", "non_cancer_AF_popmax.1", "controls_AF_popmax.1")
-  req_cols <- c(req_cols, gnomad_g_cols, gnomad_e_cols)
-} else if (gnomad_source == "exome" || gnomad_source == "genome") {
-  gnomad_cols <- c("AF", "AF_popmax", "AF_male", "AF_female", "AF_raw", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj", "AF_oth", "non_topmed_AF_popmax", "non_neuro_AF_popmax", "non_cancer_AF_popmax", "controls_AF_popmax")
-  req_cols <- c(req_cols, gnomad_cols)
-} else {
-  stop("Invalid gnomAD source.")
-}
-stopifnot(all(req_cols %in% colnames(vars)))
+
+# ============== #
+# Rename columns #
+# ============== #
 
 # Rename Otherinfo columns
 # NOTE: These are hard-coded to match the output of annovar as of 2021-11-22
@@ -108,937 +133,117 @@ stopifnot(all(req_cols %in% colnames(vars)))
 otherinfo_cols <- c("ANNOVAR_alt_af", "ANNOVAR_qual", "ANNOVAR_alt_ad", vcf_header)
 colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_cols
 
-# ===== PRE-FILTERING =====
+# Rename gnomad columns and get gnomad AF
+vars <- rename_gnomad_col(vars, gnomad_source)
+vars <- get_gnomad_af(vars, gnomad_source, gnomad_pop, treat_missing_as_rare)
 
-# Get gnomAD allele frequencies
-if (gnomad_source == "genome,exome") {
-  new_gnomad_g_cols <- paste("gnomAD_genome_", gnomad_g_cols, sep = "")
-  new_gnomad_e_cols <- gsub("\\.\\d+$", "", gnomad_e_cols, perl = TRUE)
-  new_gnomad_e_cols <- paste("gnomAD_exome_", new_gnomad_e_cols, sep = "")
 
-  colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
-  colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
-
-  gnomad_pop_columns <- paste("gnomAD", c("genome", "exome"), gnomad_pop, sep = "_")
-
-  vars$gnomAD_AF <- apply(vars[gnomad_pop_columns], 1, function(x) {
-    af_g <- x[[1]]
-    af_e <- x[[2]]
-    missing_vals <- c(".", "", NA)
-    if(!(af_e %in% missing_vals)) {
-      return(as.numeric(af_e))
-    } else if(!(af_g %in% missing_vals)) {
-      return(as.numeric(af_g))
-    } else if(treat_missing_as_rare) {
-      return(0)
-    } else {
-      return(NA)
-    }
-  })
-} else if (gnomad_source == "exome,genome") {
-  new_gnomad_e_cols <- paste("gnomAD_exome_", gnomad_e_cols, sep = "")
-  new_gnomad_g_cols <- gsub("\\.\\d+$", "", gnomad_g_cols, perl = TRUE)
-  new_gnomad_g_cols <- paste("gnomAD_genome_", new_gnomad_g_cols, sep = "")
-
-  colnames(vars)[colnames(vars) %in% gnomad_g_cols] <- new_gnomad_g_cols
-  colnames(vars)[colnames(vars) %in% gnomad_e_cols] <- new_gnomad_e_cols
-
-  gnomad_pop_columns <- paste("gnomAD", c("genome", "exome"), gnomad_pop, sep = "_")
-
-  vars$gnomAD_AF <- apply(vars[gnomad_pop_columns], 1, function(x) {
-    af_g <- x[[1]]
-    af_e <- x[[2]]
-    missing_vals <- c(".", "", NA)
-    if(!(af_e %in% missing_vals)) {
-      return(as.numeric(af_e))
-    } else if(!(af_g %in% missing_vals)) {
-      return(as.numeric(af_g))
-    } else if(treat_missing_as_rare) {
-      return(0)
-    } else {
-      return(NA)
-    }
-  })
-} else {
-  new_gnomad_cols <- paste("gnomAD_", gnomad_source, "_", gnomad_cols, sep = "")
-
-  colnames(vars)[colnames(vars) %in% gnomad_cols] <- new_gnomad_cols
-
-  gnomad_pop_columns <- paste("gnomAD", gnomad_source, gnomad_pop, sep = "_")
-
-  vars$gnomAD_AF <- apply(vars[gnomad_pop_columns], 1, function(x) {
-    af <- x[[1]]
-    missing_vals <- c(".", "", NA)
-    if(!(af %in% missing_vals)) {
-      return(as.numeric(af))
-    } else if(treat_missing_as_rare) {
-      return(0)
-    } else {
-      return(NA)
-    }
-  })
-}
-
+# ================== #
+# Apply hard filters #
+# ================== #
 
 # Filter by AD, DP, AF, F1R2/F2R1 VCF fields and gnomAD frequency
-get_format_field <- function(x, format_field) { grep(paste("^", x, "$", sep = ""), format_field, perl = TRUE) }
-vars_stats <- apply(vars[c("FORMAT", tumor_sample_name, "gnomAD_AF")], 1, function(x) {
-  format_field <- strsplit(x[[1]], ":")[[1]]
-  sample_field <- strsplit(x[[2]], ":")[[1]]
-  gnomad_af <- as.numeric(x[[3]])
-  # Allelic depth
-  var_n_ad_i <- get_format_field("AD", format_field)
-  var_n_ad <- as.integer(strsplit(sample_field[var_n_ad_i], ",")[[1]])
-  var_n_ad_gte_3 <- var_n_ad >= 3
-  # Site read depth
-  var_n_dp_i <- get_format_field("DP", format_field)
-  var_n_dp <- as.integer(sample_field[var_n_dp_i])
-  var_n_dp_gte_20 <- var_n_dp >= 20
-  # VAF
-  var_n_vaf <- (var_n_ad / var_n_dp)[2:length(var_n_ad)]
-  var_n_vaf_gte_2pc <- var_n_vaf >= 0.02
-  var_n_vaf_lt_35pc <- var_n_vaf < 0.35
-  var_n_vaf_m2_i <- get_format_field("AF", format_field)
-  var_n_vaf_m2 <- as.numeric(strsplit(sample_field[var_n_vaf_m2_i], ",")[[1]])
-  # Forward and reverse stand support
-  var_n_for_i <- get_format_field("F1R2", format_field)
-  var_n_for <- as.integer(strsplit(sample_field[var_n_for_i], ",")[[1]])
-  var_n_rev_i <- get_format_field("F2R1", format_field)
-  var_n_rev <- as.integer(strsplit(sample_field[var_n_rev_i], ",")[[1]])
-  var_n_for_rev_gte_1 <- all(var_n_for >= 1) && all(var_n_rev >= 1)
-  # gnomAD frequency
-  var_n_gnomad_af_lt_0.1pc <- !is.na(gnomad_af) & (gnomad_af < 0.001)
-  filter_pass <- (
-    all(var_n_ad_gte_3[2:length(var_n_ad_gte_3)]) &  # first allele = ref
-      var_n_dp_gte_20 &
-      all(var_n_vaf_gte_2pc) &
-      all(var_n_vaf_lt_35pc) &
-      var_n_for_rev_gte_1 &
-      var_n_gnomad_af_lt_0.1pc
-  )
-  filter_manual_review <- (
-    any(var_n_ad_gte_3[2:length(var_n_ad_gte_3)]) &  # first allele = ref; if any, but not all pass, go to manual review
-      var_n_dp_gte_20 &
-      any(var_n_vaf_gte_2pc) &  # some but not all are passing
-      var_n_for_rev_gte_1 &
-      var_n_gnomad_af_lt_0.1pc
-  )
-  HARD_FILTER = "FAIL"
-  if(filter_pass) {
-    HARD_FILTER = "PASS"
-  } else if(filter_manual_review) {
-    HARD_FILTER = "MANUAL_REVIEW"
-  }
-  return(data.frame(
-    AD = paste(as.character(var_n_ad), collapse = ","),
-    DP = as.character(var_n_dp),
-    VAF = paste(as.character(var_n_vaf), collapse = ","),
-    VAF_M2 = paste(as.character(var_n_vaf_m2), collapse = ","),
-    F1R2 = paste(as.character(var_n_for), collapse = ","),
-    F2R1 = paste(as.character(var_n_rev), collapse = ","),
-    HARD_FILTER = HARD_FILTER
-  ))
-})
-vars_stats <- do.call(rbind, vars_stats)
-vars <- cbind(vars, vars_stats)
-vars$COMBINED_FILTER = apply(vars[c("FILTER", "HARD_FILTER")], 1, function(x) {
-  if(x[[1]] == "PASS") {
-    return(x[[2]])
-  } else {
-    return("FAIL")
-  }
-})
+vars_hf <- apply_hard_filters(vars, tumor_sample_name)
 
-# Get sequence context around INDELS and set filter to manual review if AD < 10 or VAF < 0.1
-vars_indels <- vars[grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE), c("Chr", "Start", "End", "Ref", "Alt")]
-vars_indels_bed <- unique(vars_indels[, c("Chr", "Start", "End")])
-vars_indels_bed$Start = as.integer(vars_indels_bed$Start) - 11  # Zero-based coordinates for BED format, get 10bp upstream
-vars_indels_bed$End = as.integer(vars_indels_bed$End) + 10  # Get 10bp downstream
-write.table(vars_indels_bed, "_tmp_indels.bed", col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
-system(paste("bedtools getfasta -fi ", fasta_file, " -bed _tmp_indels.bed -fo _tmp_indels.fa", sep = ""))
-vars_indels_fa <- scan("_tmp_indels.fa", character())
-if (!(length(vars_indels_fa) %% 2 == 0)) {
-  print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
-  vars_indels$INDEL_CONTEXT = ""
-} else {
-  indel_seq = list()
-  i = 1
-  j = 1
-  for (s in vars_indels_fa) {
-    if (i %% 2 == 1 && !grepl("^>", s, perl = TRUE)) {
-      print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
-      vars_indels$INDEL_CONTEXT = ""
-      break
-    } else if (i %% 2 == 0 && grepl("^>", s, perl = TRUE)) {
-      print("WARNING: Could not successfully retrieve INDEL sequence contexts. Skipping...")
-      vars_indels$INDEL_CONTEXT = ""
-      break
-    } else {
-      if (i %% 2 == 1) {
-        name <- s
-        chr <- gsub("\\:.*", "", name, perl = TRUE)
-        chr <- gsub("^>", "", chr, perl = TRUE)
-        start <- gsub(".*\\:", "", name, perl = TRUE)
-        start <- gsub("\\-.*", "", start, perl = TRUE)
-        start <- as.integer(start) + 11
-        end <- gsub(".*\\-", "", name, perl = TRUE)
-        end <- as.integer(end) - 10
-        indel_seq[[j]] <- c(chr, start, end, "")
-        i <- i + 1
-      } else if (i %% 2 == 0) {
-        indel_seq[[j]][4] = s
-        i <- i + 1
-        j <- j + 1
-      }
-    }
-  }
-  indel_seq <- as.data.frame(do.call(rbind, indel_seq))
-  colnames(indel_seq) <- c("Chr", "Start", "End", "INDEL_SEQ_CONTEXT")
-  vars_indels$Start <- as.integer(vars_indels$Start)
-  vars_indels$End <- as.integer(vars_indels$End)
-  vars_indels <- merge(vars_indels, indel_seq, all.x = TRUE)
+
+# =========================================== #
+# Select between using RefSeq and Ensembl IDs #
+# =========================================== #
+
+# ensembl_refseq <- "refseq"  # Use Ensembl IDs by default. Change this to "refseq" if you want to use RefSeq IDs
+ensGene <- TRUE
+refGene <- FALSE
+refseq_ensembl_suffix <- "ensGene"
+refseq_ensembl_chip_accession_column <- "ensembl_accession"
+refseq_ensembl_variant_func_regex_sub <- "(ENST\\d+)([^\\d]|$)"
+refseq_ensembl_variant_func_regex_match <- "^ENST\\d+$"
+if (ensembl_refseq == "refseq") {
+  ensGene <- FALSE
+  refGene <- TRUE
+  refseq_ensembl_suffix <- "refGene"
+  refseq_ensembl_chip_accession_column <- "refseq_accession"
+  refseq_ensembl_variant_func_regex_sub <- "(NM_\\d+)([^\\d]|$)"
+  refseq_ensembl_variant_func_regex_match <- "^NM_\\d+$"
 }
 
-vars <- merge(vars, vars_indels, all.x = TRUE)
-vars$INDEL_FILTER <- "PASS"
-vars$INDEL_FILTER[(
-  grepl("(insertion|deletion)", vars$ExonicFunc.refGene, perl = TRUE) &
-  (
-    unlist(lapply(strsplit(vars$AD, ","), function(x) { any(as.integer(x[2:length(x)]) < 10) })) |
-    unlist(lapply(strsplit(vars$VAF, ","), function(x) { any(as.numeric(x) < 0.1) }))
-  )
-)] <- "CHECK_FOR_HOMOPOLYMER"
+aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
+genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
+transcript <- paste("Transcript", refseq_ensembl_suffix, sep = ".")
+exonic_func <- paste("ExonicFunc", refseq_ensembl_suffix, sep = ".")
 
-vars$COMBINED_FILTER <- apply(vars[c("COMBINED_FILTER", "INDEL_FILTER")], 1, function(x) {
-  if (x[[2]] == "PASS") {
-    return(x[[1]])
-  } else if (x[[1]] == "FAIL") {
-    return("FAIL")
-  } else {
-    return("MANUAL_REVIEW")
-  }
-})
 
-# ===== PARSE ANNOVAR OUTPUT =====
+# ================================================ #
+# Apply filters to variants in homopolymer regions #
+# ================================================ #
 
-# Split multi-gene variants
-vars_g <- as.data.frame(separate_rows(vars, Gene.refGene, sep = ";"))
-vars_g$AAChange.refGene <- apply(vars_g[, c("Gene.refGene", "AAChange.refGene")], 1, function(row) {
-  a <- strsplit(row[[2]], ",")[[1]]
-  aa <- a[grepl(paste("(^|:)", row[[1]], "(:|$)", sep = ""), a, perl = TRUE)]
-  aaa <- paste(aa, collapse = ",")
-  return(aaa)
-})
+vars_hf_hp <- apply_homopolymer_indel_filter(vars_hf, fasta_file)
 
-# Filter for CHIP genes
-vars_g_chip <- vars_g[vars_g$Gene.refGene %in% chip_vars$Gene,]
+# ==================== #
+# PARSE ANNOVAR OUTPUT #
+# ==================== #
 
-# Filter variants for exonic or splicing variants
-vars_g_chip_func <- vars_g_chip[
-  (
-    grepl("exonic", vars_g_chip$Func.refGene, fixed = T) |
-      grepl("splicing", vars_g_chip$Func.refGene, fixed = T)
-  ),
-]
+# Load annovar variant function annotations
+vars_variant_func <- read.delim(annovar_variant_func_out, sep = "\t", header = FALSE)
+vars_variant_func <- unique(vars_variant_func[1:7])
+colnames(vars_variant_func) <- c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt")
+vars_variant_func$Transcript <- gsub(refseq_ensembl_variant_func_regex_sub, ",\\1,", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func$Transcript <- gsub("^,", "", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func$Transcript <- gsub(",,+", ",", vars_variant_func$Transcript, perl = TRUE)
+vars_variant_func <- (vars_variant_func %>% separate_rows(Transcript, sep = ","))
+vars_variant_func <- vars_variant_func[grepl(refseq_ensembl_variant_func_regex_match, vars_variant_func$Transcript),]
+vars_variant_func <- unique(vars_variant_func)
+
+# Load annovar variant exonic function annotations
+vars_variant_exonic_func <- read.delim(annovar_variant_exonic_func_out, sep = "\t", header = FALSE)
+vars_variant_exonic_func <- unique(vars_variant_exonic_func[2:8])
+colnames(vars_variant_exonic_func) <- c("ExonicFunc", "AAChange", "Chr", "Start", "End", "Ref", "Alt")
+vars_variant_exonic_func$AAChange <- gsub(",$", "", vars_variant_exonic_func$AAChange, perl = TRUE)
+vars_variant_exonic_func <- (vars_variant_exonic_func %>% separate_rows(AAChange, sep = ","))
+vars_variant_exonic_func <- unique(vars_variant_exonic_func)
+
+# Parse annovar output, split rows into one per transcript, and extract transcript accession IDs
+vars_ann <- parse_annovar(vars_hf_hp, vars_variant_func, vars_variant_exonic_func, ensGene = ensGene, refGene = refGene, filter = c("exonic", "splicing"))
+
+
+# ==================================================================================== #
+# Apply somaticism filter to transcripts defined in somaticism filter transcripts file #
+# ==================================================================================== #
+
+vars_ann_som <- apply_somaticism_filter(vars_ann, somaticism_file, transcript)
+
+
+# ================= #
+# Apply CHIP filter #
+# ================= #
+
+# Filter for CHIP transcripts
+vars_chip <- vars_ann_som[vars_ann_som[[transcript]] %in% chip_vars[[refseq_ensembl_chip_accession_column]],]
 
 # Merge filtered variants and CHIP gene annotation data frames
-vars_g_chip_func <- merge(vars_g_chip_func, chip_vars, by.x = "Gene.refGene", by.y = "Gene")
+vars_chip <- merge(vars_chip, chip_vars, by.x = transcript, by.y = refseq_ensembl_chip_accession_column)
 
-# Filter GeneDetail.refGene and AAChange.refGene columns for matching refseq transcript IDs
-extractTranscript <- function(column, transcripts, sep) {
-  # extractTranscript is to be applied to each row of vars_g_chip_func
-  # column: either GeneDetail.refGene or AAChange.refGene entry for a given row of vars_g_chip_func
-  # transcripts: a comma-delimited list of representative transcripts to match against
-  transcripts_list <- strsplit(transcripts, ",")[[1]]
-  column_list <- strsplit(column, sep)[[1]]
-  column_match <- list()
-  if (length(column_list) == 0) {
-    return("nan")
-  }
-  for(i in 1:length(column_list)) {
-    column_match[[i]] <- TRUE %in% (transcripts_list %in% strsplit(column_list, ":")[[i]])
-  }
-  column_match <- unlist(column_match)
-  if(TRUE %in% column_match) {
-    return(paste(column_list[column_match], collapse = sep))
-  } else {
-    return("nan")
-  }
-}
 
-extractNonsyn <- function(AAChange){
-  # extractNonsyn is to be applied to each row of vars_g_chip_func
-  # AAChange: the AAChange.transcript entry for a given row of vars_g_chip_func
-  AAChange_list <- strsplit(AAChange, ",")[[1]]
-  protChange_list <- unlist(lapply(
-    strsplit(AAChange_list, ":"), function(x) { grep("p.", x, value = T, fixed = T) }
-  ))
-  if(length(protChange_list) > 0) {
-    return(paste(gsub("p\\.", "", protChange_list), collapse = ","))
-  } else {
-    return("nan")
-  }
-}
+# ============================================================================== #
+# Filter rows if chip mutation definitions match AAChange/GeneDetail column info #
+# ============================================================================== #
 
-extractNonsynExon <- function(AAChange){
-  # extractNonsyn is to be applied to each row of vars_g_chip_func
-  # AAChange: the AAChange.transcript entry for a given row of vars_g_chip_func
-  AAChange_list <- strsplit(AAChange, ",")[[1]]
-  protChange_list <- unlist(lapply(
-    strsplit(AAChange_list, ":"), function(x) { grep("exon", x, value = T, fixed = T) }
-  ))
-  if(length(protChange_list) > 0) {
-    return(paste(gsub("exon", "", protChange_list), collapse = ","))
-  } else {
-    return("nan")
-  }
-}
+vars_chip_filtered <- match_mut_def(vars_chip, refseq_ensembl_suffix = refseq_ensembl_suffix)
 
-extractSpliceExons <- function(GeneDetail) {
-  # extractSpliceExons is to be applied to each row of vars_g_chip_func
-  # GeneDetail: the GeneDetail.refGene entry for a given row of vars_g_chip_func
-  GeneDetail_list <- strsplit(GeneDetail, ";")[[1]]
-  change_list <- unlist(lapply(
-    strsplit(GeneDetail_list, ":"), function(x) { grep("exon", x, value = T, fixed = T) }
-  ))
-  if(length(change_list) > 0) {
-    return(paste(gsub("exon", "", change_list), collapse = ";"))
-  } else {
-    return("nan")
-  }
-}
 
-vars_g_chip_func$GeneDetail.transcript <- unlist(apply(vars_g_chip_func[, c("GeneDetail.refGene", "Transcript_Accession")], 1, function(x) {
-  extractTranscript(x[1], x[2], ";")
-}))
+# ==================================================== #
+# Apply stricter hard filter to putative CHIP variants #
+# ==================================================== #
 
-vars_g_chip_func$AAChange.transcript <- unlist(apply(vars_g_chip_func[, c("AAChange.refGene", "Transcript_Accession")], 1, function(x) {
-  extractTranscript(x[1], x[2], ",")
-}))
+vars_chip_filtered_put <- apply_putative_filter(vars_chip_filtered)
 
-vars_g_chip_func$AAChange.protChange <- unlist(lapply(vars_g_chip_func[, c("AAChange.transcript")], extractNonsyn))
 
-vars_g_chip_func$AAChange.exon <- unlist(lapply(vars_g_chip_func[, c("AAChange.transcript")], extractNonsynExon))
+# ============= #
+# Write to file #
+# ============= #
 
-vars_g_chip_func$GeneDetail.exon <- unlist(lapply(vars_g_chip_func[, c("GeneDetail.transcript")], extractSpliceExons ))
-
-# Remove variants with no matching affected transcript
-vars_g_chip_func_filtered <- vars_g_chip_func[!(
-  vars_g_chip_func$GeneDetail.transcript == "nan" &
-    vars_g_chip_func$AAChange.transcript == "nan" &
-    vars_g_chip_func$AAChange.protChange == "nan" &
-    vars_g_chip_func$AAChange.exon == "nan" &
-    vars_g_chip_func$GeneDetail.exon == "nan" &
-    !(vars_g_chip_func$Nonsynonymous %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Frameshift %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Stop_Gain %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Splicing %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Nonsynonymous %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Frameshift %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Stop_Gain %in% c("any", "c_term")) &
-    !(vars_g_chip_func$Putative_Splicing %in% c("any", "c_term"))
-), ]
-
-# Functions for parsing condition and AA change codes
-parse_cond <- function(x) {
-  cond_type <- NA
-  start_pos <- NA
-  end_pos <- NA
-  AA_ref <- NA
-  AA_alt <- NA
-  exon_num <- NA
-  if(grepl("^AA\\d+(\\-\\d+)?$", x, perl = TRUE)) {
-    # Range of amino acid positions
-    y <- str_match_all(x, "^AA(\\d+)(\\-(\\d+))?$")[[1]]
-    start_pos <- as.integer(y[2])
-    end_pos <- as.integer(y[4])
-    if(is.na(end_pos)) {
-      end_pos <- start_pos
-    }
-    cond_type <- "aa_range"
-  } else if(grepl("^[A-Z]\\d+[A-Z]$", x, perl = TRUE)) {
-    # AA substitution
-    y <- str_match_all(x, "^([A-Z])(\\d+)([A-Z])$")[[1]]
-    start_pos <- as.integer(y[3])
-    end_pos <- start_pos
-    AA_ref <- y[2]
-    AA_alt <- y[4]
-    cond_type <- "aa_change"
-  } else if(grepl("^exon", x, perl = TRUE)) {
-    # Exon number
-    y <- str_match_all(x, "^exon(\\d+)$")[[1]]
-    exon_num <- as.integer(y[2])
-    cond_type <- "exon"
-  }
-  return(list(
-    cond_type = cond_type,
-    start_pos = start_pos,
-    end_pos = end_pos,
-    AA_ref = AA_ref,
-    AA_alt = AA_alt,
-    exon_num = exon_num
-  ))
-}
-
-parse_aa_change <- function(x) {
-  mut_type <- NA
-  start_pos <- NA
-  end_pos <- NA
-  start_AA_ref <- NA
-  start_AA_alt <- NA
-  end_AA_ref <- NA
-  if(grepl("^[A-Z]\\d+[A-Z\\*]$", x, perl = TRUE)) {
-    # AA substitution
-    y <- str_match_all(x, "^([A-Z])(\\d+)([A-Z\\*])$")[[1]]
-    start_pos <- as.integer(y[3])
-    end_pos <- start_pos
-    start_AA_ref <- y[2]
-    start_AA_alt <- y[4]
-    mut_type <- "aa_change"
-  } else if(grepl("^[A-Z]\\d+(_[A-Z]\\d+)?(ins|del)",x, perl = TRUE)) {
-    # Non-frameshift INDEL
-    y <- str_match_all(x, "^([A-Z])(\\d+)(_([A-Z])(\\d+))?(ins|del)")[[1]]
-    start_pos <- as.integer(y[3])
-    end_pos <- as.integer(y[6])
-    if(is.na(end_pos)) {
-      end_pos <- start_pos
-    }
-    start_AA_ref <- y[2]
-    end_AA_ref <- y[5]
-    mut_type <- y[7]
-  } else if(grepl("^[A-Z]\\d+[A-Z]fs.*$", x, perl = TRUE)) {
-    # Frameshift mutation
-    y <- str_match_all(x, "^([A-Z])(\\d+)([A-Z])(fs).*$")[[1]]
-    start_pos <- as.integer(y[3])
-    end_pos <- start_pos
-    start_AA_ref <- y[2]
-    start_AA_alt <- y[4]
-    mut_type <- y[5]
-  }
-  return(list(
-    mut_type = mut_type,
-    start_pos = start_pos,
-    end_pos = end_pos,
-    start_AA_ref = start_AA_ref,
-    start_AA_alt = start_AA_alt,
-    end_AA_ref = end_AA_ref
-  ))
-}
-
-# Get position along protein - add N- and C-terminal 10% columns
-prot_lengths <- read.csv(transcript_prot_file, header = TRUE)
-colnames(prot_lengths) <- c("refseq_mrna", "hgnc_symbol", "prot_length")
-vars_g_chip_func_filtered$AAChange.N_TERM_10PCT <- unlist(lapply(vars_g_chip_func_filtered$AAChange.refGene, function(x) {
-  t_list <- strsplit(x, ",")[[1]]
-  t_list <- strsplit(t_list, ":")
-  ret <- list()
-  if (length(t_list) == 0) {
-    return("")
-  }
-  for (i in 1:length(t_list)) {
-    t <- t_list[[i]]
-    t_in_prot_lengths <- t %in% prot_lengths$refseq_mrna
-    if (!any(t_in_prot_lengths)) {
-      ret[[i]] <- "NA"
-    } else {
-      t_name <- t[t_in_prot_lengths][1]
-      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t_name][1]
-      a <- grep("^p\\.", t, perl = TRUE, value = TRUE)
-      a <- gsub("^p\\.", "", a, perl = TRUE)
-      p <- parse_aa_change(a)$start_pos
-      if (is.na(p)) {
-        ret[[i]] <- "NA"
-      } else if (p > l) {
-        ret[[i]] <- NA
-      } else {
-        ret[[i]] <- (p/l) < 0.1
-      }
-    }
-  }
-  ret <- as.character(unlist(ret))
-  return(paste(ret, collapse = ","))
-}))
-vars_g_chip_func_filtered$AAChange.C_TERM_10PCT <- unlist(lapply(vars_g_chip_func_filtered$AAChange.refGene, function(x) {
-  t_list <- strsplit(x, ",")[[1]]
-  t_list <- strsplit(t_list, ":")
-  ret <- list()
-  if (length(t_list) == 0) {
-    return("")
-  }
-  for (i in 1:length(t_list)) {
-    t <- t_list[[i]]
-    t_in_prot_lengths <- t %in% prot_lengths$refseq_mrna
-    if (!any(t_in_prot_lengths)) {
-      ret[[i]] <- "NA"
-    } else {
-      t_name <- t[t_in_prot_lengths][1]
-      l <- prot_lengths$prot_length[prot_lengths$refseq_mrna == t_name][1]
-      a <- grep("^p\\.", t, perl = TRUE, value = TRUE)
-      a <- gsub("^p\\.", "", a, perl = TRUE)
-      p <- parse_aa_change(a)$start_pos
-      if (is.na(p)) {
-        ret[[i]] <- "NA"
-      } else if (p > l) {
-        ret[[i]] <- NA
-      } else {
-        ret[[i]] <- (p/l) > 0.9
-      }
-    }
-  }
-  ret <- as.character(unlist(ret))
-  return(paste(ret, collapse = ","))
-}))
-
-# Functions for matching variants with CHIP conditions
-match_ns_conditions <- function(conditions, aa_changes, aa_exons) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  for(cond in conditions) {
-    if(cond == "any") {
-      whitelist <- TRUE
-      break
-    } else if(cond == "c_term") {
-      # No easy way to determine whether variant is in the C-terminal region - manual review
-      manual_review <- TRUE
-      next
-    } else if(cond == "nan" || cond == "" || is.na(cond)) {
-      # No nonsynonymous condition defined for this gene
-      next
-    } else if(aa_changes == "nan" || aa_changes == "" || is.na(aa_changes) || aa_exons == "nan" || aa_exons == "" || is.na(aa_exons)) {
-      # Variant doesn't match the representative transcript(s) - cannot match to specific AA or exon
-      next
-    }
-    cond_details <- parse_cond(cond)
-    if(all(is.na(cond_details))) {
-      next
-    } else if(cond_details$cond_type == "exon" && !is.na(cond_details$exon_num) && cond_details$exon_num %in% aa_exons) {
-      # Matching nonsynonymous variant in exon
-      whitelist <- TRUE
-      break
-    } else if(is.na(cond_details$start_pos) || is.na(cond_details$end_pos)) {
-      next
-    }
-    for(a in aa_changes) {
-      a_details <- parse_aa_change(a)
-      if(all(is.na(a_details))) {
-        next
-      }
-      if(a_details$mut_type == "aa_change" & (a_details$start_pos %in% cond_details$start_pos:cond_details$end_pos)) {
-        # Current variant is a single AA substitution and start position is in defined range
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change" && !is.na(cond_details$AA_ref) && !is.na(cond_details$AA_alt)) {
-          if(a_details$start_AA_ref == cond_details$AA_ref && a_details$start_AA_alt == cond_details$AA_alt) {
-            # Current variant matches defined variant
-            whitelist <- TRUE
-            break
-          }
-        }
-      } else if(a_details$mut_type == "ins" & (a_details$start_pos %in% cond_details$start_pos:cond_details$end_pos)) {
-        # Current variant is an insertion and start position is in defined range
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change" && !is.na(cond_details$AA_ref)) {
-          if(a_details$start_AA_ref == cond_details$AA_ref) {
-            # Current insertion variant start position matches a defined variant, but we can't be sure we have an exact match to the defined AA change
-            manual_review <- TRUE
-            next
-          }
-        }
-      } else if(a_details$mut_type == "del" & any((a_details$start_pos:a_details$end_pos) %in% (cond_details$start_pos:cond_details$end_pos))) {
-        # Current variant is a deletion and deleted positions overlap defined range
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change") {
-          # Current deletion variant affects this position, but we can't be sure we have an exact match to the defined AA change
-          manual_review <- TRUE
-          next
-        }
-      }
-    }
-    if(whitelist) {
-      break
-    }
-  }
-  if(whitelist) {
-    manual_review <- FALSE
-  }
-  return(list(whitelist = whitelist, manual_review = manual_review))
-}
-
-match_ns <- function(x) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  putative_whitelist <- FALSE
-  putative_manual_review <- FALSE
-  if(grepl("(nonsynonymous|nonframeshift)", x[[1]], perl = TRUE)) {
-    conditions <- strsplit(x[[2]], ";")[[1]]
-    conditions_put <- strsplit(x[[3]], ";")[[1]]
-    aa_changes <- strsplit(x[[4]], ",")[[1]]
-    aa_exons <- as.integer(strsplit(x[[5]], ",")[[1]])
-    match_conditions <- match_ns_conditions(conditions, aa_changes, aa_exons)
-    match_put_conditions <- match_ns_conditions(conditions_put, aa_changes, aa_exons)
-    whitelist <- match_conditions$whitelist
-    manual_review <- match_conditions$manual_review
-    putative_whitelist <- match_put_conditions$whitelist
-    putative_manual_review <- match_put_conditions$manual_review
-  }
-  return(c(whitelist, manual_review, putative_whitelist, putative_manual_review))
-}
-
-match_fs_conditions <- function(conditions, aa_changes, aa_exons) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  for(cond in conditions) {
-    if(cond == "any") {
-      whitelist <- TRUE
-      break
-    } else if(cond == "c_term") {
-      # No easy way to determine whether variant is in the C-terminal region - manual review
-      manual_review <- TRUE
-      next
-    } else if(cond == "nan" || cond == "" || is.na(cond)) {
-      # No nonsynonymous condition defined for this gene
-      next
-    } else if(aa_changes == "nan" || aa_changes == "" || is.na(aa_changes) || aa_exons == "nan" || aa_exons == "" || is.na(aa_exons)) {
-      # Variant doesn't match the representative transcript(s) - cannot match to specific AA or exon
-      next
-    }
-    cond_details <- parse_cond(cond)
-    if(all(is.na(cond_details))) {
-      next
-    } else if(cond_details$cond_type == "exon" && !is.na(cond_details$exon_num) && cond_details$exon_num %in% aa_exons) {
-      # Matching nonsynonymous variant in exon
-      whitelist <- TRUE
-      break
-    } else if(is.na(cond_details$start_pos) || is.na(cond_details$end_pos)) {
-      next
-    }
-    for(a in aa_changes) {
-      a_details <- parse_aa_change(a)
-      if(all(is.na(a_details))) {
-        next
-      }
-      if(a_details$mut_type == "fs" & (a_details$start_pos %in% cond_details$start_pos:cond_details$end_pos)) {
-        # Current variant is a frameshift mutation
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change" && !is.na(cond_details$AA_ref) && !is.na(cond_details$AA_alt)) {
-          if(a_details$start_AA_ref == cond_details$AA_ref && a_details$start_AA_alt == cond_details$AA_alt) {
-            # Current variant matches defined variant
-            whitelist <- TRUE
-            break
-          }
-        }
-      }
-    }
-    if(whitelist) {
-      break
-    }
-  }
-  if(whitelist) {
-    manual_review <- FALSE
-  }
-  return(list(whitelist = whitelist, manual_review = manual_review))
-}
-
-match_fs <- function(x) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  putative_whitelist <- FALSE
-  putative_manual_review <- FALSE
-  if(grepl("^frameshift", x[[1]], perl = TRUE)) {
-    conditions <- strsplit(x[[2]], ";")[[1]]
-    conditions_put <- strsplit(x[[3]], ";")[[1]]
-    aa_changes <- strsplit(x[[4]], ",")[[1]]
-    aa_exons <- as.integer(strsplit(x[[5]], ",")[[1]])
-    match_conditions <- match_fs_conditions(conditions, aa_changes, aa_exons)
-    match_put_conditions <- match_fs_conditions(conditions_put, aa_changes, aa_exons)
-    whitelist <- match_conditions$whitelist
-    manual_review <- match_conditions$manual_review
-    putative_whitelist <- match_put_conditions$whitelist
-    putative_manual_review <- match_put_conditions$manual_review
-  }
-  return(c(whitelist, manual_review, putative_whitelist, putative_manual_review))
-}
-
-match_sg_conditions <- function(conditions, aa_changes, aa_exons) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  for(cond in conditions) {
-    if(cond == "any") {
-      whitelist <- TRUE
-      break
-    } else if(cond == "c_term") {
-      # No easy way to determine whether variant is in the C-terminal region - manual review
-      manual_review <- TRUE
-      next
-    } else if(cond == "nan" || cond == "" || is.na(cond)) {
-      # No nonsynonymous condition defined for this gene
-      next
-    } else if(aa_changes == "nan" || aa_changes == "" || is.na(aa_changes) || aa_exons == "nan" || aa_exons == "" || is.na(aa_exons)) {
-      # Variant doesn't match the representative transcript(s) - cannot match to specific AA or exon
-      next
-    }
-    cond_details <- parse_cond(cond)
-    if(all(is.na(cond_details))) {
-      next
-    } else if(cond_details$cond_type == "exon" && !is.na(cond_details$exon_num) && cond_details$exon_num %in% aa_exons) {
-      # Matching nonsynonymous variant in exon
-      whitelist <- TRUE
-      break
-    } else if(is.na(cond_details$start_pos) || is.na(cond_details$end_pos)) {
-      next
-    }
-    for(a in aa_changes) {
-      a_details <- parse_aa_change(a)
-      if(all(is.na(a_details))) {
-        next
-      }
-      if(a_details$mut_type == "aa_change" & (a_details$start_pos %in% cond_details$start_pos:cond_details$end_pos)) {
-        # Current variant is a single AA substitution
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change" && !is.na(cond_details$AA_ref) && !is.na(cond_details$AA_alt)) {
-          if(a_details$start_AA_ref == cond_details$AA_ref && a_details$start_AA_alt == cond_details$AA_alt) {
-            # Current variant matches defined variant
-            whitelist <- TRUE
-            break
-          }
-        }
-      } else if(a_details$mut_type == "ins" & (a_details$start_pos %in% cond_details$start_pos:cond_details$end_pos)) {
-        # Current variant is an insertion
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change" && !is.na(cond_details$AA_ref)) {
-          if(a_details$start_AA_ref == cond_details$AA_ref) {
-            # Current insertion variant start position matches a defined variant, but we can't be sure we have an exact match to the defined AA change
-            manual_review <- TRUE
-            next
-          }
-        }
-      } else if(a_details$mut_type == "del" & any((a_details$start_pos:a_details$end_pos) %in% (cond_details$start_pos:cond_details$end_pos))) {
-        # Current variant is a deletion and deleted positions overlap defined range
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change") {
-          # Current deletion variant affects this position, but we can't be sure we have an exact match to the defined AA change
-          manual_review <- TRUE
-          next
-        }
-      } else if(a_details$mut_type == "fs" & (a_details$start_pos %in% cond_details$start_pos:cond_details$end_pos)) {
-        # Current variant is a frameshift mutation
-        if(cond_details$cond_type == "aa_range") {
-          # Current variant in defined range
-          whitelist <- TRUE
-          break
-        } else if(cond_details$cond_type == "aa_change" && !is.na(cond_details$AA_ref) && !is.na(cond_details$AA_alt)) {
-          if(a_details$start_AA_ref == cond_details$AA_ref && a_details$start_AA_alt == cond_details$AA_alt) {
-            # Current variant matches defined variant
-            whitelist <- TRUE
-            break
-          }
-        }
-      }
-    }
-    if(whitelist) {
-      break
-    }
-  }
-  if(whitelist) {
-    manual_review <- FALSE
-  }
-  return(list(whitelist = whitelist, manual_review = manual_review))
-}
-
-match_sg <- function(x) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  putative_whitelist <- FALSE
-  putative_manual_review <- FALSE
-  if(grepl("stopgain", x[[1]], perl = TRUE)) {
-    conditions <- strsplit(x[[2]], ";")[[1]]
-    conditions_put <- strsplit(x[[3]], ";")[[1]]
-    aa_changes <- strsplit(x[[4]], ",")[[1]]
-    aa_exons <- as.integer(strsplit(x[[5]], ",")[[1]])
-    match_conditions <- match_sg_conditions(conditions, aa_changes, aa_exons)
-    match_put_conditions <- match_sg_conditions(conditions_put, aa_changes, aa_exons)
-    whitelist <- match_conditions$whitelist
-    manual_review <- match_conditions$manual_review
-    putative_whitelist <- match_put_conditions$whitelist
-    putative_manual_review <- match_put_conditions$manual_review
-  }
-  return(c(whitelist, manual_review, putative_whitelist, putative_manual_review))
-}
-
-match_sp_conditions <- function(conditions, transcript_changes, transcript_exons) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-
-    for(cond in conditions) {
-      if(cond == "any") {
-        whitelist <- TRUE
-        break
-      } else if(cond == "c_term") {
-        # No easy way to determine whether variant is in the C-terminal region - manual review
-        manual_review <- TRUE
-        next
-      } else if(cond == "nan" || cond == "" || is.na(cond)) {
-        # No nonsynonymous condition defined for this gene
-        next
-      } else if(transcript_changes == "nan" || transcript_changes == "" || is.na(transcript_changes) || transcript_exons == "nan" || transcript_exons == "" || is.na(transcript_exons)) {
-        # Variant doesn't match the representative transcript(s) - cannot match to specific change or exon
-        next
-      }
-      cond_details <- parse_cond(cond)
-      if(all(is.na(cond_details))) {
-        next
-      } else if(cond_details$cond_type == "exon" && !is.na(cond_details$exon_num) && cond_details$exon_num %in% transcript_exons) { #####
-        # Matching nonsynonymous variant in exon
-        whitelist <- TRUE
-        break
-      } else if(cond_details$cond_type %in% c("aa_change", "aa_range")) {
-        # AA substitutions and ranges aren't defined for splicing variants - manual review
-        manual_review <- TRUE
-        next
-      } else if(is.na(cond_details$start_pos) || is.na(cond_details$end_pos)) {
-        next
-      }
-    }
-    if(whitelist) {
-      manual_review <- FALSE
-    }
-
-  return(list(whitelist = whitelist, manual_review = manual_review))
-}
-
-match_sp <- function(x) {
-  whitelist <- FALSE
-  manual_review <- FALSE
-  putative_whitelist <- FALSE
-  putative_manual_review <- FALSE
-  if(grepl("splicing", x[[1]], perl = TRUE)) {
-    conditions <- strsplit(x[[2]], ";")[[1]]
-    conditions_put <- strsplit(x[[3]], ";")[[1]]
-    transcript_changes <- strsplit(x[[4]], ";")[[1]]
-    transcript_exons <- as.integer(strsplit(x[[5]], ";")[[1]])
-    match_conditions <- match_sp_conditions(conditions, transcript_changes, transcript_exons)
-    match_put_conditions <- match_sp_conditions(conditions_put, transcript_changes, transcript_exons)
-    whitelist <- match_conditions$whitelist
-    manual_review <- match_conditions$manual_review
-    putative_whitelist <- match_put_conditions$whitelist
-    putative_manual_review <- match_put_conditions$manual_review
-  }
-  return(c(whitelist, manual_review, putative_whitelist, putative_manual_review))
-}
-
-# Matching non-synonymous mutations (SNV, non-frameshift INDELs)
-wl_ns <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Nonsynonymous", "Putative_Nonsynonymous", "AAChange.protChange", "AAChange.exon")], 1, match_ns)
-
-# Matching frameshift mutations
-wl_fs <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Frameshift", "Putative_Frameshift", "AAChange.protChange", "AAChange.exon")], 1, match_fs)
-
-# Matching stop-gain mutations
-wl_sg <- apply(vars_g_chip_func_filtered[, c("ExonicFunc.refGene", "Stop_Gain", "Putative_Stop_Gain", "AAChange.protChange", "AAChange.exon")], 1, match_sg)
-
-# Matching splicing mutations
-wl_sp <- apply(vars_g_chip_func_filtered[, c("Func.refGene", "Splicing", "Putative_Splicing", "GeneDetail.transcript", "GeneDetail.exon")], 1, match_sp)
-
-# Add whitelist/manual review columns to data frame
-wl_ns_df <- data.frame(t(wl_ns))
-colnames(wl_ns_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Nonsynonymous", sep = "_")
-
-wl_fs_df <- data.frame(t(wl_fs))
-colnames(wl_fs_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Frameshift", sep = "_")
-
-wl_sg_df <- data.frame(t(wl_sg))
-colnames(wl_sg_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Stop_Gain", sep = "_")
-
-wl_sp_df <- data.frame(t(wl_sp))
-colnames(wl_sp_df) <- paste(c("Whitelist", "Manual_Review", "Putative_Whitelist", "Putative_Manual_Review"), "Splicing", sep = "_")
-
-# Overall whitelist/manual review
-wl <- wl_ns_df[, 1] | wl_fs_df[, 1] | wl_sg_df[, 1] | wl_sp_df[, 1]
-mr <- (!wl) & (wl_ns_df[, 2] | wl_fs_df[, 2] | wl_sg_df[, 2] | wl_sp_df[, 2])
-pwl <- wl_ns_df[, 3] | wl_fs_df[, 3] | wl_sg_df[, 3] | wl_sp_df[, 3]
-pmr <- (!pwl) & (wl_ns_df[, 4] | wl_fs_df[, 4] | wl_sg_df[, 4] | wl_sp_df[, 4])
-overall_wl <- data.frame(Whitelist = wl, Manual_Review = mr, Putative_Whitelist = pwl, Putative_Manual_Review = pmr)
-
-# Apply stricter hard filter to putative CHIP variants
-vars_g_chip_func_filtered$PUTATIVE <-  (overall_wl$Putative_Whitelist | overall_wl$Putative_Manual_Review)
-vars_g_chip_func_filtered$KNOWN <- (overall_wl$Whitelist | overall_wl$Manual_Review)
-vars_g_chip_func_filtered$PUTATIVE_FILTER <- apply(vars_g_chip_func_filtered[, c("PUTATIVE", "AD", "F1R2", "F2R1", "VAF", "KNOWN")], 1, function(x) {
-  p <- as.logical(x[[1]])
-  ad <- as.integer(strsplit(x[[2]], ",")[[1]])
-  f1r2 <- as.integer(strsplit(x[[3]], ",")[[1]])
-  f2r1 <- as.integer(strsplit(x[[4]], ",")[[1]])
-  vaf <- as.numeric(strsplit(x[[5]], ",")[[1]])
-  kwn <- as.logical(x[[6]])
-  if (!p) {
-    return("PASS")
-  }
-  # Allelic depth
-  var_n_ad_gte_5 <- ad >= 5
-  # VAF
-  var_n_vaf_lte_20pc <- vaf <= 0.2
-  # Forward and reverse strand support
-  var_n_for_rev_gte_2 <- all(f1r2 >= 2) && all(f2r1 >= 2)
-  filter_pass <- (
-    all(var_n_ad_gte_5[2:length(var_n_ad_gte_5)]) &  # first allele = ref
-      all(var_n_vaf_lte_20pc) &
-      var_n_for_rev_gte_2
-  )
-  filter_manual_review <- (
-    any(var_n_ad_gte_5[2:length(var_n_ad_gte_5)]) &  # first allele = ref; if any, but not all pass, go to manual review
-      any(var_n_vaf_lte_20pc) &  # some but not all are passing
-      var_n_for_rev_gte_2
-  )
-  if (kwn) {
-    PUTATIVE_FILTER = "MANUAL_REVIEW"
-  } else {
-    PUTATIVE_FILTER = "FAIL"
-  }
-  if(filter_pass) {
-    PUTATIVE_FILTER = "PASS"
-  } else if(filter_manual_review) {
-    PUTATIVE_FILTER = "MANUAL_REVIEW"
-  }
-  return(PUTATIVE_FILTER)
-})
-vars_g_chip_func_filtered$COMBINED_FILTER <- apply(vars_g_chip_func_filtered[, c("COMBINED_FILTER", "PUTATIVE_FILTER")], 1, function(x) {
-  if (x[[1]] == "PASS" && x[[2]] == "PASS") {
-    return("PASS")
-  } else if (x[[1]] == "FAIL" || x[[2]] == "FAIL") {
-    return("FAIL")
-  } else {
-    return("MANUAL_REVIEW")
-  }
-})
-
-# Update the overall whitelist filter columns to include the putative variant filter information
-overall_wl$Manual_Review <- (overall_wl$Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
-overall_wl$Whitelist <- overall_wl$Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-overall_wl$Putative_Manual_Review <- (overall_wl$Putative_Manual_Review & vars_g_chip_func_filtered$COMBINED_FILTER != "FAIL") | (overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "MANUAL_REVIEW")
-overall_wl$Putative_Whitelist <- overall_wl$Putative_Whitelist & vars_g_chip_func_filtered$COMBINED_FILTER == "PASS"
-
-vars_g_chip_func_filtered_wl <- cbind(vars_g_chip_func_filtered, wl_ns_df, wl_fs_df, wl_sg_df, wl_sp_df, overall_wl)
-
-write.csv(vars_g_chip_func_filtered_wl, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Whitelist,], paste(sample_id, ".chip_wl_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Manual_Review,], paste(sample_id, ".chip_manual_review_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Putative_Whitelist,], paste(sample_id, ".chip_putative_wl_variants.csv", sep = ""), row.names = FALSE)
-write.csv(vars_g_chip_func_filtered_wl[vars_g_chip_func_filtered_wl$Putative_Manual_Review,], paste(sample_id, ".chip_putative_manual_review_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars, paste(sample_id, ".all_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_hf_hp, paste(sample_id, ".all_variants.pre_filtered.csv", sep = ""), row.names = FALSE)
+write.csv(vars_ann_som, paste(sample_id, ".exonic_splicing_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip, paste(sample_id, ".chip_transcript_variants.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered, paste(sample_id, ".chip_transcript_variants.filtered.csv", sep = ""), row.names = FALSE)
+write.csv(vars_chip_filtered_put, paste(sample_id, ".chip_transcript_variants.filtered.putative_filter.csv", sep = ""), row.names = FALSE)

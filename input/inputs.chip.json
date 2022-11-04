@@ -6,6 +6,7 @@
     "Mutect2CHIP_CHIP.annovar_cpu": 1,
     "Mutect2CHIP_CHIP.treat_missing_as_rare": true,
     "Mutect2CHIP_CHIP.whitelist_genome": true,
+    "Mutect2CHIP_CHIP.whitelist_use_ensembl_annotation": false,
     "Mutect2CHIP_CHIP.gnomad_pop": "AF",
     "Mutect2CHIP_CHIP.annovar_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
     "Mutect2CHIP_CHIP.annovar_archive": "REQUIRED_FILE",
@@ -23,5 +24,6 @@
     "Mutect2CHIP_CHIP.small_task_disk": 100,
     "Mutect2CHIP_CHIP.command_mem_padding": 1000,
     "Mutect2CHIP_CHIP.boot_disk_size": 12,
-    "Mutect2CHIP_CHIP.emergency_extra_disk": 0
+    "Mutect2CHIP_CHIP.emergency_extra_disk": 0,
+    "Mutect2CHIP_CHIP.use_sys_tmp_dir": true
 }
