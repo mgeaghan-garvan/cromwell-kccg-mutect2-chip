@@ -50,7 +50,7 @@ workflow Mutect2CHIP_VEP {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
-        Boolean use_sys_tmp_dir = true
+        Boolean use_tmp_dir = true
     }
 
     Int preemptible_or_default = select_first([preemptible, 2])
@@ -89,7 +89,7 @@ workflow Mutect2CHIP_VEP {
             loftee_conservation_sql = vep_loftee_conservation_sql,
             mem_mb = vep_mem,
             cpus = n_vep_cpus,
-            use_sys_tmp_dir = use_sys_tmp_dir,
+            use_tmp_dir = use_tmp_dir,
             runtime_params = standard_runtime
         }
 

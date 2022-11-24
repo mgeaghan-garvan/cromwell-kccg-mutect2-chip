@@ -24,5 +24,5 @@
     "Mutect2CHIP_CHIP_Multi.command_mem_padding": 1000,
     "Mutect2CHIP_CHIP_Multi.boot_disk_size": 12,
     "Mutect2CHIP_CHIP_Multi.emergency_extra_disk": 0,
-    "Mutect2CHIP_CHIP_Multi.use_sys_tmp_dir": true
+    "Mutect2CHIP_CHIP_Multi.use_tmp_dir": true
 }

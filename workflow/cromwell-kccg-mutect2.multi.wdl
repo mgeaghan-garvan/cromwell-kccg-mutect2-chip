@@ -116,7 +116,6 @@ workflow Mutect2CHIP_Multi {
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int command_mem_padding = 1000
-        Boolean mem_per_core = true
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
@@ -125,7 +124,7 @@ workflow Mutect2CHIP_Multi {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 4
-        Boolean use_sys_tmp_dir = true
+        Boolean use_tmp_dir = true
     
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -208,7 +207,6 @@ workflow Mutect2CHIP_Multi {
                 small_task_mem = small_task_mem,
                 small_task_disk = small_task_disk,
                 command_mem_padding = command_mem_padding,
-                mem_per_core = mem_per_core,
                 boot_disk_size = boot_disk_size,
                 c2b_mem = c2b_mem,
                 m2_mem = m2_mem,
@@ -221,7 +219,7 @@ workflow Mutect2CHIP_Multi {
                 large_input_to_output_multiplier = large_input_to_output_multiplier,
                 small_input_to_output_multiplier = small_input_to_output_multiplier,
                 cram_to_bam_multiplier = cram_to_bam_multiplier,
-                use_sys_tmp_dir = use_sys_tmp_dir
+                use_tmp_dir = use_tmp_dir
         }
     }
 

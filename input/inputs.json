@@ -55,7 +55,6 @@
     "Mutect2CHIP.small_task_mem": 4000,
     "Mutect2CHIP.small_task_disk": 100,
     "Mutect2CHIP.command_mem_padding": 1000,
-    "Mutect2CHIP.mem_per_core": true,
     "Mutect2CHIP.boot_disk_size": 12,
     "Mutect2CHIP.c2b_mem": 6000,
     "Mutect2CHIP.m2_mem": 5000,
@@ -68,5 +67,5 @@
     "Mutect2CHIP.large_input_to_output_multiplier": 2.25,
     "Mutect2CHIP.small_input_to_output_multiplier": 2.0,
     "Mutect2CHIP.cram_to_bam_multiplier": 6.0,
-    "Mutect2CHIP.use_sys_tmp_dir": true
+    "Mutect2CHIP.use_tmp_dir": true
 }
