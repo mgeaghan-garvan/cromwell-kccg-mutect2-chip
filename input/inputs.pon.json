@@ -24,7 +24,6 @@
     "Mutect2CHIP_Panel.small_task_mem": 4000,
     "Mutect2CHIP_Panel.small_task_disk": 100,
     "Mutect2CHIP_Panel.command_mem_padding": 1000,
-    "Mutect2CHIP_Panel.mem_per_core": true,
     "Mutect2CHIP_Panel.boot_disk_size": 12,
     "Mutect2CHIP_Panel.c2b_mem": 6000,
     "Mutect2CHIP_Panel.m2_mem": 5000,
