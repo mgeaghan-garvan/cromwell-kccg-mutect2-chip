@@ -29,14 +29,10 @@ workflow Mutect2CHIP_CHIP {
         File input_vcf
         String tumor_sample_name
         # annovar settings
-        Int annovar_mem_mb = 4000
-        Int annovar_disk_space = 300
         Int annovar_cpu = 1
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         File annovar_archive
         # whitelist settings
-        Int whitelist_mem_mb = 10000
-        Int whitelist_disk_space = 300
         Int whitelist_cpu = 1
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
@@ -57,7 +53,11 @@ workflow Mutect2CHIP_CHIP {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
-        Boolean use_tmp_dir = true
+        Int annovar_mem_mb = 4000
+        Int annovar_disk = 100
+        Int annovar_tmp_disk = 200
+        Int whitelist_mem_mb = 10000
+        Int whitelist_disk = 300
     }
 
     Int preemptible_or_default = select_first([preemptible, 2])
@@ -87,7 +87,8 @@ workflow Mutect2CHIP_CHIP {
     call m2.Annovar as WhitelistAnnovar {
         input:
             mem_mb = annovar_mem_mb,
-            annovar_disk_space = annovar_disk_space,
+            annovar_disk_space = annovar_disk,
+            annovar_tmp_disk_space = annovar_tmp_disk,
             cpu = annovar_cpu,
             annovar_docker = annovar_docker,
             sample_id = sample_id,
@@ -98,7 +99,6 @@ workflow Mutect2CHIP_CHIP {
             annovar_protocols = whitelist_annovar_protocols,
             annovar_operations = whitelist_annovar_operations,
             annovar_additional_arguments = additional_arguments_final,
-            use_tmp_dir = use_tmp_dir,
             runtime_params = standard_runtime
     }
 
@@ -109,7 +109,7 @@ workflow Mutect2CHIP_CHIP {
     call m2.WhitelistFilter {
         input:
             mem_mb = whitelist_mem_mb,
-            whitelist_filter_disk_space = whitelist_disk_space,
+            whitelist_filter_disk_space = whitelist_disk,
             cpu = whitelist_cpu,
             whitelist_filter_docker = whitelist_docker,
             tumor_sample_name = tumor_sample_name,

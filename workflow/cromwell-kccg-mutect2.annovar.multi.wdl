@@ -31,7 +31,8 @@ workflow Mutect2CHIP_Annovar_Multi {
         File input_vcf_list
         # annovar settings
         Int annovar_mem_mb = 4000
-        Int annovar_disk_space = 300
+        Int annovar_disk = 100
+        Int annovar_tmp_disk = 200
         Int annovar_cpu = 1
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
         File annovar_archive
@@ -48,7 +49,6 @@ workflow Mutect2CHIP_Annovar_Multi {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
-        Boolean use_tmp_dir = true
     }
 
     Array[Array[String]] input_vcfs = read_tsv(input_vcf_list)
@@ -60,7 +60,8 @@ workflow Mutect2CHIP_Annovar_Multi {
             input:
                 input_vcf = input_vcf,
                 annovar_mem_mb = annovar_mem_mb,
-                annovar_disk_space = annovar_disk_space,
+                annovar_disk = annovar_disk,
+                annovar_tmp_disk = annovar_tmp_disk,
                 annovar_cpu = annovar_cpu,
                 annovar_docker = annovar_docker,
                 annovar_archive = annovar_archive,
@@ -75,7 +76,6 @@ workflow Mutect2CHIP_Annovar_Multi {
                 command_mem_padding = command_mem_padding,
                 boot_disk_size = boot_disk_size,
                 emergency_extra_disk = emergency_extra_disk,
-                use_tmp_dir = use_tmp_dir
         }
     }
 

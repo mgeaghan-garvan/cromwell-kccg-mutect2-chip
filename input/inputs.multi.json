@@ -64,5 +64,10 @@
     "Mutect2CHIP_Multi.large_input_to_output_multiplier": 2.25,
     "Mutect2CHIP_Multi.small_input_to_output_multiplier": 2.0,
     "Mutect2CHIP_Multi.cram_to_bam_multiplier": 6.0,
-    "Mutect2CHIP_Multi.use_tmp_dir": true
+    "Mutect2CHIP_Multi.vep_tmp_disk": 100,
+    "Mutect2CHIP_Multi.annovar_mem_mb": 4000,
+    "Mutect2CHIP_Multi.annovar_disk ": 100,
+    "Mutect2CHIP_Multi.annovar_tmp_disk": 200,
+    "Mutect2CHIP_Multi.whitelist_mem_mb": 10000,
+    "Mutect2CHIP_Multi.whitelist_disk": 300
 }
