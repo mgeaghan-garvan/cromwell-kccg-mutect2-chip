@@ -825,6 +825,7 @@ task M2 {
             ~{"-L " + intervals} \
             ~{"--alleles " + gga_vcf} \
             -O "~{output_vcf}" \
+            --native-pair-hmm-threads ~{cpu} \
             ~{true='--bam-output bamout.bam' false='' select_first([make_bamout, false])} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' select_first([run_ob_filter, false])} \
             ~{m2_extra_args}
