@@ -1296,7 +1296,7 @@ task VEP {
         docker: docker_to_use
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: mem_mb + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD, /tmp " + vep_tmp_disk + " HDD"
+        disks: ["local-disk ~{runtime_params.disk} HDD", "/tmp ~{vep_tmp_disk} HDD"]
         tmp_disk: runtime_params.disk
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1367,7 +1367,7 @@ task Annovar {
       docker: annovar_docker
       bootDiskSizeGb: runtime_params.boot_disk_size
       memory: mem_mb + " MB"
-      disks: "local-disk " + annovar_disk_space + " HDD, /tmp " + annovar_tmp_disk_space + " HDD"
+      disks: ["local-disk ~{annovar_disk_space} HDD", "/tmp ~{annovar_tmp_disk_space} HDD"]
       tmp_disk: annovar_disk_space
       preemptible: runtime_params.preemptible
       maxRetries: runtime_params.max_retries
