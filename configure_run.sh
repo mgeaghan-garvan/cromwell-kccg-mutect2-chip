@@ -5,9 +5,10 @@
 # Usage
 helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
-    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-p|--cromport CROMWELL_PORT] [-f|--platform PLATFORM] [-g|--gcpout GCP_OUT_PATH] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-P|--priority DX_PRIORITY] [-d|--dryrun] [-m|--multi]"
+    echo -e "\nUsage: $0 [-n|--name RUN_NAME] [-H|--host CROMWELL_HOST] [-p|--port CROMWELL_PORT] [-f|--platform PLATFORM] [-g|--gcpout GCP_OUT_PATH] [-w|--workflow DX_WORKFLOW_PATH] [-i|--input DX_INPUT_JSON] [-b|--batch DX_BATCH_INPUT_FILE] [-o|--output DX_OUTPUT_PATH] [-P|--priority DX_PRIORITY] [-d|--dryrun] [-m|--multi]"
     echo -e "Display this help message: $0 -h\n"
     echo -e "\tRUN_NAME:             (GCP only) Name of the run.                                  (Default: 'run')."
+    echo -e "\tCROMWELL_HOST:        Host where Cromwell is running (ignored for DNAnexus runs).  (Default: 'localhost')"
     echo -e "\tCROMWELL_PORT:        Port where Cromwell is running (ignored for DNAnexus runs).  (Default: '8007')"
     echo -e "\tPLATFORM:             Platform on which workflow should be run.                    (Options: 'HPC', 'GCP', 'DX'. Default: 'HPC')"
     echo -e "\tGCP_OUT_PATH:         (GCP only) Path on GCP to place final output files."
@@ -31,6 +32,7 @@ helpmsg() {
 # Set defaults
 # Host, port, database and platform defaults
 RUNNAME="run"
+CROMHOST="localhost"
 CROMPORT="8007"
 PLATFORM="HPC"
 MULTI="FALSE"
@@ -56,7 +58,12 @@ while [[ $# -gt 0 ]]; do
                         shift
                         shift
                         ;;
-                -p|--cromport)
+                -H|--host)
+                        CROMHOST="$2"
+                        shift
+                        shift
+                        ;;
+                -p|--port)
                         CROMPORT="$2"
                         shift
                         shift
@@ -133,6 +140,7 @@ if [ "${PLATFORM}" == "GCP" ]; then
     echo "GCP output path     = ${GCP_OUT_PATH}"
 fi
 if [ "${PLATFORM}" != "DX" ]; then
+    echo "Cromwell host       = ${CROMHOST}"
     echo "Cromwell port       = ${CROMPORT}"
     echo "Multi-sample mode   = ${MULTI}"
 fi
@@ -210,12 +218,12 @@ then
 fi
 
 # Configure run.sh
-sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./scripts/run_full.sh
-sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./scripts/run_chip_only.sh
-sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./scripts/run_vep_only.sh
-sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./scripts/run_annovar_only.sh
-sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./scripts/create_pon.sh
-sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" ./abort.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_full.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_chip_only.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_vep_only.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_annovar_only.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/create_pon.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./abort.sh
 if [ "${PLATFORM}" == "GCP" ]
 then
     sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/run_full.sh

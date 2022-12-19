@@ -8,4 +8,4 @@ else
     RUN_ID="${1}"
 fi
 
-curl -X POST "http://localhost:CROMWELL_PORT_TO_SED/api/workflows/v1/${RUN_ID}/abort"
+curl -X POST "http://localhost:CROMWELL_PORT_TO_SED/api/workflows/v1/${RUN_ID}/status"

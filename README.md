@@ -22,109 +22,9 @@ For running the pipeline on the local cluster (SGE backend) or the Google Cloud 
 
 Cromwell is not required for running the pipeline on DNAnexus or Terra. For instructions for those platforms, see further below.
 
-#### Configuring a MySQL server
-If there is no MySQL server currently running on the cluster, run the following commands:
-```bash
-# Choose an empty port number.
-MYSQL=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-MYSQL_RUNDIR=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-sqlport=40008
- 
-screen -S MySQLPort${sqlport}
- 
-# Unfortunately have to run these lines again inside screen session
-MYSQL=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-MYSQL_RUNDIR=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-sqlport=40008
- 
-${MYSQL}/bin/mysqld --no-defaults --user=glsai --datadir=$MYSQL_RUNDIR/data/ --basedir=$MYSQL_RUNDIR/ --log-error=$MYSQL_RUNDIR/log/mysql.err --pid-file=$MYSQL_RUNDIR/mysql.pid --socket=$MYSQL_RUNDIR/socket --port=${sqlport}
- 
-# Then exit screen session once our SQL is running. When its running it says or does nothing.
-# Ctrl + A and D
- 
-${MYSQL}/bin/mysql -u root -p --socket=$MYSQL_RUNDIR/socket
-# password: password
- 
-# if cromwell_user not already created else skip these two lines
-# you can check if it already exists with the following query: "SELECT user FROM mysql.user;"
-CREATE USER 'cromwell_user'@'localhost' IDENTIFIED BY '123456781!aA';
-CREATE USER 'cromwell_user'@'%' IDENTIFIED BY '12345678!1aA';
-```
+#### Setting up a Cromwell Server
 
-#### Configuring a Cromwell server
-
-First, clone the repository to a suitable location.
-
-```bash
-# Clone the repository into your working directory
-git clone https://git.gimr.garvan.org.au/micgea/cromwell-kccg-mutect2-chip.git
-cd cromwell-kccg-mutect2/server
-```
-
-##### Using a Google Service Account
-
-If running the pipeline on the Google Cloud Platform, before configuring the Cromwell server, Google Service Account credentials are required. Set up a Compute Engine Service Account and an authentication key (https://console.cloud.google.com/apis/credentials). Add the Service Account email to the first line in a new file within the top-level run directory with the name '.service_account.email.txt'. Similarly, add the key to a file with the name '.service_account.key.pem'. These strings can be found in the JSON file downloaded from GCP when setting up the authentication key.
-
-```bash
-echo "<PROJECT_ID>-compute@developer.gserviceaccount.com" > .service_account.email.txt
-echo -e -n "-----BEGIN PRIVATE KEY-----\nABCDEFG<.....>TUVWXYZ\n-----END PRIVATE KEY-----\n" > .service_account.key.pem
-chmod 600 .service_account.email.txt
-chmod 600 .service_account.key.pem
-```
-
-Now configure the Cromwell server by running configure_cromwell.sh.
-
-```bash
-# Run configuration script
-
-# To see the available options and the defaults:
-./configure_cromwell.sh -h
-
-# To perform a dry-run and only print the configuration settings without modifying any files:
-./configure_cromwell.sh -d [OPTIONS]
-
-# When ready, run the configuration script with desired settings:
-DB_HOST="0.0.0.0"  # Default. Needs to be '0.0.0.0' rather than 'localhost'
-DB_PORT=40008
-DB_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
-CROMWELL_PORT=8007
-PLATFORM=GCP
-MYSQL_DIR=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-MYSQL_RUN_DIR=/home/glsai/mysql/mysql-5.7.27-linux-glibc2.12-x86_64/
-CROMWELL_JAR=/share/ClusterShare/software/contrib/micgea/cromwell/68.1/cromwell-68.1.jar  # Cromwell JAR file location
-
-./configure_cromwell.sh \
-    -H ${MYSQL_HOST} \
-    -P ${DB_PORT} \
-    -n ${DB_NAME} \
-    -p ${CROMWELL_PORT} \
-    -f ${PLATFORM} \
-    -M ${MYSQL_DIR} \
-    -R ${MYSQL_RUN_DIR} \
-    -c ${CROMWELL_JAR} \
-    -C  # Optional: enable call caching (off by default).
-```
-
-#### Running Cromwell server
-
-```bash
-# Create a screen session
-screen -S "CromwellPort${CROMWELL_PORT}"
-
-# Ensure that Java 11 is the active Java version
-java -version
-# If it isn't check the currently active modules
-module list
-# If an older version of Java is loaded, unload it. This should return the default Java version to 8/v1.8
-module unload centos6.10/ccg/java/1.7.0_25
-# Now load Java 11
-module load centos6.10/shacar/java/jdk-11.0.2
-
-# Start the Cromwell server
-./start_cromwell.sh
-```
-
-Once running, you can detatch the session with Ctrl + A, then D.
+We currently have a production Cromwell server in development, the repository for which can be found [here](https://git.gimr.garvan.org.au/CCG/kccg-cromwell/-/tree/dev). Follow the steps in the README for that repository to set up a Cromwell server for running this pipeline.
 
 #### Configuring workflow
 
@@ -167,10 +67,6 @@ PLATFORM=GCP
     -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
 ```
 
-##### A note about memory requirements
-
-When running the workflow on the Garvan HPC, the requested memory will be multiplied by the requested number of cores. However, when running on GCP, Terra, or DNAnexus, the requested memory will be the total memory allocated to a job. To ensure the proper amount of memory is being requested in each case, set the "mem_per_core" parameter in the input JSON file, i.e. for the local HPC, set "mem_per_core" to true, and for GCP/Terra/DNAnexus, set it to false.
-
 ##### Prerequisite files
 
 The following files are required to run parts of the pipeline.
@@ -182,8 +78,8 @@ The following files are required to run parts of the pipeline.
 | vep_cache_archive | TAR.GZ archive file containing a VEP cache for annotating variants offline | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
 | vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | FASTA file and index for running VEP + LOFTEE | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
 | vep_loftee_conservation_sql | PhyloCSF database for conservation filters in VEP + LOFTEE | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
-| annovar_archive | TAR.GZ archive file containing the necessary files to run ANNOVAR | /share/ClusterShare/software/contrib/micgea/chip/data/annovar_files.tar.gz |
-| whitelist_archive, whitelist_filter_archive | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | /share/ClusterShare/software/contrib/micgea/chip/data/whitelist_filter_files.tar.gz |
+| annovar_archive | TAR.GZ archive file containing the necessary files to run ANNOVAR | https://storage.cloud.google.com/kccg-somvar-data/annovar_files.tar.gz |
+| whitelist_archive, whitelist_filter_archive | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
 
 ##### Batch/multi-sample mode
 
@@ -245,30 +141,25 @@ RUNMODE=annovar
 ./run.sh -m ${RUNMODE}
 ```
 
-You can check on the state of the run by re-attaching the Cromwell screen session:
+#### Workflow status and termination
+
+To check on the workflow's status, run the script `status.sh`. Similarly, to terminate the workflow, run `abort.sh`. These scripts both pull the run ID out of run_id.txt, which is generated upon job submission with run.sh. Alternatively, these scripts can be provided the run ID directly as the first argument.
 
 ```bash
-screen -r "CromwellPort${CROMWELL_PORT}"
-```
-
-#### Aborting the workflow
-
-To abort the workflow, run the abort script by passing it the run ID. This is the ID returned in JSON format when submitting the workflow. It can be found in run_id.txt.
-
-```bash
+# Check the run ID
 cat run_id.txt
 
     {"id":"3deb2054-445f-400a-afcd-465a50fc44ba","status":"Submitted"}
 
-./abort.sh "3deb2054-445f-400a-afcd-465a50fc44ba"
-```
+# Get workflow status
+./status.sh  # Alternatively, ./status.sh 3deb2054-445f-400a-afcd-465a50fc44ba
 
-#### Resetting the database
+    {"status":"Running","id":"3deb2054-445f-400a-afcd-465a50fc44ba"}
 
-If you need to start from scratch, you can choose to delete and re-create the Cromwell database by running reset_database.sh. This may be useful if the workflow fails to abort properly.
+# Terminate the workflow
+./abort.sh  # Alternatively, ./abort.sh 3deb2054-445f-400a-afcd-465a50fc44ba
 
-```bash
-./reset_database.sh
+    {"id":"3deb2054-445f-400a-afcd-465a50fc44ba","status":"Aborting"}
 ```
 
 ### Running on Terra
@@ -285,11 +176,11 @@ Running the pipeline on Terra is similar to running on GCP, except that a Cromwe
 
 #### Terra workspace
 
-This workflow is already hosted on Terra in a [private workspace](https://app.terra.bio/#workspaces/terra-kccg-production/terra-kccg-somvar-pipeline). If you have access to this workspace, you can go ahead and start running the pipeline (see below).
+This workflow is already hosted on Terra in a [private workspace](https://app.terra.bio/#workspaces/terra-kccg-production/terra-kccg-somvar-pipeline). If you have access to this workspace, you can clone it and start running the pipeline (see below).
 
 For setting up your own workspace, see [this Google Docs document](https://docs.google.com/document/d/1pZVTxjRJfAyWYiFWmmF_o31lORQ8a-xmqdK1zE3RDyk) for detailed instructions on setting up a Terra workspace. In short, a billing account on GCP is required to be linked with a billing account on Terra, to which the new workspace can be added. A Terra group must also be created, containing any Terra users that wish to run the pipeline, and the group's firecloud email added as a "Storage Object Creator" and "Storage Object Viewer" on any GCP buckets used to host data as part of the workflow.
 
-Once set up, the workflows can be added to Terra via Dockstore. Dockstore monitors a public git repository containing the workflows and supplies these workflows for Terra to use. The public repository of this pipeline is available [here](https://github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip), and is already hosted on Dockstore for use with Terra. To add the workflow to Terra:
+Once set up, the workflows can be added to Terra via Dockstore. Dockstore monitors a public git repository containing the workflows and supplies these workflows for Terra to use. The public repository of this pipeline is available [here](https://github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip), and is already hosted on Dockstore for use with Terra. Note that this repository will typically only be updated with the main, production-ready branch, and may not contain updates in the development branch. To add the workflow to Terra:
 
 1. Go to the Terra workspace.
 2. Go to the "Workflows" tab.
