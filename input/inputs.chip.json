@@ -22,7 +22,7 @@
     "Mutect2CHIP_CHIP.boot_disk_size": 12,
     "Mutect2CHIP_CHIP.emergency_extra_disk": 0,
     "Mutect2CHIP_CHIP.annovar_mem_mb": 4000,
-    "Mutect2CHIP_CHIP.annovar_disk ": 100,
+    "Mutect2CHIP_CHIP.annovar_disk": 100,
     "Mutect2CHIP_CHIP.annovar_tmp_disk": 200,
     "Mutect2CHIP_CHIP.whitelist_mem_mb": 10000,
     "Mutect2CHIP_CHIP.whitelist_disk": 300

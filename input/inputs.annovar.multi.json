@@ -15,6 +15,6 @@
     "Mutect2CHIP_Annovar_Multi.boot_disk_size":  12,
     "Mutect2CHIP_Annovar_Multi.emergency_extra_disk": 0,
     "Mutect2CHIP_Annovar_Multi.annovar_mem_mb": 4000,
-    "Mutect2CHIP_Annovar_Multi.annovar_disk ": 100,
+    "Mutect2CHIP_Annovar_Multi.annovar_disk": 100,
     "Mutect2CHIP_Annovar_Multi.annovar_tmp_disk": 200
 }

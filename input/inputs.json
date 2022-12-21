@@ -69,7 +69,7 @@
     "Mutect2CHIP.cram_to_bam_multiplier": 6.0,
     "Mutect2CHIP.vep_tmp_disk": 100,
     "Mutect2CHIP.annovar_mem_mb": 4000,
-    "Mutect2CHIP.annovar_disk ": 100,
+    "Mutect2CHIP.annovar_disk": 100,
     "Mutect2CHIP.annovar_tmp_disk": 200,
     "Mutect2CHIP.whitelist_mem_mb": 10000,
     "Mutect2CHIP.whitelist_disk": 300

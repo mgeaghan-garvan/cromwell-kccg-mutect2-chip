@@ -224,6 +224,7 @@ sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CR
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_annovar_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/create_pon.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./abort.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./status.sh
 if [ "${PLATFORM}" == "GCP" ]
 then
     sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/run_full.sh
