@@ -89,6 +89,9 @@ for (i in 1:length(df_all_var_list)) {
   df_all_var_list[[i]]$PREVALENCE_FILTER <- apply(df_all_var_list[[i]][c("PREVALENCE_FILTER", "putative")], 1, function(x) {
     filt <- as.character(x[[1]])
     put = as.logical(x[[2]])
+    if (is.na(put)) {
+      put <- FALSE
+    }
     if (filt == "FAIL") {
       return("FAIL")
     } else if (filt == "PASS") {
