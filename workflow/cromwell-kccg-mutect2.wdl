@@ -201,6 +201,7 @@ workflow Mutect2CHIP {
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
         Boolean whitelist_use_ensembl_annotation = false
+        Boolean run_chip_on_unannotated_vcf = false
         String gnomad_pop = "AF"
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
 
@@ -548,7 +549,7 @@ workflow Mutect2CHIP {
         }
     }
 
-    File chip_detection_input_vcf = select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
+    File chip_detection_input_vcf = if (run_chip_on_unannotated_vcf) then filter_output_vcf else select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
 
     # Run annovar and CHIP whitelist filter
     if (run_chip_detection && defined(annovar_archive) && defined(whitelist_filter_archive)) {

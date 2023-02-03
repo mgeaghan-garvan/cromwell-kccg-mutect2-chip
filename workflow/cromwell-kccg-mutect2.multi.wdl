@@ -101,6 +101,7 @@ workflow Mutect2CHIP_Multi {
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
         Boolean whitelist_use_ensembl_annotation = false
+        Boolean run_chip_on_unannotated_vcf = false
         String gnomad_pop = "AF"
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
     
@@ -201,6 +202,7 @@ workflow Mutect2CHIP_Multi {
                 treat_missing_as_rare = treat_missing_as_rare,
                 whitelist_genome = whitelist_genome,
                 whitelist_use_ensembl_annotation = whitelist_use_ensembl_annotation,
+                run_chip_on_unannotated_vcf = run_chip_on_unannotated_vcf,
                 gnomad_pop = gnomad_pop,
                 whitelist_filter_docker = whitelist_filter_docker,
                 samtools_docker = samtools_docker,
