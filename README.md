@@ -67,19 +67,19 @@ PLATFORM=GCP
     -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
 ```
 
-##### Prerequisite files
+##### Input parameters
 
-The following files are required to run parts of the pipeline.
+The following table describes the various parameters for the pipeline.
 
-| Parameter(s) | Description | Example |
-| ------------ | ----------- | ------- |
-| gnomad, gnomad_idx | Germline reference VCF and index containing common and rare variant population allele frequencies | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
-| variants_for_contamination, variants_for_contamination_idx | VCF and index containing common variants and allele frequencies for calculating contamination | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
-| vep_cache_archive | TAR.GZ archive file containing a VEP cache for annotating variants offline | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
-| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | FASTA file and index for running VEP + LOFTEE | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
-| vep_loftee_conservation_sql | PhyloCSF database for conservation filters in VEP + LOFTEE | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
-| annovar_archive | TAR.GZ archive file containing the necessary files to run ANNOVAR | https://storage.cloud.google.com/kccg-somvar-data/annovar_files.tar.gz |
-| whitelist_archive, whitelist_filter_archive | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
+| Parameter(s) | Type | Description | Optional/Required | Default | Example |
+| ------------ | ---- | ----------- | ----------------- | ------- | ------- |
+| gnomad, gnomad_idx | File | Germline reference VCF and index containing common and rare variant population allele frequencies | Optional, but recommended | N/A | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
+| variants_for_contamination, variants_for_contamination_idx | File | VCF and index containing common variants and allele frequencies for calculating contamination | Optional | N/A | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
+| vep_cache_archive | File | TAR.GZ archive file containing a VEP cache for annotating variants offline | Required for running vep (`vep` is set to `true`) | N/A | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
+| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | File | FASTA file and index for running VEP + LOFTEE | Required for running VEP + Loftee (`vep` and `loftee` are set to `true`) | N/A | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
+| vep_loftee_conservation_sql | File | PhyloCSF database for conservation filters in VEP + LOFTEE | Required for running VEP + Loftee (`vep` and `loftee` are set to `true`) | N/A | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
+| annovar_archive | File | TAR.GZ archive file containing the necessary files to run ANNOVAR | Required for running Annovar or CHIP detection (`annovar` is set to `true` OR `run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/annovar_files.tar.gz |
+| whitelist_archive, whitelist_filter_archive | File | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | Required for running CHIP detection (`run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
 
 ##### Batch/multi-sample mode
 
