@@ -53,7 +53,7 @@ workflow Mutect2CHIP_VEP_Multi {
         Int boot_disk_size = 12
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
-        Boolean use_sys_tmp_dir = true
+        Int vep_tmp_disk = 100
     }
 
     Array[Array[String]] input_vcfs = read_tsv(input_vcf_list)
@@ -87,7 +87,7 @@ workflow Mutect2CHIP_VEP_Multi {
                 command_mem_padding = command_mem_padding,
                 boot_disk_size = boot_disk_size,
                 emergency_extra_disk = emergency_extra_disk,
-                use_sys_tmp_dir = use_sys_tmp_dir
+                vep_tmp_disk = vep_tmp_disk
         }
     }
 

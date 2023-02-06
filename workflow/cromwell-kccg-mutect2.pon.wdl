@@ -72,7 +72,6 @@ workflow Mutect2CHIP_Panel {
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int command_mem_padding = 1000
-        Boolean mem_per_core = true
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
@@ -92,7 +91,7 @@ workflow Mutect2CHIP_Panel {
     Int max_retries_or_default = select_first([max_retries, 2])
 
     Int small_task_cpu_mult = if small_task_cpu > 1 then small_task_cpu - 1 else 1
-    Int cmd_mem = if mem_per_core then (small_task_mem * small_task_cpu_mult) - command_mem_padding else small_task_mem - command_mem_padding
+    Int cmd_mem = small_task_mem - command_mem_padding
 
     Runtime standard_runtime = {
         "gatk_docker": gatk_docker,
@@ -137,7 +136,6 @@ workflow Mutect2CHIP_Panel {
                     small_task_mem = small_task_mem,
                     small_task_disk = small_task_disk,
                     command_mem_padding = command_mem_padding,
-                    mem_per_core = mem_per_core,
                     boot_disk_size = boot_disk_size,
                     c2b_mem = c2b_mem,
                     m2_mem = m2_mem,
@@ -177,7 +175,6 @@ workflow Mutect2CHIP_Panel {
                     create_pon_extra_args = create_pon_extra_args,
                     mem_mb = pon_mem,
                     mem_pad = command_mem_padding,
-                    mem_per_core = mem_per_core,
                     runtime_params = standard_runtime
             }
         }
@@ -214,7 +211,6 @@ task CreatePanel {
         String? create_pon_extra_args
         Int mem_mb = 5000
         Int mem_pad = 1000
-        Boolean mem_per_core = true
 
         # runtime
         Runtime runtime_params
@@ -222,7 +218,7 @@ task CreatePanel {
 
     Int machine_mem = mem_mb
     Int cpu_mult = if runtime_params.cpu > 1 then runtime_params.cpu - 1 else 1
-    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
+    Int command_mem = machine_mem - mem_pad
 
         parameter_meta{
             gnomad: {localization_optional: true}
@@ -243,7 +239,6 @@ task CreatePanel {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: machine_mem + " MB"
-        mem_mb: machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries

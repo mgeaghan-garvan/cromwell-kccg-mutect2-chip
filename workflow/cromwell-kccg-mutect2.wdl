@@ -201,6 +201,7 @@ workflow Mutect2CHIP {
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
         Boolean whitelist_use_ensembl_annotation = false
+        Boolean run_chip_on_unannotated_vcf = false
         String gnomad_pop = "AF"
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
 
@@ -216,7 +217,6 @@ workflow Mutect2CHIP {
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int command_mem_padding = 1000
-        Boolean mem_per_core = true
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
@@ -225,7 +225,12 @@ workflow Mutect2CHIP {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 1
-        Boolean use_sys_tmp_dir = true
+        Int vep_tmp_disk = 100
+        Int annovar_mem_mb = 4000
+        Int annovar_disk = 100
+        Int annovar_tmp_disk = 200
+        Int whitelist_mem_mb = 10000
+        Int whitelist_disk = 300
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -267,7 +272,7 @@ workflow Mutect2CHIP {
     Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
 
     Int small_task_cpu_mult = if small_task_cpu > 1 then small_task_cpu - 1 else 1
-    Int cmd_mem = if mem_per_core then (small_task_mem * small_task_cpu_mult) - command_mem_padding else small_task_mem - command_mem_padding
+    Int cmd_mem = small_task_mem - command_mem_padding
 
     Runtime standard_runtime = {
         "gatk_docker": gatk_docker,
@@ -372,7 +377,6 @@ workflow Mutect2CHIP {
                 disk_space = m2_per_scatter_size,
                 mem_mb = m2_mem,
                 mem_pad = command_mem_padding,
-                mem_per_core = mem_per_core,
                 cpu = m2_cpu
         }
     }
@@ -387,8 +391,7 @@ workflow Mutect2CHIP {
                 runtime_params = standard_runtime,
                 output_name = output_basename,
                 mem_mb = learn_read_orientation_mem,
-                mem_pad = command_mem_padding,
-                mem_per_core = mem_per_core
+                mem_pad = command_mem_padding
         }
     }
 
@@ -489,8 +492,7 @@ workflow Mutect2CHIP {
                 input_vcf_idx = Filter.filtered_vcf_idx,
                 runtime_params = standard_runtime,
                 mem_mb = filter_alignment_artifacts_mem,
-                mem_pad = command_mem_padding,
-                mem_per_core = mem_per_core
+                mem_pad = command_mem_padding
         }
     }
 
@@ -519,8 +521,8 @@ workflow Mutect2CHIP {
                 loftee_ancestor_gzi = vep_loftee_ancestor_gzi,
                 loftee_conservation_sql = vep_loftee_conservation_sql,
                 mem_mb = vep_mem,
+                vep_tmp_disk = vep_tmp_disk,
                 cpus = n_vep_cpus,
-                use_sys_tmp_dir = use_sys_tmp_dir,
                 runtime_params = standard_runtime
         }
     }
@@ -532,8 +534,9 @@ workflow Mutect2CHIP {
         String annovar_sample_id = basename(basename(annovar_input_vcf, ".gz"), ".vcf")
         call Annovar {
             input:
-                mem_mb = 4000,
-                annovar_disk_space = 300,
+                mem_mb = annovar_mem_mb,
+                annovar_disk_space = annovar_disk,
+                annovar_tmp_disk_space = annovar_tmp_disk,
                 cpu = 1,
                 annovar_docker = annovar_docker,
                 sample_id = annovar_sample_id,
@@ -542,15 +545,13 @@ workflow Mutect2CHIP {
                 ref_name = annovar_assembly,
                 annovar_protocols = annovar_protocols,
                 annovar_operations = annovar_operations,
-                use_sys_tmp_dir = use_sys_tmp_dir,
                 runtime_params = standard_runtime
         }
     }
 
-    File chip_detection_input_vcf = select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
+    File chip_detection_input_vcf = if (run_chip_on_unannotated_vcf) then filter_output_vcf else select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
 
     # Run annovar and CHIP whitelist filter
-    # TODO: change mem_mb, *_disk_space, and cpu to workflow input parameters
     if (run_chip_detection && defined(annovar_archive) && defined(whitelist_filter_archive)) {
         File wl_annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
         File whitelist_filter_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
@@ -562,8 +563,9 @@ workflow Mutect2CHIP {
         String additional_arguments_final = if (whitelist_genome) then additional_arguments + ',"' else additional_arguments + '"'
         call Annovar as WhitelistAnnovar {
             input:
-                mem_mb = 4000,
-                annovar_disk_space = 300,
+                mem_mb = annovar_mem_mb,
+                annovar_disk_space = annovar_disk,
+                annovar_tmp_disk_space = annovar_tmp_disk,
                 cpu = 1,
                 annovar_docker = annovar_docker,
                 sample_id = sample_id,
@@ -574,7 +576,6 @@ workflow Mutect2CHIP {
                 annovar_protocols = whitelist_annovar_protocols,
                 annovar_operations = whitelist_annovar_operations,
                 annovar_additional_arguments = additional_arguments_final,
-                use_sys_tmp_dir = use_sys_tmp_dir,
                 runtime_params = standard_runtime
         }
 
@@ -584,8 +585,8 @@ workflow Mutect2CHIP {
 
         call WhitelistFilter {
             input:
-                mem_mb = 10000,
-                whitelist_filter_disk_space = 300,
+                mem_mb = whitelist_mem_mb,
+                whitelist_filter_disk_space = whitelist_disk,
                 cpu = 1,
                 whitelist_filter_docker = whitelist_filter_docker,
                 tumor_sample_name = tumor_sample_name,
@@ -671,7 +672,6 @@ task CramToBam {
     runtime {
         docker: samtools_docker
         memory: mem_mb + " MB"
-        mem_mb: mem_mb
         disks: "local-disk " + disk_size_gb + " HDD"
     }
 
@@ -712,7 +712,6 @@ task SplitIntervals {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -751,7 +750,6 @@ task M2 {
       String gatk_docker
       Int mem_mb = 5000
       Int mem_pad = 1000
-      Boolean mem_per_core = true
       Int? preemptible
       Int? max_retries
       Int? disk_space
@@ -766,7 +764,7 @@ task M2 {
 
     Int machine_mem = mem_mb
     Int cpu_mult = if cpu > 1 then cpu - 1 else 1
-    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
+    Int command_mem = machine_mem - mem_pad
 
     # DNAnexus compatability: get the filename of all optional index files
     String normal_bai_def = if defined(normal_bai) then "defined" else "undefined"
@@ -828,6 +826,7 @@ task M2 {
             ~{"-L " + intervals} \
             ~{"--alleles " + gga_vcf} \
             -O "~{output_vcf}" \
+            --native-pair-hmm-threads ~{cpu} \
             ~{true='--bam-output bamout.bam' false='' select_first([make_bamout, false])} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' select_first([run_ob_filter, false])} \
             ~{m2_extra_args}
@@ -860,7 +859,6 @@ task M2 {
         docker: gatk_docker
         bootDiskSizeGb: 12
         memory: machine_mem + " MB"
-        mem_mb: machine_mem
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible, 10])
         maxRetries: select_first([max_retries, 0])
@@ -888,12 +886,11 @@ task LearnReadOrientationModel {
       String output_name
       Int mem_mb = 5000
       Int mem_pad = 1000
-      Boolean mem_per_core = true
     }
 
     Int machine_mem = mem_mb
     Int cpu_mult = if runtime_params.cpu > 1 then runtime_params.cpu - 1 else 1
-    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
+    Int command_mem = machine_mem - mem_pad
 
     command {
         set -e
@@ -908,7 +905,6 @@ task LearnReadOrientationModel {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: machine_mem + " MB"
-        mem_mb: machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -945,7 +941,6 @@ task MergeVCFs {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -990,7 +985,6 @@ task MergeBamOuts {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1023,7 +1017,6 @@ task MergeStats {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1057,7 +1050,6 @@ task MergePileupSummaries {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1091,7 +1083,6 @@ task CalculateContamination {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1153,7 +1144,6 @@ task Filter {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.machine_mem + " MB"
-        mem_mb: runtime_params.machine_mem
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1183,7 +1173,6 @@ task FilterAlignmentArtifacts {
       Runtime runtime_params
       Int mem_mb = 5000
       Int mem_pad = 1000
-      Boolean mem_per_core = true
     }
 
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -1191,7 +1180,7 @@ task FilterAlignmentArtifacts {
 
     Int machine_mem = mem_mb
     Int cpu_mult = if runtime_params.cpu > 1 then runtime_params.cpu - 1 else 1
-    Int command_mem = if mem_per_core then (machine_mem * cpu_mult) - mem_pad else machine_mem - mem_pad
+    Int command_mem = machine_mem - mem_pad
 
     parameter_meta{
       ref_fasta: {localization_optional: true}
@@ -1221,7 +1210,6 @@ task FilterAlignmentArtifacts {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: machine_mem + " MB"
-        mem_mb: machine_mem
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1255,7 +1243,7 @@ task VEP {
         Int mem_mb = 32000
         Int? buffer_size
         Int loftee_buffer_size = 1
-        Boolean use_sys_tmp_dir = true
+        Int vep_tmp_disk = 100
         Runtime runtime_params
     }
 
@@ -1270,23 +1258,20 @@ task VEP {
     String loftee_ancestor_fai_def = if defined(loftee_ancestor_fai) then "defined" else "undefined"
     String loftee_ancestor_gzi_def = if defined(loftee_ancestor_gzi) then "defined" else "undefined"
 
-    String tmp_dir = if (use_sys_tmp_dir) then "/tmp" else "./tmp"
+    String tmp_dir = "/tmp"
 
     command {
         # DNAnexus compatability: echo optional index filenames to ensure they get localized
         OPT_VAR_DEFINED="~{loftee_ancestor_fai_def}"
         OPT_VAR_DEFINED="~{loftee_ancestor_gzi_def}"
 
-        TMPDIR_RND="~{tmp_dir}/$(echo $RANDOM | md5sum | head -c 20)"
-        mkdir -p $TMPDIR_RND
-
-        mkdir -p $TMPDIR_RND/.vep/cache
-        tar -xzvf ~{cache_archive} -C $TMPDIR_RND/.vep/cache/
+        mkdir -p ~{tmp_dir}/.vep/cache
+        tar -xzvf ~{cache_archive} -C ~{tmp_dir}/.vep/cache/
         # this seems necessary on GCP - running into permissions errors.
         # TODO: find a better solution
-        cp ~{fasta} $TMPDIR_RND/ref_fasta.fasta
+        cp ~{fasta} ~{tmp_dir}/ref_fasta.fasta
         vep \
-            --dir_cache $TMPDIR_RND/.vep/cache \
+            --dir_cache ~{tmp_dir}/.vep/cache \
             --dir_plugins /plugins/loftee-1.0.3 \
             -i ~{input_vcf} \
             --species ~{species} \
@@ -1296,7 +1281,7 @@ task VEP {
             --stats_file ~{stats_file} \
             ~{offline_options} \
             --cache \
-            --fasta $TMPDIR_RND/ref_fasta.fasta \
+            --fasta ~{tmp_dir}/ref_fasta.fasta \
             ~{if loftee then "" else "--fork " + cpus} \
             ~{if loftee then "--buffer_size " + loftee_buffer_size else if defined(buffer_size) then "--buffer_size " + select_first([buffer_size, 1]) else ""} \
             --no_progress \
@@ -1312,8 +1297,7 @@ task VEP {
         docker: docker_to_use
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: mem_mb + " MB"
-        mem_mb: mem_mb
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        disks: ["local-disk ~{runtime_params.disk} HDD", "/tmp ~{vep_tmp_disk} HDD"]
         tmp_disk: runtime_params.disk
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
@@ -1328,7 +1312,8 @@ task VEP {
 task Annovar {
     input {
       Int mem_mb = 4000
-      Int annovar_disk_space = 300
+      Int annovar_disk_space = 100
+      Int annovar_tmp_disk_space = 200
       Int cpu = 1
       String annovar_docker
 
@@ -1343,36 +1328,32 @@ task Annovar {
       String annovar_operations = "f"
       String annovar_additional_arguments = ""
 
-      Boolean use_sys_tmp_dir = true
       Runtime runtime_params
     }
 
     String file_prefix = sample_id + "." + label
 
-    String tmp_dir = if (use_sys_tmp_dir) then "/tmp" else "./tmp"
+    String tmp_dir = "/tmp"
 
     command {
       set -euo pipefail
 
-      TMPDIR_RND="~{tmp_dir}/$(echo $RANDOM | md5sum | head -c 20)"
-      mkdir -p $TMPDIR_RND
-
-      cd $TMPDIR_RND
+      cd ~{tmp_dir}
 
       tar -xzvf ~{annovar_archive}
 
       cd -
 
-      chmod +x $TMPDIR_RND/annovar_files/convert2annovar.pl
-      chmod +x $TMPDIR_RND/annovar_files/table_annovar.pl
-      chmod +x $TMPDIR_RND/annovar_files/annotate_variation.pl
-      chmod +x $TMPDIR_RND/annovar_files/coding_change.pl
-      chmod +x $TMPDIR_RND/annovar_files/retrieve_seq_from_fasta.pl
-      chmod +x $TMPDIR_RND/annovar_files/variants_reduction.pl
+      chmod +x ~{tmp_dir}/annovar_files/convert2annovar.pl
+      chmod +x ~{tmp_dir}/annovar_files/table_annovar.pl
+      chmod +x ~{tmp_dir}/annovar_files/annotate_variation.pl
+      chmod +x ~{tmp_dir}/annovar_files/coding_change.pl
+      chmod +x ~{tmp_dir}/annovar_files/retrieve_seq_from_fasta.pl
+      chmod +x ~{tmp_dir}/annovar_files/variants_reduction.pl
 
-      perl $TMPDIR_RND/annovar_files/table_annovar.pl \
+      perl ~{tmp_dir}/annovar_files/table_annovar.pl \
         ~{vcf_input} \
-        $TMPDIR_RND/annovar_files \
+        ~{tmp_dir}/annovar_files \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -protocol ~{annovar_protocols} \
@@ -1387,8 +1368,7 @@ task Annovar {
       docker: annovar_docker
       bootDiskSizeGb: runtime_params.boot_disk_size
       memory: mem_mb + " MB"
-      mem_mb: mem_mb
-      disks: "local-disk " + annovar_disk_space + " HDD"
+      disks: ["local-disk ~{annovar_disk_space} HDD", "/tmp ~{annovar_tmp_disk_space} HDD"]
       tmp_disk: annovar_disk_space
       preemptible: runtime_params.preemptible
       maxRetries: runtime_params.max_retries
@@ -1460,7 +1440,6 @@ task WhitelistFilter {
       docker: whitelist_filter_docker
       bootDiskSizeGb: runtime_params.boot_disk_size
       memory: mem_mb + " MB"
-      mem_mb: mem_mb
       disks: "local-disk " + whitelist_filter_disk_space + " HDD"
       preemptible: runtime_params.preemptible
       maxRetries: runtime_params.max_retries
@@ -1597,7 +1576,6 @@ task WhitelistFilter {
 #         docker: runtime_params.gatk_docker
 #         bootDiskSizeGb: runtime_params.boot_disk_size
 #         memory: runtime_params.machine_mem + " MB"
-#         mem_mb: runtime_params.machine_mem
 #         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
 #         preemptible: runtime_params.preemptible
 #         maxRetries: runtime_params.max_retries

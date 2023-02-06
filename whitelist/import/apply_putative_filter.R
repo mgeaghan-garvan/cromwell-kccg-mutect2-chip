@@ -11,7 +11,7 @@ apply_putative_filter <- function(df) {
     f2r1 <- as.integer(strsplit(x[[4]], ",")[[1]])
     vaf <- as.numeric(strsplit(x[[5]], ",")[[1]])
 
-    if (!p) {
+    if (is.na(p) || !p) {
       return("PASS")
     }
     

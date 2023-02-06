@@ -4,7 +4,7 @@ MULTIMODE="MULTI_TO_SED"
 
 if [ "${MULTIMODE}" == "TRUE" ]
 then
-    curl -X POST "http://localhost:CROMWELL_PORT_TO_SED/api/workflows/v1" \
+    curl -X POST "http://CROMWELL_HOST_TO_SED:CROMWELL_PORT_TO_SED/api/workflows/v1" \
         -H "accept: application/json" \
         -H "Content-Type: multipart/form-data" \
         -F "workflowSource=@./workflow/cromwell-kccg-mutect2.multi.wdl" \
@@ -12,7 +12,7 @@ then
         -F "workflowInputs=@./input/inputs.multi.json;type=application/json" \
         -F "workflowOptions=@./workflow/options.json;type=application/json" | tee run_id.txt
 else
-    curl -X POST "http://localhost:CROMWELL_PORT_TO_SED/api/workflows/v1" \
+    curl -X POST "http://CROMWELL_HOST_TO_SED:CROMWELL_PORT_TO_SED/api/workflows/v1" \
         -H "accept: application/json" \
         -H "Content-Type: multipart/form-data" \
         -F "workflowSource=@./workflow/cromwell-kccg-mutect2.wdl" \

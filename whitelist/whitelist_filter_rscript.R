@@ -104,6 +104,11 @@ if (!grepl(annovar_vcf_out_regex, annovar_vcf_out, perl = TRUE)) {
 # Load CHIP variant/gene lists
 chip_vars <- read.csv(chip_def_file)
 
+# Remove version numbers from RefSeq and Ensembl accession IDs if present
+# i.e. NM12345.1 -> NM12345
+chip_vars[["refseq_accession"]] <- gsub("\\.\\d+$", "", chip_vars[["refseq_accession"]])
+chip_vars[["ensembl_accession"]] <- gsub("\\.\\d+$", "", chip_vars[["ensembl_accession"]])
+
 # Define sample ID
 sample_id <- gsub(annovar_text_out_regex, "", annovar_text_out, perl = TRUE)
 sample_id <- gsub("^.*\\/([^\\/]+)$", "\\1", sample_id, perl = TRUE)

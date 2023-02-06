@@ -37,8 +37,8 @@ apply_homopolymer_indel_filter <- function(df, fasta_file) {
   vars_pass$Start <- vars_pass$POS
   vars_pass$End <- vars_pass$Start + nchar(vars_pass$REF) - 1
   vars_pass_bed <- unique(vars_pass[, c("Chr", "Start", "End")])
-  vars_pass_bed$Start = as.integer(vars_pass_bed$Start) - 11  # Zero-based coordinates for BED format, get 10bp upstream
-  vars_pass_bed$End = as.integer(vars_pass_bed$End) + 10  # Get 10bp downstream
+  vars_pass_bed$Start = gsub(" ", "", format(as.integer(vars_pass_bed$Start) - 11, scientific = FALSE))  # Zero-based coordinates for BED format, get 10bp upstream
+  vars_pass_bed$End = gsub(" ", "", format(as.integer(vars_pass_bed$End) + 10, scientific = FALSE))  # Get 10bp downstream
   # Write to a bed file and run bedtools getfasta to get sequence context, then read back in
   write.table(vars_pass_bed, "_tmp_pass.bed", col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
   system(paste("bedtools getfasta -fi ", fasta_file, " -bed _tmp_pass.bed -fo _tmp_pass.fa", sep = ""))

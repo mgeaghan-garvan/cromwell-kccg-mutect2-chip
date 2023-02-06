@@ -101,6 +101,7 @@ workflow Mutect2CHIP_Multi {
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
         Boolean whitelist_use_ensembl_annotation = false
+        Boolean run_chip_on_unannotated_vcf = false
         String gnomad_pop = "AF"
         String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4"  # :latest
     
@@ -116,7 +117,6 @@ workflow Mutect2CHIP_Multi {
         Int small_task_mem = 4000
         Int small_task_disk = 100
         Int command_mem_padding = 1000
-        Boolean mem_per_core = true
         Int boot_disk_size = 12
         Int c2b_mem = 6000
         Int m2_mem = 5000
@@ -125,7 +125,12 @@ workflow Mutect2CHIP_Multi {
         Int filter_alignment_artifacts_mem = 5000
         Int vep_mem = 32000
         Int vep_cpu = 4
-        Boolean use_sys_tmp_dir = true
+        Int vep_tmp_disk = 100
+        Int annovar_mem_mb = 4000
+        Int annovar_disk = 100
+        Int annovar_tmp_disk = 200
+        Int whitelist_mem_mb = 10000
+        Int whitelist_disk = 300
     
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -197,6 +202,7 @@ workflow Mutect2CHIP_Multi {
                 treat_missing_as_rare = treat_missing_as_rare,
                 whitelist_genome = whitelist_genome,
                 whitelist_use_ensembl_annotation = whitelist_use_ensembl_annotation,
+                run_chip_on_unannotated_vcf = run_chip_on_unannotated_vcf,
                 gnomad_pop = gnomad_pop,
                 whitelist_filter_docker = whitelist_filter_docker,
                 samtools_docker = samtools_docker,
@@ -208,7 +214,6 @@ workflow Mutect2CHIP_Multi {
                 small_task_mem = small_task_mem,
                 small_task_disk = small_task_disk,
                 command_mem_padding = command_mem_padding,
-                mem_per_core = mem_per_core,
                 boot_disk_size = boot_disk_size,
                 c2b_mem = c2b_mem,
                 m2_mem = m2_mem,
@@ -221,7 +226,12 @@ workflow Mutect2CHIP_Multi {
                 large_input_to_output_multiplier = large_input_to_output_multiplier,
                 small_input_to_output_multiplier = small_input_to_output_multiplier,
                 cram_to_bam_multiplier = cram_to_bam_multiplier,
-                use_sys_tmp_dir = use_sys_tmp_dir
+                vep_tmp_disk = vep_tmp_disk,
+                annovar_mem_mb = annovar_mem_mb,
+                annovar_disk = annovar_disk,
+                annovar_tmp_disk = annovar_tmp_disk,
+                whitelist_mem_mb = whitelist_mem_mb,
+                whitelist_disk = whitelist_disk
         }
     }
 
