@@ -122,7 +122,7 @@ The following tables describe the main parameters for each of the pipeline modes
 | m2_extra_filtering_args | String | Extra arguments to pass to FilterMutectCalls | Optional | N/A |  |
 | split_intervals_extra_args | String | Extra arguments to pass to SplitIntervals | Optional | N/A |  |
 | make_bamout | Boolean | Specify whether to gather and merge the Mutect2 output BAM files | Optional | false | true/false |
-| compress_vcfs, compress | Boolean | Specify whether to compress output VCF files | Optional | false | true/false |
+| compress_vcfs | Boolean | Specify whether to compress output VCF files | Optional | false | true/false |
 | gga_vcf, gga_vcf_idx | File | Specify a set of alleles to force-call, regardless of evidence | Optional | N/A |  |
 | vep | Boolean | Specifies whether or not to run VEP annotation | Optional | true | true/false |
 | loftee | Boolean | Specifies whether or not to use LOFTEE annotations when running VEP; requires `vep` to be `true` | Optional | true | true/false |
@@ -145,7 +145,7 @@ The following tables describe the main parameters for each of the pipeline modes
 | run_chip_on_unannotated_vcf | Boolean | (CHIP detection stage) Don't use the annovar/VEP annotated VCF as input to CHIP; this won't change the CHIP detection algorithm, but will reduce the input file size to CHIP; annotated VCFs will still be generated | Optional | false | true/false |
 | gnomad_pop | String | The gnomAD population code to use for gathering allele frequencies | Optional | "AF" (total AF, not sub-population-specific) |  |
 | whitelist_docker | String | URI for a Docker image for running the CHIP detection script | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:1f1f83f8241f40fbd1f21b19e2ccbdc184984fd9ec0b0a7bdfa97b8a73fed8a4" |  |
-| whitelist_filter_archive, whitelist_archive | File | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | Required for running CHIP detection (`run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
+| whitelist_filter_archive | File | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | Required for running CHIP detection (`run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
 | samtools_docker | String | URI for a Docker image for running samtools commands | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
 | gatk_docker | String | URI for a Docker image for running GATK commands | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
 | gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | Optional | N/A |  |
