@@ -1,0 +1,20 @@
+{
+    "Mutect2CHIP_SpliceAI_Multi.input_vcf_list": "./input/inputFiles.tsv",
+    "Mutect2CHIP_SpliceAI_Multi.ref_fasta": "REQUIRED_FILE",
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_annotation_file": "OPTIONAL_FILE",
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_annotation_string": "grch38",
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_max_dist": 50,
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_mask": false,
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:b3dfb27959e8a8ef6a7d0bca1562f86765ba7d4dffd691b83aa94cf733785a8d",
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_disk": 100,
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_mem_mb": 16000,
+    "Mutect2CHIP_SpliceAI_Multi.spliceai_cpu": 4,
+    "Mutect2CHIP_SpliceAI_Multi.preemptible": 2,
+    "Mutect2CHIP_SpliceAI_Multi.max_retries": 2,
+    "Mutect2CHIP_SpliceAI_Multi.small_task_cpu": 4,
+    "Mutect2CHIP_SpliceAI_Multi.small_task_mem": 4000,
+    "Mutect2CHIP_SpliceAI_Multi.small_task_disk": 100,
+    "Mutect2CHIP_SpliceAI_Multi.command_mem_padding": 1000,
+    "Mutect2CHIP_SpliceAI_Multi.boot_disk_size": 12,
+    "Mutect2CHIP_SpliceAI_Multi.emergency_extra_disk": 0
+}

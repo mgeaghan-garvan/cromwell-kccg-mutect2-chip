@@ -95,6 +95,17 @@ workflow Mutect2CHIP_Multi {
         String annovar_protocols = "cosmic70"
         String annovar_operations = "f"
 
+        # SpliceAI settings
+        Boolean spliceai = false
+        File? spliceai_annotation_file
+        String spliceai_annotation_string = 'grch38'
+        Int spliceai_max_dist = 50
+        Boolean spliceai_mask = false
+        String spliceai_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:b3dfb27959e8a8ef6a7d0bca1562f86765ba7d4dffd691b83aa94cf733785a8d"  # :v1.3
+        Int spliceai_disk = 100
+        Int spliceai_mem_mb = 16000
+        Int spliceai_cpu = 4
+
         # Whitelist Filter settings
         Boolean run_chip_detection = true
         File? whitelist_filter_archive
@@ -197,6 +208,15 @@ workflow Mutect2CHIP_Multi {
                 annovar_docker = annovar_docker,
                 annovar_protocols = annovar_protocols,
                 annovar_operations = annovar_operations,
+                spliceai = spliceai,
+                spliceai_annotation_file = spliceai_annotation_file,
+                spliceai_annotation_string = spliceai_annotation_string,
+                spliceai_max_dist = spliceai_max_dist,
+                spliceai_mask = spliceai_mask,
+                spliceai_docker = spliceai_docker,
+                spliceai_disk = spliceai_disk,
+                spliceai_mem_mb = spliceai_mem_mb,
+                spliceai_cpu = spliceai_cpu,
                 run_chip_detection = run_chip_detection,
                 whitelist_filter_archive = whitelist_filter_archive,
                 treat_missing_as_rare = treat_missing_as_rare,

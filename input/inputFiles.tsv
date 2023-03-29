@@ -3,7 +3,11 @@
 # In tumor-only mode, or when creating a PoN, only two columns are required (BAM, BAI). 
 # For CHIP-only runs, two columns are required (TUMOR_SAMPLE_NAME, VCF).
 # For VEP-only runs, two columns are required (SAMPLE_VCF, SAMPLE_VCF_IDX).
-# For Annovar-only runs, only one column is required (SAMPLE_VCF).
+# For Annovar-only and SpliceAI-only runs, only one column is required (SAMPLE_VCF).
+#
+# For generation of a panel of normals (PoN), one or two input TSV files can be provided:
+#   One specifying pairs of BAMs and their index files; and/or
+#   One specifying paris of pre-called VCFs and their index files;
 #
 # REMOVE THESE COMMENTS AND EXAMPLES BEFORE RUNNING
 #
@@ -28,3 +32,15 @@ SAMPLE_2_VCF  SAMPLE_2_VCF_IDX
 # Annovar-only run
 SAMPLE_1_VCF
 SAMPLE_2_VCF
+
+# SpliceAI-only run
+SAMPLE_1_VCF
+SAMPLE_2_VCF
+
+# PoN generation (BAM/BAI file pairs)
+NORMAL_1_BAM    NORMAL_1_BAI
+NORMAL_2_BAM    NORMAL_2_BAI
+
+# PoN generation (VCF/VCF index pairs)
+SAMPLE_1_VCF  SAMPLE_1_VCF_IDX
+SAMPLE_2_VCF  SAMPLE_2_VCF_IDX
