@@ -648,6 +648,7 @@ workflow Mutect2CHIP {
         File? out_vep_vcf = VEP.output_vcf
         File? out_annovar_vcf = Annovar.annovar_output_file_vcf
         File? out_annovar_table = Annovar.annovar_output_file_table
+        File? out_spliceai_vcf = SpliceAI.spliceai_output_vcf
         File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
         File? out_whitelist_annovar_output_refgene_variant_function = WhitelistAnnovar.annovar_output_refgene_variant_function

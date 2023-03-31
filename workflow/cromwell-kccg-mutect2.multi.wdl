@@ -268,6 +268,7 @@ workflow Mutect2CHIP_Multi {
         Array[File?] out_vep_vcf = Mutect2CHIP.out_vep_vcf 
         Array[File?] out_annovar_vcf = Mutect2CHIP.out_annovar_vcf
         Array[File?] out_annovar_table = Mutect2CHIP.out_annovar_table
+        Array[File?] out_spliceai_vcf = Mutect2CHIP.out_spliceai_vcf
         Array[File?] out_whitelist_annovar_vcf = Mutect2CHIP.out_whitelist_annovar_vcf
         Array[File?] out_whitelist_annovar_table = Mutect2CHIP.out_whitelist_annovar_table
         Array[File?] out_whitelist_annovar_output_refgene_variant_function = Mutect2CHIP.out_whitelist_annovar_output_refgene_variant_function
