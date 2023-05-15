@@ -5,7 +5,7 @@ helpmsg() {
     echo "Configure Cromwell to run the Mutect2 pipeline."
     echo -e "\nUsage: $0 [-m|--mode RUN_MODE]"
     echo -e "Display this help message: $0 -h\n"
-    echo -e "\tRUN_MODE:      Run mode - one of: 'pon', 'full', 'chip', 'annovar', 'vep', 'dx'. (Default: 'full')."
+    echo -e "\tRUN_MODE:      Run mode - one of: 'pon', 'full', 'chip', 'annovar', 'vep', 'spliceai', 'dx'. (Default: 'full')."
 }
 
 # Display help message if there are no arguments
@@ -83,6 +83,12 @@ fi
 if [ "${RUNMODE}" == "vep" ]
 then
     bash ./scripts/run_vep_only.sh
+    exit 0
+fi
+
+if [ "${RUNMODE}" == "spliceai" ]
+then
+    bash ./scripts/run_spliceai_only.sh
     exit 0
 fi
 

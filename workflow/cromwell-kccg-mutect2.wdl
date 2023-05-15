@@ -177,23 +177,34 @@ workflow Mutect2CHIP {
         # VEP settings
         String vep_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221"  # :release_103.1
         String loftee_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # :vep_103.1_loftee_1.0.3
-        Boolean vep = true
+        Boolean vep = false
         String vep_species = "homo_sapiens"
         String vep_assembly = "GRCh38"
         File? vep_cache_archive
-        Boolean loftee = true
+        Boolean loftee = false
         File? vep_loftee_ancestor_fa
         File? vep_loftee_ancestor_fai
         File? vep_loftee_ancestor_gzi
         File? vep_loftee_conservation_sql
 
         # Annovar settings
-        Boolean annovar = false
+        Boolean annovar = true
         File? annovar_archive
         String annovar_assembly = "hg38"
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
-        String annovar_protocols = "cosmic70"
-        String annovar_operations = "f"
+        String annovar_protocols = "refGene"
+        String annovar_operations = "g"
+
+        # SpliceAI settings
+        Boolean spliceai = false
+        File? spliceai_annotation_file
+        String spliceai_annotation_string = 'grch38'
+        Int spliceai_max_dist = 50
+        Boolean spliceai_mask = false
+        String spliceai_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:b3dfb27959e8a8ef6a7d0bca1562f86765ba7d4dffd691b83aa94cf733785a8d"  # :v1.3
+        Int spliceai_disk = 100
+        Int spliceai_mem_mb = 16000
+        Int spliceai_cpu = 4
 
         # Whitelist Filter settings
         Boolean run_chip_detection = true
@@ -549,7 +560,26 @@ workflow Mutect2CHIP {
         }
     }
 
-    File chip_detection_input_vcf = if (run_chip_on_unannotated_vcf) then filter_output_vcf else select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
+    File splieai_input_vcf = select_first([Annovar.annovar_output_file_vcf, annovar_input_vcf])
+
+    if (spliceai) {
+        call SpliceAI {
+            input:
+                input_vcf = splieai_input_vcf,
+                ref_fasta = ref_fasta,
+                annotation_file = spliceai_annotation_file,
+                annotation_string = spliceai_annotation_string,
+                max_dist = spliceai_max_dist,
+                mask = spliceai_mask,
+                spliceai_docker = spliceai_docker,
+                disk_space = spliceai_disk,
+                mem_mb = spliceai_mem_mb,
+                cpu = spliceai_cpu,
+                runtime_params = standard_runtime
+        }
+    }
+
+    File chip_detection_input_vcf = if (run_chip_on_unannotated_vcf) then filter_output_vcf else select_first([SpliceAI.spliceai_output_vcf, splieai_input_vcf])
 
     # Run annovar and CHIP whitelist filter
     if (run_chip_detection && defined(annovar_archive) && defined(whitelist_filter_archive)) {
@@ -618,6 +648,7 @@ workflow Mutect2CHIP {
         File? out_vep_vcf = VEP.output_vcf
         File? out_annovar_vcf = Annovar.annovar_output_file_vcf
         File? out_annovar_table = Annovar.annovar_output_file_table
+        File? out_spliceai_vcf = SpliceAI.spliceai_output_vcf
         File? out_whitelist_annovar_vcf = WhitelistAnnovar.annovar_output_file_vcf
         File? out_whitelist_annovar_table = WhitelistAnnovar.annovar_output_file_table
         File? out_whitelist_annovar_output_refgene_variant_function = WhitelistAnnovar.annovar_output_refgene_variant_function
@@ -1382,6 +1413,50 @@ task Annovar {
       File? annovar_output_ensgene_variant_function = file_prefix + ".ensGene.variant_function"
       File? annovar_output_refgene_variant_exonic_function = file_prefix + ".refGene.exonic_variant_function"
       File? annovar_output_ensgene_variant_exonic_function = file_prefix + ".ensGene.exonic_variant_function"
+    }
+}
+
+task SpliceAI {
+    input {
+      File input_vcf
+      File ref_fasta
+      File? annotation_file
+      String annotation_string = 'grch38'
+      Int max_dist = 50
+      Boolean mask = false
+      String spliceai_docker
+      Int disk_space
+      Int mem_mb
+      Int cpu
+      Runtime runtime_params
+    }
+
+    String input_basename = basename(basename(input_vcf, ".gz"), ".vcf")
+    String annotation_param = if (defined(annotation_file)) then annotation_file else annotation_string
+    Int mask_val = if mask then 1 else 0
+
+    command {
+      spliceai \
+        -I ~{input_vcf} \
+        -O ~{input_basename}.spliceai.vcf \
+        -R ~{ref_fasta} \
+        -A ~{annotation_param} \
+        -D ~{max_dist} \
+        -M ~{mask_val}
+    }
+
+    runtime {
+      docker: spliceai_docker
+      bootDiskSizeGb: runtime_params.boot_disk_size
+      memory: mem_mb + " MB"
+      disks: "local-disk " + disk_space + " HDD"
+      preemptible: runtime_params.preemptible
+      maxRetries: runtime_params.max_retries
+      cpu: cpu
+    }
+
+    output {
+      File spliceai_output_vcf = "~{input_basename}.spliceai.vcf"
     }
 }
 

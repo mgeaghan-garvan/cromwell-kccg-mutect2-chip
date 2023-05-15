@@ -222,6 +222,7 @@ sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CR
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_chip_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_vep_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_annovar_only.sh
+sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/run_spliceai_only.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./scripts/create_pon.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./abort.sh
 sed -i -e "s/CROMWELL_PORT_TO_SED/${CROMPORT}/g" -e "s/CROMWELL_HOST_TO_SED/${CROMHOST}/g" ./status.sh
@@ -231,12 +232,14 @@ then
     sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/run_chip_only.sh
     sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/run_vep_only.sh
     sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/run_annovar_only.sh
+    sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/run_spliceai_only.sh
     sed -i -e "s/options\.json/options\.google\.json/g" ./scripts/create_pon.sh
 fi
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./scripts/run_full.sh
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./scripts/run_chip_only.sh
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./scripts/run_vep_only.sh
 sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./scripts/run_annovar_only.sh
+sed -i -e "s/MULTI_TO_SED/${MULTI}/g" ./scripts/run_spliceai_only.sh
 cd workflow
-zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl cromwell-kccg-mutect2.chip.wdl cromwell-kccg-mutect2.vep.wdl cromwell-kccg-mutect2.annovar.wdl
+zip cromwell-kccg-mutect2.multi.dep.zip cromwell-kccg-mutect2.wdl cromwell-kccg-mutect2.chip.wdl cromwell-kccg-mutect2.vep.wdl cromwell-kccg-mutect2.annovar.wdl cromwell-kccg-mutect2.spliceai.wdl
 cd ..
