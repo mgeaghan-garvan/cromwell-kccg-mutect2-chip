@@ -1432,7 +1432,7 @@ task SpliceAI {
     }
 
     String input_basename = basename(basename(input_vcf, ".gz"), ".vcf")
-    String annotation_param = if (defined(annotation_file)) then annotation_file else annotation_string
+    String annotation_param = select_first([annotation_file, annotation_string])
     Int mask_val = if mask then 1 else 0
 
     command {
