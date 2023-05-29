@@ -1,0 +1,10 @@
+{
+    "backend": "SGE",
+    "workflow_failure_mode": "ContinueWhilePossible",
+    "write_to_cache": true,
+    "read_from_cache": true,
+    "use_relative_output_paths": true,
+    "final_workflow_outputs_dir": "OUT_DIR",
+    "final_workflow_log_dir": "LOG_DIR",
+    "final_call_logs_dir": "CALL_LOGS_DIR"
+}

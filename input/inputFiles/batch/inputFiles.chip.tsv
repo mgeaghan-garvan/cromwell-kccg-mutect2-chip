@@ -1,0 +1,3 @@
+sample_id   tumor_sample_name   input_vcf
+SAMPLE_1    TUMOR_SAMPLE_1_NAME    SAMPLE_1.vcf.gz
+SAMPLE_2    TUMOR_SAMPLE_2_NAME    SAMPLE_2.vcf.gz

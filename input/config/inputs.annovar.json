@@ -1,0 +1,15 @@
+{
+    "Annovar.input_vcf": "REQUIRED_FILE",
+    "Annovar.annovar_mem_mb": 4000,
+    "Annovar.annovar_disk": 100,
+    "Annovar.annovar_tmp_disk": 200,
+    "Annovar.annovar_cpu":  1,
+    "Annovar.annovar_docker":  "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261",
+    "Annovar.annovar_archive": "REQUIRED_FILE",
+    "Annovar.ref_name":  "hg38",
+    "Annovar.annovar_protocols": "cosmic95_coding,cosmic95_noncoding,dbnsfp42a,clinvar_20221231,gnomad211_exome,refGene",
+    "Annovar.annovar_operations": "f,f,f,f,f,g",
+    "Annovar.preemptible": 2,
+    "Annovar.max_retries": 2,
+    "Annovar.boot_disk_size":  12
+}

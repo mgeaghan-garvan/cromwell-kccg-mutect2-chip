@@ -1,6 +1,7 @@
 # library(data.table, quietly = T)
 library(tidyr)
 library(stringr)
+library(dplyr)
 
 # Source R scripts
 source("./import/gnomad.R")
@@ -10,6 +11,7 @@ source("./import/somaticism_filter.R")
 source("./import/parse_annovar.R")
 source("./import/match_mutation.R")
 source("./import/apply_putative_filter.R")
+source("./import/create_annot_table.R")
 
 
 # ========================== #
@@ -20,8 +22,9 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 12) {
   stop(paste(
     "Incorrect number of arguments!",
-    "Usage: Rscript whitelist_filter_rscript.R <ANNOVAR OUTPUT TABLE> <ANNOVAR OUTPUT VCF> <ANNOVAR VARIANT FUNCTION TABLE> <ANNOVAR VARIANT EXONIC FUNCTION TABLE> <ENSEMBL REFSEQ> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <FASTA REFERENCE FILE> <SOMATICISM FILTER TRANSCRIPTS>",
-    "    ANNOVAR OUTPUT TABLE/VCF:                output txt and vcf files from Annovar.",
+    "Usage: Rscript whitelist_filter_rscript.R <INPUT_VCF> <ANNOVAR OUTPUT TABLE> <ANNOVAR VARIANT FUNCTION TABLE> <ANNOVAR VARIANT EXONIC FUNCTION TABLE> <ENSEMBL REFSEQ> <TUMOR SAMPLE NAME> <GNOMAD SOURCE> <GNOMAD SUBPOPULATION CODE> <TREAT MISSING AF AS RARE> <CHIP DEFINITION FILE> <FASTA REFERENCE FILE> <SOMATICISM FILTER TRANSCRIPTS>",
+    "    INPUT_VCF:                               VCF file to annotate for CHIP.",
+    "    ANNOVAR OUTPUT TABLE:                    output txt files from Annovar.",
     "    ANNOVAR VARIANT FUNCTION TABLE:          variant function output file from Annovar.",
     "    ANNOVAR VARIANT EXONIC FUNCTION TABLE:   variant exonic function output file from Annovar.",
     "    ENSEMBL REFSEQ:                          either 'ensembl' or 'refseq', specifying which annotation to use when matching against CHIP definitions.",
@@ -34,8 +37,8 @@ if (length(args) != 12) {
     "    SOMATICISM FILTER TRANSCRIPTS:           text file containing transcript IDs (one per line) to be subjected to the somaticism filter (to remove likely germline mutations).",
     sep = "\n"))
 }
-annovar_text_out <- args[1]
-annovar_vcf_out <- args[2]
+input_vcf <- args[1]
+annovar_text_out <- args[2]
 annovar_variant_func_out <- args[3]
 annovar_variant_exonic_func_out <- args[4]
 ensembl_refseq <- args[5]
@@ -52,11 +55,11 @@ somaticism_file <- args[12]
 # Check command-line arguments #
 # ============================ #
 
+if (!file.exists(input_vcf)) {
+  stop("Input VCF file does not exist.")
+}
 if (!file.exists(annovar_text_out)) {
   stop("Input annovar table file does not exist.")
-}
-if (!file.exists(annovar_vcf_out)) {
-  stop("Input annovar vcf file does not exist.")
 }
 if (!file.exists(annovar_variant_func_out)) {
   stop("Input annovar variant function file does not exist.")
@@ -91,10 +94,6 @@ annovar_text_out_regex <- "_multianno\\.txt$"
 if (!grepl(annovar_text_out_regex, annovar_text_out, perl = TRUE)) {
   stop("Invalid input annovar table file. Must be an annovar text output ('*_multianno.txt').")
 }
-annovar_vcf_out_regex <- "_multianno\\.vcf$"
-if (!grepl(annovar_vcf_out_regex, annovar_vcf_out, perl = TRUE)) {
-  stop("Invalid input annovar vcf file. Must be an annovar vcf output ('*_multianno.vcf').")
-}
 
 
 # ========= #
@@ -118,11 +117,27 @@ vars <- read.delim(annovar_text_out, sep = "\t", header = TRUE)
 vars$Sample <- sample_id
 vars$TumorSample <- tumor_sample_name
 
-# Load annovar vcf file
-vcf <- scan(annovar_vcf_out, character(), sep = "\n")
-vcf_header <- grep("^#CHROM", vcf, perl = TRUE, value = TRUE)
-vcf_header <- gsub("^#", "", vcf_header, perl = TRUE)
-vcf_header <- strsplit(vcf_header, "\t")[[1]]
+# Load input vcf file
+vcf_header = ""
+con <- file(input_vcf, "r")
+while (TRUE) {
+  line <- readLines(con, n = 1)
+  if (length(line) == 0) {
+    break
+  } else if (grepl("^#CHROM", line, perl = TRUE)) {
+    vcf_header <- strsplit(gsub("^#", "", line, perl = TRUE), "\t")[[1]]
+    break
+  }
+}
+
+# vcf <- scan(input_vcf, character(), sep = "\n")
+# vcf_header <- grep("^#CHROM", vcf, perl = TRUE, value = TRUE)
+# vcf_header <- gsub("^#", "", vcf_header, perl = TRUE)
+# vcf_header <- strsplit(vcf_header, "\t")[[1]]
+# vcf_whole_header <- grep("^#", vcf, perl = TRUE, value = TRUE)
+# vcf_body <- grep("^[^#]", vcf, perl = TRUE, value = TRUE)
+# vcf_body_df <- as.data.frame(do.call(rbind, strsplit(vcf_body, split = "\t", fixed = TRUE)))
+# colnames(vcf_body_df) <- vcf_header
 
 
 # ============== #
@@ -137,6 +152,23 @@ vcf_header <- strsplit(vcf_header, "\t")[[1]]
 #       The following 9+N columns (for N samples) correspond to the input vcf file's columns
 otherinfo_cols <- c("ANNOVAR_alt_af", "ANNOVAR_qual", "ANNOVAR_alt_ad", vcf_header)
 colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_cols
+
+# Index variants for later annotation of VCF
+vars_annovar_id_str <- paste(vars$Chr, vars$Start, vars$End, vars$Ref, vars$Alt, sep = ":")
+vars_vcf_id_str <- paste(vars$CHR, vars$POS, vars$REF, vars$ALT, sep = ":")
+vars_annovar_vcf_ids <- data.frame(annovar_id = vars_annovar_id_str, vcf_id = vars_vcf_id_str, idx = 1, row.names = vars_annovar_id_str)
+tmp_seen <- list()
+for (idx in 1:length(vars_annovar_id_str)) {
+  annovar_id <- vars_annovar_id_str[idx]
+  vcf_id <- vars_vcf_id_str[idx]
+  if (is.null(tmp_seen[[vcf_id]])) {
+    tmp_seen[[vcf_id]] <- TRUE
+  } else {
+    vars_annovar_vcf_ids[annovar_id, 'idx'] <- vars_annovar_vcf_ids[annovar_id, 'idx'] + 1
+  }
+}
+rm(tmp_seen)
+
 
 # Rename gnomad columns and get gnomad AF
 vars <- rename_gnomad_col(vars, gnomad_source)
@@ -160,6 +192,7 @@ ensGene <- TRUE
 refGene <- FALSE
 refseq_ensembl_suffix <- "ensGene"
 refseq_ensembl_chip_accession_column <- "ensembl_accession"
+refseq_ensembl_other_chip_accession_column <- "refseq_accession"
 refseq_ensembl_variant_func_regex_sub <- "(ENST\\d+)([^\\d]|$)"
 refseq_ensembl_variant_func_regex_match <- "^ENST\\d+$"
 if (ensembl_refseq == "refseq") {
@@ -167,6 +200,7 @@ if (ensembl_refseq == "refseq") {
   refGene <- TRUE
   refseq_ensembl_suffix <- "refGene"
   refseq_ensembl_chip_accession_column <- "refseq_accession"
+  refseq_ensembl_other_chip_accession_column <- "ensembl_accession"
   refseq_ensembl_variant_func_regex_sub <- "(NM_\\d+)([^\\d]|$)"
   refseq_ensembl_variant_func_regex_match <- "^NM_\\d+$"
 }
@@ -175,6 +209,7 @@ aachange <- paste("AAChange", refseq_ensembl_suffix, sep = ".")
 genedetail <- paste("GeneDetail", refseq_ensembl_suffix, sep = ".")
 transcript <- paste("Transcript", refseq_ensembl_suffix, sep = ".")
 exonic_func <- paste("ExonicFunc", refseq_ensembl_suffix, sep = ".")
+func <- paste("Func", refseq_ensembl_suffix, sep = ".")
 
 
 # ================================================ #
@@ -242,6 +277,25 @@ vars_chip_filtered <- match_mut_def(vars_chip, refseq_ensembl_suffix = refseq_en
 vars_chip_filtered_put <- apply_putative_filter(vars_chip_filtered)
 
 
+# ======================= #
+# Create annotation table #
+# ======================= #
+
+vcf_annot_table <- create_annot_table(
+  vars,
+  vars_hf_hp,
+  vars_ann_som,
+  vars_chip_filtered_put,
+  vars_annovar_vcf_ids,
+  transcript,
+  aachange,
+  genedetail,
+  func,
+  exonic_func,
+  refseq_ensembl_suffix
+)
+
+
 # ============= #
 # Write to file #
 # ============= #
@@ -252,3 +306,4 @@ write.csv(vars_ann_som, paste(sample_id, ".exonic_splicing_variants.csv", sep = 
 write.csv(vars_chip, paste(sample_id, ".chip_transcript_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip_filtered, paste(sample_id, ".chip_transcript_variants.filtered.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip_filtered_put, paste(sample_id, ".chip_transcript_variants.filtered.putative_filter.csv", sep = ""), row.names = FALSE)
+write.table(vcf_annot_table, paste(sample_id, ".chip_vcf_annot_table.tsv", sep = ""), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
