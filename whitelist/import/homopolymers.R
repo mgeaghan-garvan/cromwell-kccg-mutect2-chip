@@ -43,7 +43,12 @@ apply_homopolymer_indel_filter <- function(df, fasta_file) {
   write.table(vars_pass_bed, "_tmp_pass.bed", col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
   system(paste("bedtools getfasta -fi ", fasta_file, " -bed _tmp_pass.bed -fo _tmp_pass.fa", sep = ""))
   vars_pass_fa <- scan("_tmp_pass.fa", character())
-  if (!(length(vars_pass_fa) %% 2 == 0)) {
+  if (length(vars_pass_fa) == 0) {
+    vars_pass$VAR_SEQ_CONTEXT <- character()
+    vars_pass$VAR_ALT_SEQ_CONTEXT <- character()
+    vars_pass$HOMOPOLYMER_FILTER <- character()
+  }
+  else if (!(length(vars_pass_fa) %% 2 == 0)) {
     # Something went wrong and the fasta file is improperly formatted (number of lines not a mulitple of 2)
     stop("ERROR: Could not successfully retrieve variant sequence contexts.")
   } else {

@@ -1,0 +1,41 @@
+##INFO=<ID=CHIP_DATE,Description="Date of CHIP analysis.",Number=.,Type=String>
+##INFO=<ID=VAF,Description="Variant allele fraction, calculated as AD/DP.",Number=A,Type=Float>
+##INFO=<ID=VAF_M2,Description="Variant allele fraction, as reported by Mutect2.",Number=A,Type=Float>
+##INFO=<ID=REF_SEQ_CTX,Description="Reference sequence context around varinat.",Number=.,Type=String>
+##INFO=<ID=ALT_SEQ_CTX,Description="Alternate allele sequence context around variant.",Number=.,Type=String>
+##INFO=<ID=ANNOTATION_METHOD,Description="Annotation method for CHIP analysis (Annovar).",Number=.,Type=String>
+##INFO=<ID=ANNOTATION_SOURCE,Description="RefSeq or Ensembl annotation source.",Number=.,Type=String>
+##INFO=<ID=TRANSCRIPT,Description="Transcript ID(s) affected by variant.",Number=.,Type=String>
+##INFO=<ID=AACHANGE,Description="Amino acid change caused by variant.",Number=.,Type=String>
+##INFO=<ID=GENEDETAIL,Description="Additional information about variant effects.",Number=.,Type=String>
+##INFO=<ID=FUNC,Description="Exonic or splicing variant.",Number=.,Type=String>
+##INFO=<ID=EXONICFUNC,Description="Predicted exonic effect of variant.",Number=.,Type=String>
+##INFO=<ID=CHIP_gene,Description="ID of CHIP gene affected by variant (if variant is potential CHIP variant).",Number=.,Type=String>
+##INFO=<ID=CHIP_transcript,Description="ID(s) of CHIP gene transcript affected by variant (if variant is potential CHIP variant).",Number=.,Type=String>
+##INFO=<ID=CHIP_AAChange,Description="Amino acid changes in CHIP transcript affected by variant (if variant is potential CHIP variant).",Number=.,Type=String>
+##INFO=<ID=CHIP_GeneDetail,Description="Additional information about effects of variant (if variant is potential CHIP variant).",Number=.,Type=String>
+##INFO=<ID=CHIP_Func,Description="Exonic or splicing variant (if variant is potential CHIP variant).",Number=.,Type=String>
+##INFO=<ID=CHIP_ExonicFunc,Description="Predicted exonic effect of variant (if variant is potential CHIP variant).",Number=.,Type=String>
+##INFO=<ID=CHIP_mutation_class,Description="Type of CHIP mutation",Number=.,Type=String>
+##INFO=<ID=CHIP_mutation_definition,Description="Mutation(s) from CHIP whitelist matching variant for at least one affected transcript.",Number=.,Type=String>
+##INFO=<ID=CHIP_lineage,Description="M or L CHIP?",Number=.,Type=String>
+##INFO=<ID=CHIP_putative,Description="Putative CHIP variant?",Number=.,Type=String>
+##INFO=<ID=CHIP_gene_chr,Description="CHIP gene chromosome",Number=.,Type=String>
+##INFO=<ID=CHIP_gene_strand,Description="CHIP gene genomic strand.",Number=.,Type=String>
+##INFO=<ID=CHIP_gene_c_term_genomic_start,Description="C-terminal start position.",Number=.,Type=String>
+##INFO=<ID=CHIP_gene_c_term_genomic_end,Description="C-terminal end position.",Number=.,Type=String>
+##INFO=<ID=CHIP_publication_source_concat,Description="Publication source(s) of CHIP whitelist variant.",Number=.,Type=String>
+##INFO=<ID=HARD_FILTER,Description="Did this variant pass the hard-filter?",Number=.,Type=String>
+##INFO=<ID=HOMOPOLYMER_FILTER,Description="Did this variant pass the homopolymer filter?",Number=.,Type=String>
+##INFO=<ID=SOMATICISM_FILTER,Description="Did this variant pass the additional somaticism filter?",Number=.,Type=String>
+##INFO=<ID=CHIP_FILTER,Description="Did this variant pass the CHIP filter?",Number=.,Type=String>
+##INFO=<ID=PUTATIVE_FILTER,Description="If a putative variant, did it pass the putative CHIP filter?",Number=.,Type=String>
+##INFO=<ID=COMBINED_FILTER,Description="Did the variant pass ALL filters?",Number=.,Type=String>
+##INFO=<ID=CHIP_END,Description="End of CHIP analysis.",Number=.,Type=String>
+##FILTER=<ID=CHIP_FAIL_HARD_FILTER,Description="Variant fails hard filter.">
+##FILTER=<ID=CHIP_FAIL_HOMOPOLYMER_FILTER,Description="Variant fails homopolymer filter.">
+##FILTER=<ID=CHIP_FAIL_SOMATICISM_FILTER,Description="Variant fails additional somaticism filter.">
+##FILTER=<ID=CHIP_FAIL_CHIP_FILTER,Description="Variant fails CHIP filter.">
+##FILTER=<ID=CHIP_FAIL_PUTATIVE_FILTER,Description="Variant fails putative CHIP filter.">
+##FILTER=<ID=CHIP_FAIL,Description="Variant fails CHIP filter.">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO

@@ -1,0 +1,15 @@
+{
+    "SpliceAI.input_vcf": "REQUIRED_FILE",
+    "SpliceAI.ref_fasta": "REQUIRED_FILE",
+    "SpliceAI.spliceai_annotation_file": "OPTIONAL_FILE",
+    "SpliceAI.spliceai_annotation_string": "grch38",
+    "SpliceAI.spliceai_max_dist": 50,
+    "SpliceAI.spliceai_mask": false,
+    "SpliceAI.spliceai_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530",
+    "SpliceAI.spliceai_disk": 100,
+    "SpliceAI.spliceai_mem_mb": 16000,
+    "SpliceAI.spliceai_cpu": 4,
+    "SpliceAI.preemptible": 2,
+    "SpliceAI.max_retries": 2,
+    "SpliceAI.boot_disk_size": 12
+}
