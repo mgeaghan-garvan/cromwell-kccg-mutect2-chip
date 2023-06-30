@@ -11,7 +11,6 @@ source("./import/somaticism_filter.R")
 source("./import/parse_annovar.R")
 source("./import/match_mutation.R")
 source("./import/apply_putative_filter.R")
-source("./import/create_annot_table.R")
 
 
 # ========================== #
@@ -277,25 +276,6 @@ vars_chip_filtered <- match_mut_def(vars_chip, refseq_ensembl_suffix = refseq_en
 vars_chip_filtered_put <- apply_putative_filter(vars_chip_filtered)
 
 
-# ======================= #
-# Create annotation table #
-# ======================= #
-
-vcf_annot_table <- create_annot_table(
-  vars,
-  vars_hf_hp,
-  vars_ann_som,
-  vars_chip_filtered_put,
-  vars_annovar_vcf_ids,
-  transcript,
-  aachange,
-  genedetail,
-  func,
-  exonic_func,
-  refseq_ensembl_suffix
-)
-
-
 # ============= #
 # Write to file #
 # ============= #
@@ -306,4 +286,3 @@ write.csv(vars_ann_som, paste(sample_id, ".exonic_splicing_variants.csv", sep = 
 write.csv(vars_chip, paste(sample_id, ".chip_transcript_variants.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip_filtered, paste(sample_id, ".chip_transcript_variants.filtered.csv", sep = ""), row.names = FALSE)
 write.csv(vars_chip_filtered_put, paste(sample_id, ".chip_transcript_variants.filtered.putative_filter.csv", sep = ""), row.names = FALSE)
-write.table(vcf_annot_table, paste(sample_id, ".chip_vcf_annot_table.tsv", sep = ""), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)

@@ -116,8 +116,7 @@ workflow CHIP {
         File? out_whitelist_annovar_output_ensgene_variant_function = WhitelistAnnovar.annovar_output_ensgene_variant_function
         File? out_whitelist_annovar_output_refgene_variant_exonic_function = WhitelistAnnovar.annovar_output_refgene_variant_exonic_function
         File? out_whitelist_annovar_output_ensgene_variant_exonic_function = WhitelistAnnovar.annovar_output_ensgene_variant_exonic_function
-        File out_whitelist_filter_output_vcf = WhitelistFilter.whitelist_filter_output_vcf
-        File out_whitelist_filter_output_annot_table = WhitelistFilter.whitelist_filter_output_annot_table
+        File out_whitelist_filter_output_csv = WhitelistFilter.whitelist_filter_output_csv
         File out_whitelist_filter_output_allvariants_csv = WhitelistFilter.whitelist_filter_output_allvariants_csv
         File out_whitelist_filter_output_allvariantsfiltered_csv = WhitelistFilter.whitelist_filter_output_allvariantsfiltered_csv
         File out_whitelist_filter_output_exonicsplicingvariants_csv = WhitelistFilter.whitelist_filter_output_exonicsplicingvariants_csv
@@ -174,19 +173,11 @@ task WhitelistFilter {
         ~{ref_fasta} \
         ./somaticism_filter_transcripts.txt
 
-      mv *_variants.csv *_variants.*.csv ~{file_prefix}.chip_vcf_annot_table.tsv $SCRIPT_DIR/
+      mv *_variants.csv *_variants.*.csv $SCRIPT_DIR/
       cd $SCRIPT_DIR
-
-      # Annotate input VCF with CHIP information
-      bcftools view -Ob ~{vcf_input} > tmp_in_vcf.bcf
-      bcftools index tmp_in_vcf.bcf
-      bcftools view --header ~{vcf_input} | grep -vP "^#CHROM" > tmp_annot_vcf.header
-      cat whitelist/chip_annotations.header >> tmp_annot_vcf.header
-      awk 'NR>1' ~{file_prefix}.chip_vcf_annot_table.tsv > tmp_annot_vcf.body
-      cat tmp_annot_vcf.header tmp_annot_vcf.body > tmp_annot_vcf.vcf
-      bcftools view -Ob tmp_annot_vcf.vcf > tmp_annot_vcf.bcf
-      bcftools index tmp_annot_vcf.bcf
-      bcftools annotate -a tmp_annot_vcf.bcf -c FILTER,INFO tmp_in_vcf.bcf > ~{file_prefix}.chip.vcf
+      mkdir -p chip_csv_outputs
+      mv *_variants.csv *_variants.*.csv chip_csv_outputs/
+      cp chip_csv_outputs/*.putative_filter.csv ./~{file_prefix}.chip.csv
     }
 
     runtime {
@@ -200,13 +191,12 @@ task WhitelistFilter {
     }
 
     output {
-      File whitelist_filter_output_vcf = file_prefix + ".chip.vcf"
-      File whitelist_filter_output_annot_table = file_prefix + ".chip_vcf_annot_table.tsv"
-      File whitelist_filter_output_allvariants_csv = file_prefix + ".all_variants.csv"
-      File whitelist_filter_output_allvariantsfiltered_csv = file_prefix + ".all_variants.pre_filtered.csv"
-      File whitelist_filter_output_exonicsplicingvariants_csv = file_prefix + ".exonic_splicing_variants.csv"
-      File whitelist_filter_output_chiptranscriptvariants_csv = file_prefix + ".chip_transcript_variants.csv"
-      File whitelist_filter_output_chiptranscriptvariantsfiltered_csv = file_prefix + ".chip_transcript_variants.filtered.csv"
-      File whitelist_filter_output_putativefilter_csv = file_prefix + ".chip_transcript_variants.filtered.putative_filter.csv"
+      File whitelist_filter_output_csv = file_prefix + ".chip.csv"
+      File whitelist_filter_output_allvariants_csv = "chip_csv_outputs/" + file_prefix + ".all_variants.csv"
+      File whitelist_filter_output_allvariantsfiltered_csv = "chip_csv_outputs/" + file_prefix + ".all_variants.pre_filtered.csv"
+      File whitelist_filter_output_exonicsplicingvariants_csv = "chip_csv_outputs/" + file_prefix + ".exonic_splicing_variants.csv"
+      File whitelist_filter_output_chiptranscriptvariants_csv = "chip_csv_outputs/" + file_prefix + ".chip_transcript_variants.csv"
+      File whitelist_filter_output_chiptranscriptvariantsfiltered_csv = "chip_csv_outputs/" + file_prefix + ".chip_transcript_variants.filtered.csv"
+      File whitelist_filter_output_putativefilter_csv = "chip_csv_outputs/" + file_prefix + ".chip_transcript_variants.filtered.putative_filter.csv"
     }
 }

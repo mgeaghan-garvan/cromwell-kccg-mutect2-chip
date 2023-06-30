@@ -308,8 +308,7 @@ workflow Mutect2CHIP {
         File? out_whitelist_annovar_output_ensgene_variant_function = CHIP_wf.out_whitelist_annovar_output_ensgene_variant_function
         File? out_whitelist_annovar_output_refgene_variant_exonic_function = CHIP_wf.out_whitelist_annovar_output_refgene_variant_exonic_function
         File? out_whitelist_annovar_output_ensgene_variant_exonic_function = CHIP_wf.out_whitelist_annovar_output_ensgene_variant_exonic_function
-        File? out_whitelist_filter_output_vcf = CHIP_wf.out_whitelist_filter_output_vcf
-        File? out_whitelist_filter_output_annot_table = CHIP_wf.out_whitelist_filter_output_annot_table
+        File? out_whitelist_filter_output_csv = CHIP_wf.out_whitelist_filter_output_csv
         File? out_whitelist_filter_output_allvariants_csv = CHIP_wf.out_whitelist_filter_output_allvariants_csv
         File? out_whitelist_filter_output_allvariantsfiltered_csv = CHIP_wf.out_whitelist_filter_output_allvariantsfiltered_csv
         File? out_whitelist_filter_output_exonicsplicingvariants_csv = CHIP_wf.out_whitelist_filter_output_exonicsplicingvariants_csv
