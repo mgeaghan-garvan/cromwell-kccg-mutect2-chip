@@ -152,22 +152,6 @@ while (TRUE) {
 otherinfo_cols <- c("ANNOVAR_alt_af", "ANNOVAR_qual", "ANNOVAR_alt_ad", vcf_header)
 colnames(vars)[grepl("Otherinfo", colnames(vars), fixed = TRUE)] <- otherinfo_cols
 
-# Index variants for later annotation of VCF
-vars_annovar_id_str <- paste(vars$Chr, vars$Start, vars$End, vars$Ref, vars$Alt, sep = ":")
-vars_vcf_id_str <- paste(vars$CHR, vars$POS, vars$REF, vars$ALT, sep = ":")
-vars_annovar_vcf_ids <- data.frame(annovar_id = vars_annovar_id_str, vcf_id = vars_vcf_id_str, idx = 1, row.names = vars_annovar_id_str)
-tmp_seen <- list()
-for (idx in 1:length(vars_annovar_id_str)) {
-  annovar_id <- vars_annovar_id_str[idx]
-  vcf_id <- vars_vcf_id_str[idx]
-  if (is.null(tmp_seen[[vcf_id]])) {
-    tmp_seen[[vcf_id]] <- TRUE
-  } else {
-    vars_annovar_vcf_ids[annovar_id, 'idx'] <- vars_annovar_vcf_ids[annovar_id, 'idx'] + 1
-  }
-}
-rm(tmp_seen)
-
 
 # Rename gnomad columns and get gnomad AF
 vars <- rename_gnomad_col(vars, gnomad_source)
