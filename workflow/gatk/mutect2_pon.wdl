@@ -115,7 +115,7 @@ workflow Mutect2_Panel {
 task CreatePanel {
     input {
       File intervals
-      Array[String] input_vcfs
+      Array[String]+ input_vcfs
       File ref_fasta
       File ref_fai
       File ref_dict
