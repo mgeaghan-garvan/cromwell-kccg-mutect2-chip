@@ -1,11 +1,11 @@
 /tmp
+workflow_options/options.json
 .java-version
 *.jar
 workflow/modules.zip
 workflow/test_*
 workflow/test_*
 workflow/test_*
-configure_cromwell.py
 .service_account.key.pem
 .service_account.email.txt
 **/.DS_Store
@@ -14,3 +14,5 @@ _dx_run.sh
 whitelist/test/
 _tmp_pass.*
 .Rhistory
+/run_history
+input/config/batch

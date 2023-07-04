@@ -1,0 +1,4 @@
+sample_id   tumor_reads   tumor_reads_index   normal_reads  normal_reads_index
+SAMPLE_1    TUMOR_SAMPLE_1.bam    TUMOR_SAMPLE_1.bam.bai    NORMAL_SAMPLE_1.bam    NORMAL_SAMPLE_1.bam.bai
+SAMPLE_2    TUMOR_SAMPLE_2.bam    TUMOR_SAMPLE_2.bam.bai    NORMAL_SAMPLE_2.bam    NORMAL_SAMPLE_2.bam.bai
+TUMOR_ONLY_SAMPLE    TUMOR_ONLY_SAMPLE.bam TUMOR_ONLY_SAMPLE.bam.bai
