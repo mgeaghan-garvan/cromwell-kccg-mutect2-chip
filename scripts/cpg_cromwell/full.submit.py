@@ -82,7 +82,7 @@ input_prefix = 'Mutect2CHIP'
 
 input_dict = {
     f'{input_prefix}.{k}': v
-    for k, v in _config['mutect2_chip']
+    for k, v in _config['mutect2_chip'].items()
 }
 
 submit_j, workflow_id_file = submit_cromwell_workflow(
