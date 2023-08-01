@@ -95,11 +95,7 @@ submit_j, workflow_id_file = submit_cromwell_workflow(
     cwd='workflow/',
     input_dict=input_dict,
     libs=[
-        "m2.wdl",
-        "vep.wdl",
-        "annovar.wdl",
-        "spliceai.wdl",
-        "chip.wdl",
+        ".",
     ],
     copy_outputs_to_gcp=True,
     driver_image=DRIVER_IMAGE,
