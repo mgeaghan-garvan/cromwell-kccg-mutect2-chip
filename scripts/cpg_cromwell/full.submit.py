@@ -94,7 +94,9 @@ submit_j, workflow_id_file = submit_cromwell_workflow(
     output_prefix=OUTPUT_PREFIX,
     cwd='workflow/',
     input_dict=input_dict,
-    libs=[],
+    libs=[
+        ".",
+    ],
     copy_outputs_to_gcp=True,
     driver_image=DRIVER_IMAGE,
 )
