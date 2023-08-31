@@ -100,20 +100,11 @@ task Annovar_task {
     command {
       set -euo pipefail
 
-      cd ~{tmp_dir}
+      mkdir -p ~{tmp_dir}/annovar_files
 
-      tar -xzvf ~{annovar_archive}
+      tar -xzvf ~{annovar_archive} -C ~{tmp_dir}/annovar_files
 
-      cd -
-
-      chmod +x ~{tmp_dir}/annovar_files/convert2annovar.pl
-      chmod +x ~{tmp_dir}/annovar_files/table_annovar.pl
-      chmod +x ~{tmp_dir}/annovar_files/annotate_variation.pl
-      chmod +x ~{tmp_dir}/annovar_files/coding_change.pl
-      chmod +x ~{tmp_dir}/annovar_files/retrieve_seq_from_fasta.pl
-      chmod +x ~{tmp_dir}/annovar_files/variants_reduction.pl
-
-      perl ~{tmp_dir}/annovar_files/table_annovar.pl \
+      table_annovar.pl \
         ~{vcf_input} \
         ~{tmp_dir}/annovar_files \
         -buildver ~{default="hg38" ref_name} \

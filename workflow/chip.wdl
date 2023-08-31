@@ -42,7 +42,6 @@ workflow CHIP {
         Boolean whitelist_use_ensembl_annotation = false
         String gnomad_pop = "AF"
         String whitelist_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d"  # :latest
-        File whitelist_archive
         File ref_fasta
         # common settings
         String ref_name = "hg38"
@@ -105,7 +104,6 @@ workflow CHIP {
             var_exonic_func_input = var_exonic_func_input,
             ref_name = ref_name,
             ref_fasta = ref_fasta,
-            whitelist_filter_archive = whitelist_archive,
             runtime_params = standard_runtime
     }
 
@@ -143,7 +141,6 @@ task WhitelistFilter {
       File var_exonic_func_input
       String ref_name
       File ref_fasta
-      File whitelist_filter_archive
       AnnotationRuntime runtime_params
     }
 
@@ -153,11 +150,6 @@ task WhitelistFilter {
 
     command {
       set -euo pipefail
-
-      tar -xzvf ~{whitelist_filter_archive}
-
-      SCRIPT_DIR=$PWD
-      cd whitelist
 
       Rscript ./whitelist_filter_rscript.R \
         ~{vcf_input} \
@@ -173,8 +165,6 @@ task WhitelistFilter {
         ~{ref_fasta} \
         ./somaticism_filter_transcripts.txt
 
-      mv *_variants.csv *_variants.*.csv $SCRIPT_DIR/
-      cd $SCRIPT_DIR
       mkdir -p chip_csv_outputs
       mv *_variants.csv *_variants.*.csv chip_csv_outputs/
       cp chip_csv_outputs/*.putative_filter.csv ./~{file_prefix}.chip.csv
