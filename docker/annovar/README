@@ -1,0 +1,9 @@
+To build an annovar docker image, first download the annovar tar.gz archive
+from https://annovar.openbioinformatics.org/en/latest/ into this directory.
+
+Next, extract the archive, and ensure that the annovar Perl executables are located
+at annovar/*.pl.
+
+Finally, build the image with:
+
+  docker build -t annovar:latest .

@@ -16,3 +16,7 @@ _tmp_pass.*
 .Rhistory
 /run_history
 input/config/batch
+/docker/annovar/annovar/humandb/
+/docker/annovar/annovar/example/
+/docker/annovar/annovar/*.pl
+/docker/annovar/annovar.latest.tar.gz
