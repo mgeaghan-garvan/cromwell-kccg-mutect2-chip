@@ -1,0 +1,23 @@
+The annovar.wdl workflow requires a tar.gz archive containing the annovar database files.
+This archive file must be in a specific format, as follows:
+
+    annovar_files/
+    annovar_files/hg38_ensGeneMrna.fa
+    annovar_files/hg38_ensGene.txt
+    annovar_files/hg38_refGeneMrna.fa
+    annovar_files/hg38_refGene.txt
+    annovar_files/hg38_gnomad211_exome.txt
+    annovar_files/hg38_gnomad211_exome.txt.idx
+    annovar_files/hg38_gnomad211_genome.txt
+    annovar_files/hg38_gnomad211_genome.txt.idx
+
+To build an annovar database archive that is compatable with the annovar.wdl workflow,
+you can use the archive_annovar_files.sh script in this directory, as follows:
+
+    ./archive_annovar_files.sh /path/to/directory/containing/annovar/database/files
+
+For example, if the annovar.latest.tar.gz archive has been downloaded and extracted to /home/user,
+resulting in the annovar directory at /home/user/annovar and the default humandb/ database directory
+present at /home/user/annovar/humandb, run:
+
+    ./archive_annovar_files.sh /home/user/annovar/humandb
