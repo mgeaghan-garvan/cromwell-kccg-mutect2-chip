@@ -46,7 +46,6 @@
     "Mutect2CHIP.spliceai_mask": false,
     "Mutect2CHIP.spliceai_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530",
     "Mutect2CHIP.run_chip_detection": true,
-    "Mutect2CHIP.whitelist_filter_archive": "OPTIONAL_ZIP_FILE",
     "Mutect2CHIP.treat_missing_as_rare": true,
     "Mutect2CHIP.whitelist_genome": true,
     "Mutect2CHIP.whitelist_use_ensembl_annotation": false,

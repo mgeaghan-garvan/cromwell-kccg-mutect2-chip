@@ -88,7 +88,6 @@ workflow Mutect2CHIP {
 
         # Whitelist Filter settings
         Boolean run_chip_detection = true
-        File? whitelist_filter_archive
         Boolean treat_missing_as_rare = true
         Boolean whitelist_genome = true
         Boolean whitelist_use_ensembl_annotation = false
@@ -258,9 +257,8 @@ workflow Mutect2CHIP {
     File chip_detection_input_vcf = if (run_chip_on_unannotated_vcf) then Mutect2_wf.filtered_vcf else select_first([SpliceAI_wf.spliceai_output_vcf, splieai_input_vcf])
     
     # Optionally run CHIP
-    if (run_chip_detection && defined(annovar_archive) && defined(whitelist_filter_archive)) {
+    if (run_chip_detection && defined(annovar_archive)) {
         String tumor_sample_name = Mutect2_wf.tumor_sample
-        File whitelist_archive_file = select_first([whitelist_filter_archive, "WHITELIST_FILTER_ARCHIVE_NOT_SUPPLIED"])
         call CHIP.CHIP as CHIP_wf {
             input:
                 input_vcf = chip_detection_input_vcf,
@@ -279,7 +277,6 @@ workflow Mutect2CHIP {
                 whitelist_use_ensembl_annotation = whitelist_use_ensembl_annotation,
                 gnomad_pop = gnomad_pop,
                 whitelist_docker = whitelist_filter_docker,
-                whitelist_archive = whitelist_archive_file,
                 ref_fasta = ref_fasta,
                 ref_name = annovar_assembly,
                 preemptible = preemptible,
