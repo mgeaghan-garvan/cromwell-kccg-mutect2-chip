@@ -151,6 +151,8 @@ task WhitelistFilter {
     command {
       set -euo pipefail
 
+      cp -rp /whitelist/* .
+
       Rscript ./whitelist_filter_rscript.R \
         ~{vcf_input} \
         ~{txt_input} \

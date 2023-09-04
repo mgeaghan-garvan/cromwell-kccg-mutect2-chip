@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y libbz2-dev liblzma-dev git wget bash bz
 
 ENV PATH="${PATH}:/software/htslib-1.17/build/bin:/software/bcftools-1.17/build/bin"
 
-COPY *.R import/ chip_variant_definitions.csv somaticism_filter_transcripts.txt /whitelist/
+COPY *.R chip_variant_definitions.csv somaticism_filter_transcripts.txt /whitelist/
+COPY import/*.R /whitelist/import/
 
 WORKDIR /whitelist
