@@ -238,7 +238,7 @@ parse_mutation <- function(mutation, regex_list, regex_groups, exon = NA) {
     for (field in names(rgx_groups)) {
       # Iterate through the regex capture groups defined for the current mutation pattern
       idx <- rgx_groups[[field]]
-      if (is.na(idx) || !is.numeric(idx)) {
+      if (any(is.na(idx)) || !is.numeric(idx)) {
         next
       }
       for (i in idx) {

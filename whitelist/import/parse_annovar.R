@@ -30,7 +30,7 @@ parse_annovar <- function(df, vars_variant_func, vars_variant_exonic_func, ensGe
   }
   
   # Filter variants for exonic or splicing variants
-  if (!is.na(filter) && !is.null(filter)) {
+  if (!any(is.na(filter)) && !is.null(filter)) {
     vars_g_filter <- vars_g[grepl(paste("(", paste(filter, collapse = "|"), ")", sep = ""), vars_g[[func]], perl = TRUE),]
   } else {
     vars_g_filter <- vars_g
@@ -89,7 +89,7 @@ parse_annovar <- function(df, vars_variant_func, vars_variant_exonic_func, ensGe
   vars_g_filter <- merge(vars_g_filter, vars_variant_func, by.x = c(func, transcript, "Chr", "Start", "End", "Ref", "Alt"), by.y = c("Func", "Transcript", "Chr", "Start", "End", "Ref", "Alt"))
   
   # Filter variants again for exonic or splicing variants
-  if (!is.na(filter) && !is.null(filter)) {
+  if (!any(is.na(filter)) && !is.null(filter)) {
     vars_g_filter <- vars_g_filter[grepl(paste("^(", paste(filter, collapse = "|"), ")$", sep = ""), vars_g_filter[[func]], perl = TRUE),]
   }
   
