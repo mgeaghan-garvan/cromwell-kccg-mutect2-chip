@@ -78,7 +78,7 @@ DRIVER_IMAGE = _config['workflow']['driver_image']
 sb = hb.ServiceBackend(billing_project=BILLING_PROJECT, remote_tmpdir=remote_tmpdir())
 b = hb.Batch(backend=sb, default_image=DRIVER_IMAGE)
 
-input_prefix = 'Mutect2CHIP'
+input_prefix = 'Mutect2SingleJob'
 
 input_dict = {
     f'{input_prefix}.{k}': v
