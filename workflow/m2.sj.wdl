@@ -142,6 +142,7 @@ workflow Mutect2SingleJob {
             gnomad_idx = gnomad_idx,
             m2_extra_args = m2_extra_args,
             compress = compress,
+            make_bamout = make_bamout,
             gga_vcf = gga_vcf,
             gga_vcf_idx = gga_vcf_idx,
             variants_for_contamination = variants_for_contamination,
