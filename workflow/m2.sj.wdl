@@ -213,6 +213,8 @@ task M2UKB {
     String unfiltered_vcf_idx = unfiltered_vcf + if compress then ".tbi" else ".idx"
     String filtered_vcf = filtered_name + if compress then ".vcf.gz" else ".vcf"
     String filtered_vcf_idx = filtered_vcf + if compress then ".tbi" else ".idx"
+    String output_bam_name = unfiltered_name + ".out.bam"
+    String output_bam_param = if select_first([make_bamout, false]) then "--bam-output " + output_bam_name else ""
 
 
     String mutect_stats = unfiltered_vcf + ".stats"
@@ -265,7 +267,7 @@ task M2UKB {
             ~{"--alleles " + gga_vcf} \
             -O "~{unfiltered_vcf}" \
             --native-pair-hmm-threads ~{cpu} \
-            ~{true='--bam-output ~{unfiltered_name}.out.bam' false='' select_first([make_bamout, false])} \
+            ~{output_bam_param} \
             --f1r2-tar-gz f1r2.tar.gz \
             ~{m2_extra_args}
 
