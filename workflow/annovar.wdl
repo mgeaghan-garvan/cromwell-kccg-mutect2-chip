@@ -100,9 +100,9 @@ task Annovar_task {
     command {
       set -euo pipefail
 
-      mkdir -p ~{tmp_dir}/annovar_files
+      mkdir -p ~{tmp_dir}
 
-      tar -xzvf ~{annovar_archive} -C ~{tmp_dir}/annovar_files
+      tar -xzvf ~{annovar_archive} -C ~{tmp_dir}
 
       table_annovar.pl \
         ~{vcf_input} \
