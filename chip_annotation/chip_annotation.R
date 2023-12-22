@@ -140,7 +140,7 @@ if (DEBUG) {
       "--annovar_function", "test_data/annovar/test_sample.refGene.variant_function",
       "--annovar_exonic_function", "test_data/annovar/test_sample.refGene.exonic_variant_function",
       "--sample", "test_sample",
-      "--chip_definitions", "chip_mutations/chip_variant_definitions.csv",
+      "--chip_definitions", "chip_mutations/chip_mutations.csv",
       "--fasta", "test_data/hg38.fa",
       "--somaticism_transcripts", "chip_mutations/somaticism_filter_transcripts.txt",
       "--output", "test_data/test_sample.chip.vcf"
