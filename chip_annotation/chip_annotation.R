@@ -15,6 +15,24 @@ option_list <- list(
     help = "Path to input VCF"
   ),
   make_option(
+    c("-s", "--sample"),
+    type = "character",
+    default = NULL,
+    help = "Sample ID"
+  ),
+  make_option(
+    c("-c", "--chip_definitions"),
+    type = "character",
+    default = NULL,
+    help = "Path to file containing chip definitions"
+  ),
+  make_option(
+    c("-q", "--seq"),
+    type = "character",
+    default = NULL,
+    help = "Path to CSV file containing sequence contexts for each variant; columns must be 'CHROM', 'POS', 'REF', 'ALT', 'SEQ'; sequence must be centered on the variant and include at least 10 bases on either side of the variant"
+  ),
+  make_option(
     c("-a", "--annovar"),
     type = "character",
     default = NULL,
@@ -39,12 +57,6 @@ option_list <- list(
     help = "Use Ensembl transcript IDs instead of RefSeq transcript IDs"
   ),
   make_option(
-    c("-s", "--sample"),
-    type = "character",
-    default = NULL,
-    help = "Sample ID"
-  ),
-  make_option(
     c("-G", "--gnomad_genome"),
     action = "store_true",
     default = FALSE,
@@ -67,18 +79,6 @@ option_list <- list(
     type = "character",
     default = "AF",
     help = "gnomAD population to use for allele frequencies; default behavior is to use all populations ('AF'); options are: 'AF', 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'"
-  ),
-  make_option(
-    c("-c", "--chip_definitions"),
-    type = "character",
-    default = NULL,
-    help = "Path to file containing chip definitions"
-  ),
-  make_option(
-    c("-r", "--fasta"),
-    type = "character",
-    default = NULL,
-    help = "Path to FASTA file"
   ),
   make_option(
     c("-S", "--somaticism_transcripts"),
@@ -136,12 +136,12 @@ if (DEBUG) {
     OptionParser(option_list = option_list),
     c(
       "--input", "test_data/test_sample.vcf.gz",
+      "--sample", "test_sample",
+      "--chip_definitions", "chip_mutations/chip_mutations.csv",
+      "--seq", "test_data/test_sample.seq_context.csv",
       "--annovar", "test_data/annovar/test_sample.hg38_multianno.txt",
       "--annovar_function", "test_data/annovar/test_sample.refGene.variant_function",
       "--annovar_exonic_function", "test_data/annovar/test_sample.refGene.exonic_variant_function",
-      "--sample", "test_sample",
-      "--chip_definitions", "chip_mutations/chip_mutations.csv",
-      "--fasta", "test_data/hg38.fa",
       "--somaticism_transcripts", "chip_mutations/somaticism_filter_transcripts.txt",
       "--output", "test_data/test_sample.chip.vcf"
     )
@@ -153,12 +153,6 @@ check_args(args)
 
 # ===== Load data =====
 
-# --- Load FASTA ---
-fa <- ape::read.dna(args$fasta, format = "fasta")
-
-# --- Load VCF ---
-vcf <- read.vcfR(args$input)
-
 # --- Load CHIP definitions ---
 chip_definitions <- read_csv(args$chip_definitions) %>%
   # Remove version number from transcript IDs
@@ -166,3 +160,6 @@ chip_definitions <- read_csv(args$chip_definitions) %>%
     refseq_accession = str_replace(refseq_accession, "\\.\\d+$", ""),
     ensembl_accession = str_replace(ensembl_accession, "\\.\\d+$", "")
   )
+
+# --- Load VCF ---
+vcf <- read.vcfR(args$input)
