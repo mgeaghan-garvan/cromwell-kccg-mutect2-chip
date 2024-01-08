@@ -22,22 +22,6 @@ b = get_batch()
 
 process_j = b.new_job('move-chip-output-files')
 
-FILES_TO_MOVE_LIST = []
-
-if _config['analyses'].get('chip', False):
-    FILES_TO_MOVE_LIST.extend([
-        f'{CROMWELL_OUTPUT_PATH}/**/*.all_variants*.csv',
-        f'{CROMWELL_OUTPUT_PATH}/**/*.exonic_splicing_variants.csv',
-        f'{CROMWELL_OUTPUT_PATH}/**/*.chip*.csv',
-    ])
-if _config['analyses'].get('annovar', False):
-    FILES_TO_MOVE_LIST.extend([
-        f'{CROMWELL_OUTPUT_PATH}/**/*.hg38_multianno.vcf',
-        f'{CROMWELL_OUTPUT_PATH}/**/*.hg38_multianno.txt',
-    ])
-
-FILES_TO_MOVE = ' '.join(FILES_TO_MOVE_LIST)
-
-process_j.command(f"gcloud -q auth activate-service-account --key-file=/gsa-key/key.json; gsutil mv {FILES_TO_MOVE} {OUTPUT_PATH}")
+process_j.command(f"gcloud -q auth activate-service-account --key-file=/gsa-key/key.json; gsutil mv {CROMWELL_OUTPUT_PATH} {OUTPUT_PATH}")
 
 b.run(wait=False)
