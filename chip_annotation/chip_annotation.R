@@ -12,7 +12,13 @@ option_list <- list(
     c("-i", "--input"),
     type = "character",
     default = NULL,
-    help = "Path to input VCF"
+    help = "Path to input VCF containing variants to compare against known CHIP mutations"
+  ),
+  make_option(
+    c("-I", "--failed_variants"),
+    type = "character",
+    default = NULL,
+    help = "Path to an optional VCF containing variants that failed to pass filters; FILTER and INFO fields will be copied to the output VCF"
   ),
   make_option(
     c("-s", "--sample"),
@@ -98,6 +104,15 @@ check_args <- function(args) {
   if (is.null(args$input) || !file.exists(args$input)) {
     stop("No input file specified")
   }
+  if (is.null(args$sample)) {
+    stop("No sample ID specified")
+  }
+  if (is.null(args$chip_definitions) || !file.exists(args$chip_definitions)) {
+    stop("No chip definitions file specified")
+  }
+  if (is.null(args$seq) || !file.exists(args$seq)) {
+    stop("No sequence context file specified")
+  }
   if (is.null(args$annovar) || !file.exists(args$annovar)) {
     stop("No ANNOVAR file specified")
   }
@@ -107,20 +122,11 @@ check_args <- function(args) {
   if (is.null(args$annovar_exonic_function) || !file.exists(args$annovar_exonic_function)) {
     stop("No ANNOVAR exonic function file specified")
   }
-  if (is.null(args$sample)) {
-    stop("No sample ID specified")
-  }
   if (args$gnomad_genome && args$gnomad_exome) {
     stop("Cannot specify both --gnomad_genome and --gnomad_exome")
   }
   if (!(args$gnomad_population %in% c("AF", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj"))) {
     stop("Invalid gnomAD population specified")
-  }
-  if (is.null(args$chip_definitions) || !file.exists(args$chip_definitions)) {
-    stop("No chip definitions file specified")
-  }
-  if (is.null(args$fasta) || !file.exists(args$fasta)) {
-    stop("No FASTA file specified")
   }
   if (is.null(args$somaticism_transcripts) || !file.exists(args$somaticism_transcripts)) {
     stop("No somaticism transcripts file specified")
@@ -136,6 +142,7 @@ if (DEBUG) {
     OptionParser(option_list = option_list),
     c(
       "--input", "test_data/test_sample.vcf.gz",
+      "--failed_variants", "test_data/test_sample.failed_variants.vcf.gz",
       "--sample", "test_sample",
       "--chip_definitions", "chip_mutations/chip_mutations.csv",
       "--seq", "test_data/test_sample.seq_context.csv",
