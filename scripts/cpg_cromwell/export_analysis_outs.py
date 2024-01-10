@@ -1,5 +1,5 @@
 """
-Move the CHIP annotation outputs to the analysis bucket
+Move the CHIP pipeline outputs to the tmp bucket for export to the GML private buckets
 """
 import hailtop.batch as hb
 from cpg_utils.config import get_config
@@ -15,7 +15,7 @@ OUTPUT_PREFIX = f'{JOB_NAME}/{WORKFLOW_NAME}/{RUN_ID}'
 CROMWELL_OUTPUT_PREFIX = f'mutect2-chip/{OUTPUT_PREFIX}'
 CROMWELL_OUTPUT_BUCKET = _config['storage'][DATASET]['default']
 CROMWELL_OUTPUT_PATH = f'{CROMWELL_OUTPUT_BUCKET}/{CROMWELL_OUTPUT_PREFIX}'
-OUTPUT_BUCKET = _config['storage'][DATASET]['analysis']
+OUTPUT_BUCKET = _config['storage'][DATASET]['tmp']
 OUTPUT_PATH = f'{OUTPUT_BUCKET}/{CROMWELL_OUTPUT_PREFIX}'
 
 b = get_batch()
