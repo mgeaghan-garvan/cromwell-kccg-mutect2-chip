@@ -4,7 +4,7 @@ options(tidyverse.quiet = TRUE)
 
 library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(optparse, quietly = TRUE, warn.conflicts = FALSE)
-library(vcfR, quietly = TRUE, warn.conflicts = FALSE)
+# library(vcfR, quietly = TRUE, warn.conflicts = FALSE)
 
 # Parse command line arguments
 option_list <- list(
@@ -206,18 +206,55 @@ otherinfo_cols <- c(
 )
 
 # Determine new column names for gnomAD columns
-if (args$genome) {
-  gnomad_cols <- c()
-} else if (args$exome) {
-  gnomad_cols <- c()
+if (args$gnomad_genome || args$gnomad_exome) {
+  gnomad_col_basenames <- c(
+    "AF",
+    "AF_popmax",
+    "AF_male",
+    "AF_female",
+    "AF_raw",
+    "AF_afr",
+    "AF_sas",
+    "AF_amr",
+    "AF_eas",
+    "AF_nfe",
+    "AF_fin",
+    "AF_asj",
+    "AF_oth",
+    "non_topmed_AF_popmax",
+    "non_neuro_AF_popmax",
+    "non_cancer_AF_popmax",
+    "controls_AF_popmax"
+  )
+  if (args$gnomad_genome) {
+    gnomad_col_prefix <- "gnomAD_genome_"
+  } else {
+    gnomad_col_prefix <- "gnomAD_exome_"
+  }
+  gnomad_cols <- setNames(gnomad_col_basenames, paste0(gnomad_col_prefix, gnomad_cols))
 } else {
   # Both genome and exome frequencies are present
   # NOTE: Should we just make this mandatory?
-  gnomad_cols <- c()
+  if (args$gnomad_exome_first) {
+    gnomad_col_prefix_1 <- "gnomAD_exome_"
+    gnomad_col_prefix_2 <- "gnomAD_genome_"
+  } else {
+    gnomad_col_prefix_1 <- "gnomAD_genome_"
+    gnomad_col_prefix_2 <- "gnomAD_exome_"
+  }
+  gnomad_col_regex <- paste0("^(", paste0(gnomad_col_basenames, collapse = "|"), ")\\.\\.\\.\\d+$")
+  gnomad_cols <- setNames(
+    grep(gnomad_col_regex, colnames(annovar), value = TRUE, perl = TRUE),
+    c(
+      paste0(gnomad_col_prefix_1, gnomad_col_basenames),
+      paste0(gnomad_col_prefix_2, gnomad_col_basenames)
+    )
+  )
 }
 
 annovar <- annovar %>%
-  rename(all_of(otherinfo_cols))
+  rename(all_of(otherinfo_cols)) %>%
+  rename(all_of(gnomad_cols))
 
 # Load ANNOVAR intermediate files
 # First, generate regex strings for transcript IDs
