@@ -380,15 +380,61 @@ annovar <- annovar %>%
 annovar <- annovar %>%
   mutate(
     HARD_FILTER_AF = case_when(
-      is.na(gnomAD_AF) ~ paste(FILTER, "chip_gnomad_af_na", sep = ";"),
-      gnomAD_AF >= 0.01 ~ paste(FILTER, "chip_gnomad_af_filter_fail", sep = ";"),
-      .default = FILTER
+      is.na(gnomAD_AF) ~ "chip_gnomad_af_na",
+      gnomAD_AF >= 0.01 ~ "chip_gnomad_af_filter_fail",
+      .default = ""
     )
   )
 
 # Extract AD, DP, and AF (Mutect2 VAF) information from FORMAT + SAMPLE columns
+# We need to use the FORMAT column
+# to determine the positions of the AD, DP, and AF fields
+# within the SAMPLE column, which contains semi-colon separated fields
+# The AD field contains comma-separated values, one for each allele
+# Similarly, the AF field contains comma-separated values, one for each alternate allele
+# The DP field is a single value
+annovar <- annovar %>%
+  mutate(
+    FORMAT_split = str_split(FORMAT, ":"),
+    SAMPLE_split = str_split(SAMPLE, ":")
+  ) %>%
+  mutate(
+    AD_i = map(FORMAT_split, ~ grep("^AD$", .x, perl = TRUE)),
+    DP_i = map(FORMAT_split, ~ grep("^DP$", .x, perl = TRUE)),
+    AF_i = map(FORMAT_split, ~ grep("^AF$", .x, perl = TRUE))
+  ) %>%
+  mutate(
+    AD_REF_ALT = map2_chr(SAMPLE_split, AD_i, ~ .x[.y]),
+    DP = map2_chr(SAMPLE_split, DP_i, ~ .x[.y]),
+    AF = map2_chr(SAMPLE_split, AF_i, ~ .x[.y])
+  ) %>%
+  mutate(
+    AD_REF_ALT = str_split(AD_REF_ALT, ",")
+  ) %>%
+  mutate(
+    AD_REF = map_chr(AD_REF_ALT, ~ .x[[1]]),
+    AD_ALT = map_chr(AD_REF_ALT, ~ .x[[2]])
+  ) %>%
+  mutate(
+    AD_REF = as.integer(AD_REF),
+    AD_ALT = as.integer(AD_ALT),
+    DP = as.integer(DP),
+    AF = as.numeric(AF)
+  ) %>%
+  select(-FORMAT_split, -SAMPLE_split, -AD_i, -DP_i, -AF_i, -AD_REF_ALT) %>%
+  mutate(
+    VAF = AD_ALT / DP
+  ) %>%
+  # Filter on VAF (AD/DP)
+  mutate(
+    HARD_FILTER_VAF = case_when(
+      VAF < 0.02 ~ "chip_vaf_filter_fail",
+      .default = ""
+    )
+  )
 
-# Filter on VAF (AD/DP)
+# --- Apply homopolymer INDEL filter ---
+
 
 
 
