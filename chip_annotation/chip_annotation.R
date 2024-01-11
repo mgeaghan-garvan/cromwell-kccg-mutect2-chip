@@ -66,13 +66,13 @@ option_list <- list(
     c("-G", "--gnomad_genome"),
     action = "store_true",
     default = FALSE,
-    help = "Only use gnomAD genome allele frequencies; default behavior is to use both gnomAD genome and exome allele frequencies, preferring exome allele frequencies when both are available; mutually exclusive with --gnomad_exome"
+    help = "Specify that only gnomAD genome allele frequencies are present in the ANNOVAR output file; default behavior is to expect and use both gnomAD genome and exome allele frequencies, preferring exome allele frequencies when both are available; mutually exclusive with --gnomad_exome"
   ),
   make_option(
     c("-E", "--gnomad_exome"),
     action = "store_true",
     default = FALSE,
-    help = "Only use gnomAD exome allele frequencies; default behavior is to use both gnomAD genome and exome allele frequencies, preferring exome allele frequencies when both are available; mutually exclusive with --gnomad_genome"
+    help = "Specify that only gnomAD exome allele frequencies are present in the ANNOVAR output file; default behavior is to expect and use both gnomAD genome and exome allele frequencies, preferring exome allele frequencies when both are available; mutually exclusive with --gnomad_genome"
   ),
   make_option(
     c("-x", "--gnomad_exome_first"),
@@ -206,26 +206,26 @@ otherinfo_cols <- c(
 )
 
 # Determine new column names for gnomAD columns
+gnomad_col_basenames <- c(
+  "AF",
+  "AF_popmax",
+  "AF_male",
+  "AF_female",
+  "AF_raw",
+  "AF_afr",
+  "AF_sas",
+  "AF_amr",
+  "AF_eas",
+  "AF_nfe",
+  "AF_fin",
+  "AF_asj",
+  "AF_oth",
+  "non_topmed_AF_popmax",
+  "non_neuro_AF_popmax",
+  "non_cancer_AF_popmax",
+  "controls_AF_popmax"
+)
 if (args$gnomad_genome || args$gnomad_exome) {
-  gnomad_col_basenames <- c(
-    "AF",
-    "AF_popmax",
-    "AF_male",
-    "AF_female",
-    "AF_raw",
-    "AF_afr",
-    "AF_sas",
-    "AF_amr",
-    "AF_eas",
-    "AF_nfe",
-    "AF_fin",
-    "AF_asj",
-    "AF_oth",
-    "non_topmed_AF_popmax",
-    "non_neuro_AF_popmax",
-    "non_cancer_AF_popmax",
-    "controls_AF_popmax"
-  )
   if (args$gnomad_genome) {
     gnomad_col_prefix <- "gnomAD_genome_"
   } else {
@@ -317,5 +317,89 @@ annovar_exonic_function <- read_tsv(args$annovar_exonic_function, col_names = FA
 # --- Load somaticism transcripts ---
 somaticism_transcripts <- read_lines(args$somaticism_transcripts)
 
-# --- Load VCF ---
-# vcf <- read.vcfR(args$input)
+# --- Calculate gnomAD allele frequencies ---
+gnomad_genome_af_col <- paste0("gnomAD_genome_", args$gnomad_population)
+gnomad_exome_af_col <- paste0("gnomAD_exome_", args$gnomad_population)
+missing_vals <- c(".", "", NA)
+
+# Create temporary gnomAD_AF_g and gnomAD_AF_e columns
+annovar <- annovar %>%
+  mutate(
+    gnomAD_AF_g = case_when(
+      !args$gnomad_exome ~ annovar[[gnomad_genome_af_col]],
+      args$gnomad_exome ~ NA
+    ),
+    gnomAD_AF_e = case_when(
+      !args$gnomad_genome ~ annovar[[gnomad_exome_af_col]],
+      args$gnomad_genome ~ NA
+    )
+  ) %>%
+  # Convert missing values to NA
+  mutate(
+    gnomAD_AF_g = if_else(
+      gnomAD_AF_g %in% missing_vals,
+      NA,
+      gnomAD_AF_g
+    ),
+    gnomAD_AF_e = if_else(
+      gnomAD_AF_e %in% missing_vals,
+      NA,
+      gnomAD_AF_e
+    )
+  ) %>%
+  # Make sure gnomAD_AF_* columns are numeric
+  mutate(
+    gnomAD_AF_g = as.numeric(gnomAD_AF_g),
+    gnomAD_AF_e = as.numeric(gnomAD_AF_e)
+  ) %>%
+  # Calculate gnomAD_AF column - use exome column if not NA, otherwise use genome column
+  mutate(
+    gnomAD_AF = if_else(
+      !is.na(gnomAD_AF_e),
+      gnomAD_AF_e,
+      gnomAD_AF_g
+    )
+  ) %>%
+  # Convert NAs to 0 if requested
+  mutate(
+    gnomAD_AF = if_else(
+      is.na(gnomAD_AF),
+      if_else(
+        args$discard_missing_gnomad,
+        NA,
+        0
+      ),
+      gnomAD_AF
+    )
+  ) %>%
+  # Remove temporary gnomAD_AF_g and gnomAD_AF_e columns
+  select(-gnomAD_AF_g, -gnomAD_AF_e)
+
+# --- Apply next round of hard filters ---
+# Filter on gnomAD frequency
+annovar <- annovar %>%
+  mutate(
+    HARD_FILTER_AF = case_when(
+      is.na(gnomAD_AF) ~ paste(FILTER, "chip_gnomad_af_na", sep = ";"),
+      gnomAD_AF >= 0.01 ~ paste(FILTER, "chip_gnomad_af_filter_fail", sep = ";"),
+      .default = FILTER
+    )
+  )
+
+# Extract AD, DP, and AF (Mutect2 VAF) information from FORMAT + SAMPLE columns
+
+# Filter on VAF (AD/DP)
+
+
+
+
+
+
+
+
+
+# --- Load VCFs ---
+input_vcf <- read.vcfR(args$input)
+if (!is.null(args$failed_variants) && file.exists(args$failed_variants)) {
+  failed_variants_vcf <- read.vcfR(args$failed_variants)
+}
