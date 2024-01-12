@@ -100,13 +100,16 @@ task Annovar_task {
     command {
       set -euo pipefail
 
-      mkdir -p ~{tmp_dir}
+      mkdir -p ~{tmp_dir}/annovar_db
 
-      tar -xzvf ~{annovar_archive} -C ~{tmp_dir}
+      tar -xzvf ~{annovar_archive} -C ~{tmp_dir}/annovar_db
+
+      # Find the path to the database files within the extracted data
+      ANNOVAR_PATH=$(dirname $(find ~{tmp_dir}/annovar_db -type f -name "~{ref_name}_*" -print -quit))
 
       table_annovar.pl \
         ~{vcf_input} \
-        ~{tmp_dir}/annovar_files \
+        $ANNOVAR_PATH \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -protocol ~{annovar_protocols} \
