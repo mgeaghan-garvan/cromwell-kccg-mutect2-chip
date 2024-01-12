@@ -28,7 +28,7 @@ workflow Annovar {
         Int annovar_disk = 100
         Int annovar_tmp_disk = 200
         Int annovar_cpu = 1
-        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
+        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:842e9f88dd39999ee2129aeb992e8eced10ac2a33642d4b34d0f0c0254aa5035"  # :5.34.0
         File annovar_archive
         String ref_name = "hg38"
         String annovar_protocols = "refGene"

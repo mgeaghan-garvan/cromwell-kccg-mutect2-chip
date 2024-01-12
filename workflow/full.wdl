@@ -76,7 +76,7 @@ workflow Mutect2CHIP {
         String annovar_assembly = "hg38"
         String annovar_protocols = "refGene"
         String annovar_operations = "g"
-        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
+        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:842e9f88dd39999ee2129aeb992e8eced10ac2a33642d4b34d0f0c0254aa5035"  # :5.34.0
 
         # SpliceAI settings
         Boolean spliceai = false
@@ -93,7 +93,7 @@ workflow Mutect2CHIP {
         Boolean whitelist_use_ensembl_annotation = false
         Boolean run_chip_on_unannotated_vcf = false
         String gnomad_pop = "AF"
-        String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d"  # :latest
+        String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:3c4e9d0a650427a028814605423a39b02c621357043a5cff694fe671ee5a77ce"  # :latest
 
         # Samtools settings
         String samtools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
