@@ -167,6 +167,67 @@ if (DEBUG) {
 }
 check_args(args)
 
+# ===== Function definitions =====
+
+get_homopolymer_regions_in_sequence <- function(seq, min_size = 5) {
+  # Sliding window algorithm to pick out all homopolymer regions within a sequence
+  # Returns a data frame with columns "start", "end", "length", and "base"
+  # Returns NULL if no homopolymer regions are found
+  hpr_list <- list()
+  hidx <- 1
+  l <- nchar(seq)
+  i <- 1
+  while (i <= (l - min_size + 1)) {
+    b1 <- substr(seq, i, i)
+    j <- i + 1
+    while (j <= l) {
+      b2 <- substr(seq, j, j)
+      if (b2 == b1) {
+        j <- j + 1
+      } else {
+        break
+      }
+    }
+    subseq_len <- j - i
+    if (subseq_len >= min_size) {
+      hpr_list[[hidx]] <- data.frame(start = i, end = (j - 1), length = (j - i), base = b1)
+      hidx <- hidx + 1
+    }
+    i <- j
+  }
+  return(do.call(rbind, hpr_list))
+}
+
+is_altered_homopolymer_region <- function(ref_seq, alt_seq, var_pos, ref_len, alt_len) {
+  # Given a reference sequence and an alternate sequence,
+  # determine if the variant is within a homopolymer region
+  # or otherwise alters a homopolymer region
+  hp_ref <- get_homopolymer_regions_in_sequence(ref_seq)
+  hp_alt <- get_homopolymer_regions_in_sequence(alt_seq)
+  if (is.null(hp_ref) && is.null(hp_alt)) {
+    # No homopolymer regions
+    return(FALSE)
+  } else if (is.null(hp_ref) && !is.null(hp_alt)) {
+    # Alternate allele creates homopolymer
+    return(TRUE)
+  } else if (!is.null(hp_ref) && is.null(hp_alt)) {
+    # Alternate allele destroys homopolymer
+    return(TRUE)
+  } else if (!identical(hp_ref[c("length", "base")], hp_alt[c("length", "base")])) {
+    # Reference and alternate sequences have differing homopolymers (i.e. variant creates/destroys/alters a homopolymer sequence)
+    return(TRUE)
+  } else if (all(hp_ref$end < var_pos) && all(hp_alt$end < var_pos)) {
+    # All homopolymers reside within the upstream flanking sequence (outside of variant range which starts at var_pos)
+    return(FALSE)
+  } else if(all(hp_ref$start > (var_pos + ref_len - 1)) && all(hp_alt$start > (var_pos + alt_len - 1))) {
+    # All homopolymers reside within the downstream flanking sequence (outside of variant range which ends at (var_pos + [ref|alt]_len - 1))
+    return(FALSE)
+  } else {
+    # All remaining variants should be within a homopolymer region
+    return(TRUE)
+  }
+}
+
 # ===== Load data =====
 
 # --- Load CHIP definitions ---
@@ -175,6 +236,13 @@ chip_definitions <- read_csv(args$chip_definitions) %>%
   mutate(
     refseq_accession = str_replace(refseq_accession, "\\.\\d+$", ""),
     ensembl_accession = str_replace(ensembl_accession, "\\.\\d+$", "")
+  ) %>%
+  # Ensure that all position columns are integers
+  mutate(
+    gene_genomic_start = as.integer(gene_genomic_start),
+    gene_genomic_end = as.integer(gene_genomic_end),
+    c_term_genomic_start = as.integer(c_term_genomic_start),
+    c_term_genomic_end = as.integer(c_term_genomic_end),
   )
 
 # --- Load sequence contexts ---
@@ -184,6 +252,11 @@ colnames(seq_contexts) <- c("VARIANT", "SEQ")
 # We want to split this into separate columns
 seq_contexts <- seq_contexts %>%
   separate(VARIANT, c("CHROM", "POS", "REF", "ALT"), sep = ":", remove = FALSE)
+# Convert POS column to integer
+seq_contexts <- seq_contexts %>%
+  mutate(
+    POS = as.integer(POS)
+  )
 
 # --- Load ANNOVAR annotations ---
 annovar <- read_tsv(args$annovar)
@@ -254,7 +327,13 @@ if (args$gnomad_genome || args$gnomad_exome) {
 
 annovar <- annovar %>%
   rename(all_of(otherinfo_cols)) %>%
-  rename(all_of(gnomad_cols))
+  rename(all_of(gnomad_cols)) %>%
+  # Ensure that POS, Start, and End columns are integers
+  mutate(
+    POS = as.integer(POS),
+    Start = as.integer(Start),
+    End = as.integer(End)
+  )
 
 # Load ANNOVAR intermediate files
 # First, generate regex strings for transcript IDs
@@ -290,7 +369,12 @@ annovar_function <- read_tsv(args$annovar_function, col_names = FALSE) %>%
   filter(
     str_detect(Transcript, transcript_id_regex)
   ) %>%
-  distinct()
+  distinct() %>%
+  # Ensure that Start and End columns are integers
+  mutate(
+    Start = as.integer(Start),
+    End = as.integer(End)
+  )
 
 annovar_exonic_function <- read_tsv(args$annovar_exonic_function, col_names = FALSE) %>%
   # Select columns 2-8 and remove duplicates
@@ -312,7 +396,12 @@ annovar_exonic_function <- read_tsv(args$annovar_exonic_function, col_names = FA
   ) %>%
   # Split AAChange column into multiple rows, split on commas
   separate_longer_delim(AAChange, ",") %>%
-  distinct()
+  distinct() %>%
+  # Ensure that Start and End columns are integers
+  mutate(
+    Start = as.integer(Start),
+    End = as.integer(End)
+  )
 
 # --- Load somaticism transcripts ---
 somaticism_transcripts <- read_lines(args$somaticism_transcripts)
@@ -435,6 +524,49 @@ annovar <- annovar %>%
 
 # --- Apply homopolymer INDEL filter ---
 
+# Add sequence context columns to ANNOVAR table
+annovar <- annovar %>%
+  left_join(seq_contexts, by = c("CHROM", "POS", "REF", "ALT"))
+
+# Ensure that the sequence context is centred on the variant and includes at least 10 bases on either side
+n_additional_seq_bases <- nchar(annovar$SEQ) - nchar(annovar$REF)
+uniq_n_additional_seq_bases <- unique(n_additional_seq_bases)
+if (length(uniq_n_additional_seq_bases) > 1) {
+  stop("Sequence context length is not consistent across variants")
+}
+if ((uniq_n_additional_seq_bases %% 2) != 0) {
+  stop("Sequence context length (upstream + downstream) is not even")
+}
+# Ensure that the REF allele sequence is centred in the sequence context
+seq_context_ref_start <- (uniq_n_additional_seq_bases / 2) + 1
+seq_context_ref_end <- seq_context_ref_start + nchar(annovar$REF) - 1
+seq_context_ref_seq <- substr(annovar$SEQ, seq_context_ref_start, seq_context_ref_end)
+if (any(seq_context_ref_seq != annovar$REF)) {
+  stop("REF allele sequence is not centred in the sequence context")
+}
+# Rename SEQ column to SEQ_REF
+annovar <- annovar %>%
+  rename(SEQ_REF = SEQ)
+# Add SEQ_ALT column
+annovar <- annovar %>%
+  mutate(
+    SEQ_ALT = paste(
+      substr(SEQ_REF, 1, seq_context_ref_start - 1),
+      ALT,
+      substr(SEQ_REF, seq_context_ref_end + 1, nchar(SEQ_REF)),
+      sep = ""
+    )
+  )
+# Add HOMOPOLYMER_FILTER column
+annovar <- annovar %>%
+  rowwise() %>%
+  mutate(
+    HOMOPOLYMER_FILTER = if_else(
+      is_altered_homopolymer_region(SEQ_REF, SEQ_ALT, seq_context_ref_start, nchar(REF), nchar(ALT)),
+      "homopolymer_variant",
+      ""
+    )
+  )
 
 
 
