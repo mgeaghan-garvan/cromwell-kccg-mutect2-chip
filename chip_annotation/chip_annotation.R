@@ -146,6 +146,7 @@ check_args <- function(args) {
 }
 
 DEBUG <- TRUE
+setwd("chip_annotation")
 if (DEBUG) {
   args <- parse_args(
     OptionParser(option_list = option_list),
@@ -568,6 +569,73 @@ annovar <- annovar %>%
     )
   )
 
+# ======= DEV =======
+
+# annovar_tmp <- annovar
+annovar_function_tmp <- annovar_function
+annovar_exonic_function_tmp <- annovar_exonic_function
+
+if (args$ensembl) {
+  annovar_tmp <- annovar %>% mutate(
+    GeneDetail = GeneDetail.ensGene,
+    AAChange = AAChange.ensGene,
+    Func = Func.ensGene,
+    ExonicFunc = ExonicFunc.ensGene
+  )
+  tx_rgx <- "(ENST\\d+(\\.\\d+)?)(:.*)?$"
+} else {
+  annovar_tmp <- annovar %>% mutate(
+    GeneDetail = GeneDetail.refGene,
+    AAChange = AAChange.refGene,
+    Func = Func.refGene,
+    ExonicFunc = ExonicFunc.refGene
+  )
+  tx_rgx <- "(NM_\\d+(\\.\\d+)?)(:.*)?$"
+}
+
+annovar_tmp_2 <- annovar_tmp %>%
+  # Split Func column into multiple rows on semicolons
+  separate_longer_delim(Func, ";") %>%
+  # Filter Func for exonic and splicing variants only
+  filter(
+    Func %in% c("exonic", "splicing")
+  ) %>%
+  # Split GeneDetail and AAChange into multiple rows, one per transcript
+  separate_longer_delim(GeneDetail, ";") %>%
+  separate_longer_delim(AAChange, ",") %>%
+  separate_longer_delim(AAChange, ";") %>%
+  # Drop potential duplicates
+  distinct() %>%
+  # Extract the transcript ID from the GeneDetail and AAChange columns
+  mutate(
+    tx_gd = str_extract(GeneDetail, tx_rgx, group = 1) %>% if_else(is.na(.), "NO_TX", .),
+    tx_aac = str_extract(AAChange, tx_rgx, group = 1) %>% if_else(is.na(.), "NO_TX", .)
+  ) %>%
+  mutate(
+    Transcript = paste(tx_gd, tx_aac, sep = ";")
+  ) %>%
+  separate_longer_delim(Transcript, ";") %>%
+  select(-tx_gd, -tx_aac) %>%
+  filter(
+    Transcript != "NO_TX"
+  ) %>%
+  # Drop potential duplicates
+  distinct() %>%
+  # Filter for rows where AAChange and GeneDetail contains the matching transcript ID from that row
+  mutate(
+    Transcript_regex = gsub("\\.\\d+$", "", Transcript, perl = TRUE) %>% paste(., "(:.*)?$", sep = "")
+  ) %>%
+  filter(
+    str_detect(AAChange, Transcript_regex) | str_detect(GeneDetail, Transcript_regex)
+  ) %>%
+  select(-Transcript_regex) %>%
+  # Drop potential duplicates
+  distinct()
+  
+  annovar_tmp_2 %>%
+  select(CHROM, POS, REF, ALT, GeneDetail, AAChange, Func, ExonicFunc, Transcript) %>% View
+
+# ===== END DEV =====
 
 
 
