@@ -569,14 +569,9 @@ annovar <- annovar %>%
     )
   )
 
-# ======= DEV =======
-
-# annovar_tmp <- annovar
-annovar_function_tmp <- annovar_function
-annovar_exonic_function_tmp <- annovar_exonic_function
-
+# --- Filter annovar annotations ---
 if (args$ensembl) {
-  annovar_tmp <- annovar %>% mutate(
+  annovar <- annovar %>% mutate(
     GeneDetail = GeneDetail.ensGene,
     AAChange = AAChange.ensGene,
     Func = Func.ensGene,
@@ -584,7 +579,7 @@ if (args$ensembl) {
   )
   tx_rgx <- "(ENST\\d+(\\.\\d+)?)(:.*)?$"
 } else {
-  annovar_tmp <- annovar %>% mutate(
+  annovar <- annovar %>% mutate(
     GeneDetail = GeneDetail.refGene,
     AAChange = AAChange.refGene,
     Func = Func.refGene,
@@ -593,7 +588,13 @@ if (args$ensembl) {
   tx_rgx <- "(NM_\\d+(\\.\\d+)?)(:.*)?$"
 }
 
-annovar_tmp_2 <- annovar_tmp %>%
+# Add a variant ID column
+annovar <- annovar %>%
+  mutate(VAR_ID = paste(Chr, Start, End, Ref, Alt, sep = ":"))
+
+annovar_unfiltered <- annovar
+
+annovar <- annovar %>%
   # Split Func column into multiple rows on semicolons
   separate_longer_delim(Func, ";") %>%
   # Filter Func for exonic and splicing variants only
@@ -608,8 +609,8 @@ annovar_tmp_2 <- annovar_tmp %>%
   distinct() %>%
   # Extract the transcript ID from the GeneDetail and AAChange columns
   mutate(
-    tx_gd = str_extract(GeneDetail, tx_rgx, group = 1) %>% if_else(is.na(.), "NO_TX", .),
-    tx_aac = str_extract(AAChange, tx_rgx, group = 1) %>% if_else(is.na(.), "NO_TX", .)
+    tx_gd = str_extract(GeneDetail, tx_rgx, group = 1) %>% if_else(is.na(.), "", .),
+    tx_aac = str_extract(AAChange, tx_rgx, group = 1) %>% if_else(is.na(.), "", .)
   ) %>%
   mutate(
     Transcript = paste(tx_gd, tx_aac, sep = ";")
@@ -617,35 +618,106 @@ annovar_tmp_2 <- annovar_tmp %>%
   separate_longer_delim(Transcript, ";") %>%
   select(-tx_gd, -tx_aac) %>%
   filter(
-    Transcript != "NO_TX"
+    Transcript != ""
   ) %>%
   # Drop potential duplicates
   distinct() %>%
+  # Add Transcript_no_version column
+  mutate(
+    Transcript_no_version = gsub("\\.\\d+$", "", Transcript, perl = TRUE)
+  ) %>%
   # Filter for rows where AAChange and GeneDetail contains the matching transcript ID from that row
   mutate(
-    Transcript_regex = gsub("\\.\\d+$", "", Transcript, perl = TRUE) %>% paste(., "(:.*)?$", sep = "")
+    Transcript_regex = paste(Transcript_no_version, "(\\.\\d+)?(:.*)?$", sep = "")
   ) %>%
   filter(
     str_detect(AAChange, Transcript_regex) | str_detect(GeneDetail, Transcript_regex)
   ) %>%
   select(-Transcript_regex) %>%
   # Drop potential duplicates
+  distinct() %>%
+  inner_join(annovar_function) %>%
+  distinct() %>%
+  # Split ExonicFunc column into multiple rows on semicolons
+  separate_longer_delim(ExonicFunc, ";")
+
+annovar <- annovar %>%
+  # Join exonic variants with annovar_exonic_function table, dropping mismatches and duplicates
+  filter(ExonicFunc %in% annovar_exonic_function$ExonicFunc) %>%
+  left_join(annovar_exonic_function) %>%
+  # Add non-exonic variants back in
+  bind_rows(annovar %>% filter(!(ExonicFunc %in% annovar_exonic_function$ExonicFunc))) %>%
   distinct()
-  
-  annovar_tmp_2 %>%
-  select(CHROM, POS, REF, ALT, GeneDetail, AAChange, Func, ExonicFunc, Transcript) %>% View
 
-# ===== END DEV =====
+# Annotate variants that were filtered out
+annovar_filtered <- annovar_unfiltered %>%
+  anti_join(annovar, by = "VAR_ID") %>%
+  mutate(
+    EXONIC_SPLICING_FILTER = "not_exonic_or_splicing_variant"
+  )
+
+# --- Apply somaticism filter ---
+annovar <- annovar %>%
+  mutate(ad_dp_binom_test = map2_dbl(AD_ALT, DP, ~ binom.test(.x, .y, 0.5)$p.value)) %>%
+  mutate(
+    SOMATICISM_FILTER = case_when(
+      Transcript_no_version %in% somaticism_transcripts & ad_dp_binom_test >= 0.001 ~ "chip_somaticism_filter_fail",
+      .default = ""
+    )
+  )
+
+# --- Filter for CHIP transcripts ---
+annovar_chip_tx_unfiltered <- annovar
+
+if (args$ensembl) {
+  annovar <- annovar %>%
+    filter(
+      Transcript_no_version %in% chip_definitions$ensembl_accession
+    )
+} else {
+  annovar <- annovar %>%
+    filter(
+      Transcript_no_version %in% chip_definitions$refseq_accession
+    )
+}
+
+# Annotate variants that were filtered out
+annovar_chip_tx_filtered <- annovar_chip_tx_unfiltered %>%
+  anti_join(annovar, by = "VAR_ID") %>%
+  mutate(
+    CHIP_TRANSCRIPT_FILTER = "exonic_or_splicing_variant_not_in_chip_transcript"
+  )
+
+# Join ANNOVAR table with CHIP definitions
+if (args$ensembl) {
+  annovar <- annovar %>%
+    left_join(chip_definitions, by = c("Transcript_no_version" = "ensembl_accession"), relationship = "many-to-many")
+} else {
+  annovar <- annovar %>%
+    left_join(chip_definitions, by = c("Transcript_no_version" = "refseq_accession"), relationship = "many-to-many")
+}
+
+# Drop potential duplicates
+annovar <- annovar %>%
+  distinct()
+
+# --- Match mutations to CHIP definitions ---
 
 
+# --- Apply a putative CHIP filter ---
 
 
+# --- Construct output VCF for annotation ---
 
 
+# --- Write output VCF ---
+
+
+# --- Write output CSVs ---
 
 
 # --- Load VCFs ---
-input_vcf <- read.vcfR(args$input)
-if (!is.null(args$failed_variants) && file.exists(args$failed_variants)) {
-  failed_variants_vcf <- read.vcfR(args$failed_variants)
-}
+# input_vcf <- read.vcfR(args$input)
+# if (!is.null(args$failed_variants) && file.exists(args$failed_variants)) {
+#   failed_variants_vcf <- read.vcfR(args$failed_variants)
+# }
