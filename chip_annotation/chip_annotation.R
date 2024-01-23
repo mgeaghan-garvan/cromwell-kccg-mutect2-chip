@@ -4,6 +4,8 @@ options(tidyverse.quiet = TRUE)
 
 library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(optparse, quietly = TRUE, warn.conflicts = FALSE)
+
+source("match_mutation.R")
 # library(vcfR, quietly = TRUE, warn.conflicts = FALSE)
 
 # Parse command line arguments
@@ -470,7 +472,7 @@ annovar <- annovar %>%
 annovar <- annovar %>%
   mutate(
     HARD_FILTER_AF = case_when(
-      is.na(gnomAD_AF) ~ "chip_gnomad_af_na",
+      is.na(gnomAD_AF) ~ "gnomad_af_na",
       gnomAD_AF >= 0.01 ~ "chip_gnomad_af_filter_fail",
       .default = ""
     )
@@ -702,9 +704,68 @@ annovar <- annovar %>%
   distinct()
 
 # --- Match mutations to CHIP definitions ---
-
+annovar_tmp <- annovar %>%
+  mutate(
+    mut_in_c_term = case_when(
+      (
+        Chr == chr & (
+          (c_term_genomic_start <= Start & Start <= c_term_genomic_end) |
+          (c_term_genomic_start <= End & End <= c_term_genomic_end) |
+          (Start <= c_term_genomic_start & c_term_genomic_end <= End)
+        )
+      ) ~ TRUE,
+      .default = FALSE
+    )
+  ) %>%
+  rowwise() %>%
+  mutate(
+    gene_detail_info = list(parse_gene_detail(GeneDetail)),
+    aa_change_info = list(parse_aa_change(AAChange, ExonicFunc)),
+    chip_info = list(parse_chip_def(mutation_definition, mutation_class))
+  ) %>%
+  mutate(
+    variant_class = case_when(
+      Func == "splicing" ~ "splice_site",
+      (
+        Func != "splicing" &&
+        aa_change_info$mutation_class == "nonsynonymous" &&
+        mutation_class == "missense" &&
+        !is.na(aa_change_info$nonsynonymous_type) &&
+        aa_change_info$nonsynonymous_type == "sub" &&
+        !is.na(aa_change_info$mutation_protein_info$ref_start) &&
+        !is.na(aa_change_info$mutation_protein_info$alt)
+      ) ~ "missense",
+      .default = aa_change_info$mutation_class
+    )
+  ) %>%
+  mutate(
+    # Dynamically picks the appropriate function to use based on the mutation pattern
+    chip_mutation_match_filter = chip_def_match_funcs[[chip_info$mutation_pattern]](
+      chip_info = chip_info,
+      aa_change_info = aa_change_info,
+      gene_detail_info = gene_detail_info,
+      mut_class = variant_class,
+      chip_mut_c_term_start = c_term_genomic_start,
+      chip_mut_c_term_end = c_term_genomic_end,
+      mut_start = Start,
+      mut_end = End,
+      mut_in_c_term = mut_in_c_term
+    )
+  ) %>%
+  ungroup() %>%
+  mutate(
+    CHIP_MUTATION_FILTER = case_when(
+      is.na(variant_class) ~ "chip_mutation_match_filter_fail",
+      variant_class != mutation_class ~ "chip_mutation_match_filter_fail",
+      .default = chip_mutation_match_filter
+    )
+  ) %>%
+  select(-gene_detail_info, -aa_change_info, -chip_info, -variant_class, -chip_mutation_match_filter, -mut_in_c_term)
 
 # --- Apply a putative CHIP filter ---
+
+
+# --- Finalise combined filter ---
 
 
 # --- Construct output VCF for annotation ---
