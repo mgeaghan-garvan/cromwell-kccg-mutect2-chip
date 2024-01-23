@@ -219,11 +219,12 @@ is_altered_homopolymer_region <- function(ref_seq, alt_seq, var_pos, ref_len, al
   } else if (!identical(hp_ref[c("length", "base")], hp_alt[c("length", "base")])) {
     # Reference and alternate sequences have differing homopolymers (i.e. variant creates/destroys/alters a homopolymer sequence)
     return(TRUE)
-  } else if (all(hp_ref$end < var_pos) && all(hp_alt$end < var_pos)) {
-    # All homopolymers reside within the upstream flanking sequence (outside of variant range which starts at var_pos)
-    return(FALSE)
-  } else if(all(hp_ref$start > (var_pos + ref_len - 1)) && all(hp_alt$start > (var_pos + alt_len - 1))) {
-    # All homopolymers reside within the downstream flanking sequence (outside of variant range which ends at (var_pos + [ref|alt]_len - 1))
+  } else if (
+    all(hp_ref$end < var_pos | hp_ref$start > (var_pos + ref_len - 1)) &&
+      all(hp_alt$end < var_pos | hp_alt$start > (var_pos + alt_len - 1))
+  ) {
+    # All homopolymers reside within the upstream or downstream flanking sequences
+    # (outside of variant range which starts at var_pos and ends at (var_pos + [ref|alt]_len - 1)
     return(FALSE)
   } else {
     # All remaining variants should be within a homopolymer region
