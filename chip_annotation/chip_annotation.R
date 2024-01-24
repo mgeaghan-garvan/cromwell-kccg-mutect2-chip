@@ -1,12 +1,16 @@
 #!/usr/bin/env Rscript
 
+DEBUG <- TRUE
+
+setwd("chip_annotation")
+
 options(tidyverse.quiet = TRUE)
 
 library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(optparse, quietly = TRUE, warn.conflicts = FALSE)
+# library(vcfR, quietly = TRUE, warn.conflicts = FALSE)
 
 source("match_mutation.R")
-# library(vcfR, quietly = TRUE, warn.conflicts = FALSE)
 
 # Parse command line arguments
 option_list <- list(
@@ -147,8 +151,6 @@ check_args <- function(args) {
   }
 }
 
-DEBUG <- TRUE
-setwd("chip_annotation")
 if (DEBUG) {
   args <- parse_args(
     OptionParser(option_list = option_list),
@@ -494,19 +496,29 @@ annovar <- annovar %>%
   mutate(
     AD_i = map(FORMAT_split, ~ grep("^AD$", .x, perl = TRUE)),
     DP_i = map(FORMAT_split, ~ grep("^DP$", .x, perl = TRUE)),
-    AF_i = map(FORMAT_split, ~ grep("^AF$", .x, perl = TRUE))
+    AF_i = map(FORMAT_split, ~ grep("^AF$", .x, perl = TRUE)),
+    F1R2_i = map(FORMAT_split, ~ grep("^F1R2$", .x, perl = TRUE)),
+    F2R1_i = map(FORMAT_split, ~ grep("^F2R1$", .x, perl = TRUE))
   ) %>%
   mutate(
     AD_REF_ALT = map2_chr(SAMPLE_split, AD_i, ~ .x[.y]),
     DP = map2_chr(SAMPLE_split, DP_i, ~ .x[.y]),
-    AF = map2_chr(SAMPLE_split, AF_i, ~ .x[.y])
+    AF = map2_chr(SAMPLE_split, AF_i, ~ .x[.y]),
+    F1R2_REF_ALT = map2_chr(SAMPLE_split, F1R2_i, ~ .x[.y]),
+    F2R1_REF_ALT = map2_chr(SAMPLE_split, F2R1_i, ~ .x[.y])
   ) %>%
   mutate(
-    AD_REF_ALT = str_split(AD_REF_ALT, ",")
+    AD_REF_ALT = str_split(AD_REF_ALT, ","),
+    F1R2_REF_ALT = str_split(F1R2_REF_ALT, ","),
+    F2R1_REF_ALT = str_split(F2R1_REF_ALT, ",")
   ) %>%
   mutate(
     AD_REF = map_chr(AD_REF_ALT, ~ .x[[1]]),
-    AD_ALT = map_chr(AD_REF_ALT, ~ .x[[2]])
+    AD_ALT = map_chr(AD_REF_ALT, ~ .x[[2]]),
+    F1R2_REF = map_chr(F1R2_REF_ALT, ~ .x[[1]]),
+    F1R2_ALT = map_chr(F1R2_REF_ALT, ~ .x[[2]]),
+    F2R1_REF = map_chr(F2R1_REF_ALT, ~ .x[[1]]),
+    F2R1_ALT = map_chr(F2R1_REF_ALT, ~ .x[[2]])
   ) %>%
   mutate(
     AD_REF = as.integer(AD_REF),
@@ -514,7 +526,18 @@ annovar <- annovar %>%
     DP = as.integer(DP),
     AF = as.numeric(AF)
   ) %>%
-  select(-FORMAT_split, -SAMPLE_split, -AD_i, -DP_i, -AF_i, -AD_REF_ALT) %>%
+  select(
+    -FORMAT_split,
+    -SAMPLE_split,
+    -AD_i,
+    -DP_i,
+    -AF_i,
+    -AD_REF_ALT,
+    -F1R2_i,
+    -F2R1_i,
+    -F1R2_REF_ALT,
+    -F2R1_REF_ALT
+  ) %>%
   mutate(
     VAF = AD_ALT / DP
   ) %>%
@@ -569,6 +592,17 @@ annovar <- annovar %>%
       is_altered_homopolymer_region(SEQ_REF, SEQ_ALT, seq_context_ref_start, nchar(REF), nchar(ALT)),
       "homopolymer_variant",
       ""
+    )
+  ) %>%
+  # Add HOMOPOLYMER_INDEL_FILTER column
+  mutate(
+    HOMOPOLYMER_INDEL_FILTER = case_when(
+      (
+        HOMOPOLYMER_FILTER == "homopolymer_variant" &
+          (nchar(REF) > 1 | nchar(ALT) > 1) &
+          (AD_ALT < 10 | VAF < 0.1)
+      ) ~ "chip_homopolymer_indel_filter_fail",
+      .default = ""
     )
   )
 
@@ -705,7 +739,7 @@ annovar <- annovar %>%
   distinct()
 
 # --- Match mutations to CHIP definitions ---
-annovar_tmp <- annovar %>%
+annovar <- annovar %>%
   mutate(
     mut_in_c_term = case_when(
       (
@@ -764,9 +798,114 @@ annovar_tmp <- annovar %>%
   select(-gene_detail_info, -aa_change_info, -chip_info, -variant_class, -chip_mutation_match_filter, -mut_in_c_term)
 
 # --- Apply a putative CHIP filter ---
+annovar <- annovar %>%
+  mutate(
+    PUTATIVE_CHIP_FILTER = case_when(
+      !is.na(putative) &
+        putative == TRUE &
+        (
+          AD_ALT < 5 |
+          VAF > 0.2 |
+          F1R2_REF < 2 |
+          F1R2_ALT < 2 |
+          F2R1_REF < 2 |
+          F2R1_ALT < 2
+        ) ~ "chip_putative_filter_fail",
+      .default = ""
+    )
+  )
+
+# --- Finalise combined filter and CHIP info ---
+annovar <- annovar %>%
+  group_by(
+    CHROM,
+    POS,
+    REF,
+    ALT
+  ) %>%
+  mutate(
+    VARIANT_LEVEL_FILTER_STR_COMB = paste(
+      FILTER,
+      HARD_FILTER_AF,
+      HARD_FILTER_VAF,
+      HOMOPOLYMER_INDEL_FILTER,
+      SOMATICISM_FILTER,
+      sep = ";"
+    )
+  ) %>%
+  mutate(
+    VARIANT_LEVEL_FILTER_STR_COMB = paste(VARIANT_LEVEL_FILTER_STR_COMB, collapse = ";")
+  ) %>%
+  ungroup() %>%
+  mutate(
+    VARIANT_LEVEL_FILTER_LIST = str_split(VARIANT_LEVEL_FILTER_STR_COMB, ";")
+  ) %>%
+  mutate(
+    VARIANT_LEVEL_FILTER_LIST = map(VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
+  ) %>%
+  mutate(
+    # Remove 'PASS' if there are other filters
+    VARIANT_LEVEL_FILTER_LIST = map(
+      VARIANT_LEVEL_FILTER_LIST, ~ if_else(
+        length(.x) > 1 & "PASS" %in% .x,
+        list(.x[.x != "PASS"]),
+        list(.x)
+      )[[1]]
+    )
+  ) %>%
+  mutate(
+    VARIANT_LEVEL_FILTER = map_chr(VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
+  ) %>%
+  select(
+    -VARIANT_LEVEL_FILTER_STR_COMB,
+    -VARIANT_LEVEL_FILTER_LIST
+  ) %>%
+  mutate(
+    CHIP_MUTATION_FILTER_STR_COMB = paste(
+      CHIP_MUTATION_FILTER,
+      PUTATIVE_CHIP_FILTER,
+      sep = ";"
+    )
+  ) %>%
+  mutate(
+    CHIP_MUTATION_FILTER_LIST = str_split(CHIP_MUTATION_FILTER_STR_COMB, ";")
+  ) %>%
+  mutate(
+    CHIP_MUTATION_FILTER_LIST = map(CHIP_MUTATION_FILTER_LIST, ~ unique(.x[.x != ""]))
+  ) %>%
+  mutate(
+    CHIP_FILTER = map_chr(
+      CHIP_MUTATION_FILTER_LIST, ~ case_when(
+        length(.x) == 0 ~ "",
+        length(.x) == 1 ~ .x[1],
+        .default = paste(sort(.x), collapse = ";")
+      )
+    )
+  ) %>%
+  select(
+    -CHIP_MUTATION_FILTER_STR_COMB,
+    -CHIP_MUTATION_FILTER_LIST
+  ) %>%
+  mutate(
+    CHIP_INFO = case_when(
+      CHIP_MUTATION_FILTER == "" ~ paste(Transcript, AAChange, GeneDetail, mutation_class, mutation_definition, sep = ";"),
+      .default = ""
+    )
+  ) %>%
+  mutate(
+    COMBINED_FILTER = case_when(
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER == "" ~ "PASS",
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER != "" ~ CHIP_FILTER,
+      VARIANT_LEVEL_FILTER != "PASS" & CHIP_FILTER == "" ~ VARIANT_LEVEL_FILTER,
+      .default = paste(VARIANT_LEVEL_FILTER, CHIP_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+    )
+  ) %>%
+  mutate(
+    COMBINED_VARIANT_LEVEL_FILTER = ""  # TODO
+  )
 
 
-# --- Finalise combined filter ---
+# --- Add back in variants that failed to pass filters ---
 
 
 # --- Construct output VCF for annotation ---
