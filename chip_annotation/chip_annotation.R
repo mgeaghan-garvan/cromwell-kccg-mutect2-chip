@@ -1104,7 +1104,23 @@ df_final <- df %>%
   distinct()
 
 # --- Construct output VCF for annotation ---
+df_final_vcf <- df_final %>%
+  select(
+    CHROM,
+    POS,
+    ID,
+    REF,
+    ALT,
+    QUAL,
+    FILTER,
+    INFO,
+    FORMAT,
+    SAMPLE
+  ) %>%
+  distinct()
 
+# Load failed variants VCF if it exists
+# TODO
 
 # --- Write output VCF ---
 
