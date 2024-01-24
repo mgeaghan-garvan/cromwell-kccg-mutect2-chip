@@ -412,20 +412,23 @@ annovar_exonic_function <- read_tsv(args$annovar_exonic_function, col_names = FA
 # --- Load somaticism transcripts ---
 somaticism_transcripts <- read_lines(args$somaticism_transcripts)
 
+# --- Create main data frame ---
+df <- annovar
+
 # --- Calculate gnomAD allele frequencies ---
 gnomad_genome_af_col <- paste0("gnomAD_genome_", args$gnomad_population)
 gnomad_exome_af_col <- paste0("gnomAD_exome_", args$gnomad_population)
 missing_vals <- c(".", "", NA)
 
 # Create temporary gnomAD_AF_g and gnomAD_AF_e columns
-annovar <- annovar %>%
+df <- df %>%
   mutate(
     gnomAD_AF_g = case_when(
-      !args$gnomad_exome ~ annovar[[gnomad_genome_af_col]],
+      !args$gnomad_exome ~ df[[gnomad_genome_af_col]],
       args$gnomad_exome ~ NA
     ),
     gnomAD_AF_e = case_when(
-      !args$gnomad_genome ~ annovar[[gnomad_exome_af_col]],
+      !args$gnomad_genome ~ df[[gnomad_exome_af_col]],
       args$gnomad_genome ~ NA
     )
   ) %>%
@@ -472,7 +475,7 @@ annovar <- annovar %>%
 
 # --- Apply next round of hard filters ---
 # Filter on gnomAD frequency
-annovar <- annovar %>%
+df <- df %>%
   mutate(
     HARD_FILTER_AF = case_when(
       is.na(gnomAD_AF) ~ "gnomad_af_na",
@@ -488,7 +491,7 @@ annovar <- annovar %>%
 # The AD field contains comma-separated values, one for each allele
 # Similarly, the AF field contains comma-separated values, one for each alternate allele
 # The DP field is a single value
-annovar <- annovar %>%
+df <- df %>%
   mutate(
     FORMAT_split = str_split(FORMAT, ":"),
     SAMPLE_split = str_split(SAMPLE, ":")
@@ -552,11 +555,11 @@ annovar <- annovar %>%
 # --- Apply homopolymer INDEL filter ---
 
 # Add sequence context columns to ANNOVAR table
-annovar <- annovar %>%
+df <- df %>%
   left_join(seq_contexts, by = c("CHROM", "POS", "REF", "ALT"))
 
 # Ensure that the sequence context is centred on the variant and includes at least 10 bases on either side
-n_additional_seq_bases <- nchar(annovar$SEQ) - nchar(annovar$REF)
+n_additional_seq_bases <- nchar(df$SEQ) - nchar(df$REF)
 uniq_n_additional_seq_bases <- unique(n_additional_seq_bases)
 if (length(uniq_n_additional_seq_bases) > 1) {
   stop("Sequence context length is not consistent across variants")
@@ -566,16 +569,16 @@ if ((uniq_n_additional_seq_bases %% 2) != 0) {
 }
 # Ensure that the REF allele sequence is centred in the sequence context
 seq_context_ref_start <- (uniq_n_additional_seq_bases / 2) + 1
-seq_context_ref_end <- seq_context_ref_start + nchar(annovar$REF) - 1
-seq_context_ref_seq <- substr(annovar$SEQ, seq_context_ref_start, seq_context_ref_end)
-if (any(seq_context_ref_seq != annovar$REF)) {
+seq_context_ref_end <- seq_context_ref_start + nchar(df$REF) - 1
+seq_context_ref_seq <- substr(df$SEQ, seq_context_ref_start, seq_context_ref_end)
+if (any(seq_context_ref_seq != df$REF)) {
   stop("REF allele sequence is not centred in the sequence context")
 }
 # Rename SEQ column to SEQ_REF
-annovar <- annovar %>%
+df <- df %>%
   rename(SEQ_REF = SEQ)
 # Add SEQ_ALT column
-annovar <- annovar %>%
+df <- df %>%
   mutate(
     SEQ_ALT = paste(
       substr(SEQ_REF, 1, seq_context_ref_start - 1),
@@ -585,7 +588,7 @@ annovar <- annovar %>%
     )
   )
 # Add HOMOPOLYMER_FILTER column
-annovar <- annovar %>%
+df <- df %>%
   rowwise() %>%
   mutate(
     HOMOPOLYMER_FILTER = if_else(
@@ -608,7 +611,7 @@ annovar <- annovar %>%
 
 # --- Filter annovar annotations ---
 if (args$ensembl) {
-  annovar <- annovar %>% mutate(
+  df <- df %>% mutate(
     GeneDetail = GeneDetail.ensGene,
     AAChange = AAChange.ensGene,
     Func = Func.ensGene,
@@ -616,7 +619,7 @@ if (args$ensembl) {
   )
   tx_rgx <- "(ENST\\d+(\\.\\d+)?)(:.*)?$"
 } else {
-  annovar <- annovar %>% mutate(
+  df <- df %>% mutate(
     GeneDetail = GeneDetail.refGene,
     AAChange = AAChange.refGene,
     Func = Func.refGene,
@@ -626,12 +629,12 @@ if (args$ensembl) {
 }
 
 # Add a variant ID column
-annovar <- annovar %>%
+df <- df %>%
   mutate(VAR_ID = paste(Chr, Start, End, Ref, Alt, sep = ":"))
 
-annovar_unfiltered <- annovar
+df_unfiltered <- df
 
-annovar <- annovar %>%
+df <- df %>%
   # Split Func column into multiple rows on semicolons
   separate_longer_delim(Func, ";") %>%
   # Filter Func for exonic and splicing variants only
@@ -678,23 +681,23 @@ annovar <- annovar %>%
   # Split ExonicFunc column into multiple rows on semicolons
   separate_longer_delim(ExonicFunc, ";")
 
-annovar <- annovar %>%
+df <- df %>%
   # Join exonic variants with annovar_exonic_function table, dropping mismatches and duplicates
   filter(ExonicFunc %in% annovar_exonic_function$ExonicFunc) %>%
   left_join(annovar_exonic_function) %>%
   # Add non-exonic variants back in
-  bind_rows(annovar %>% filter(!(ExonicFunc %in% annovar_exonic_function$ExonicFunc))) %>%
+  bind_rows(df %>% filter(!(ExonicFunc %in% annovar_exonic_function$ExonicFunc))) %>%
   distinct()
 
 # Annotate variants that were filtered out
-annovar_filtered <- annovar_unfiltered %>%
-  anti_join(annovar, by = "VAR_ID") %>%
+df_filtered <- df_unfiltered %>%
+  anti_join(df, by = "VAR_ID") %>%
   mutate(
     EXONIC_SPLICING_FILTER = "not_exonic_or_splicing_variant"
   )
 
 # --- Apply somaticism filter ---
-annovar <- annovar %>%
+df <- df %>%
   mutate(ad_dp_binom_test = map2_dbl(AD_ALT, DP, ~ binom.test(.x, .y, 0.5)$p.value)) %>%
   mutate(
     SOMATICISM_FILTER = case_when(
@@ -704,42 +707,42 @@ annovar <- annovar %>%
   )
 
 # --- Filter for CHIP transcripts ---
-annovar_chip_tx_unfiltered <- annovar
+df_chip_tx_unfiltered <- df
 
 if (args$ensembl) {
-  annovar <- annovar %>%
+  df <- df %>%
     filter(
       Transcript_no_version %in% chip_definitions$ensembl_accession
     )
 } else {
-  annovar <- annovar %>%
+  df <- df %>%
     filter(
       Transcript_no_version %in% chip_definitions$refseq_accession
     )
 }
 
 # Annotate variants that were filtered out
-annovar_chip_tx_filtered <- annovar_chip_tx_unfiltered %>%
-  anti_join(annovar, by = "VAR_ID") %>%
+df_chip_tx_filtered <- df_chip_tx_unfiltered %>%
+  anti_join(df, by = "VAR_ID") %>%
   mutate(
     CHIP_TRANSCRIPT_FILTER = "exonic_or_splicing_variant_not_in_chip_transcript"
   )
 
 # Join ANNOVAR table with CHIP definitions
 if (args$ensembl) {
-  annovar <- annovar %>%
+  df <- df %>%
     left_join(chip_definitions, by = c("Transcript_no_version" = "ensembl_accession"), relationship = "many-to-many")
 } else {
-  annovar <- annovar %>%
+  df <- df %>%
     left_join(chip_definitions, by = c("Transcript_no_version" = "refseq_accession"), relationship = "many-to-many")
 }
 
 # Drop potential duplicates
-annovar <- annovar %>%
+df <- df %>%
   distinct()
 
 # --- Match mutations to CHIP definitions ---
-annovar <- annovar %>%
+df <- df %>%
   mutate(
     mut_in_c_term = case_when(
       (
@@ -798,7 +801,7 @@ annovar <- annovar %>%
   select(-gene_detail_info, -aa_change_info, -chip_info, -variant_class, -chip_mutation_match_filter, -mut_in_c_term)
 
 # --- Apply a putative CHIP filter ---
-annovar <- annovar %>%
+df <- df %>%
   mutate(
     PUTATIVE_CHIP_FILTER = case_when(
       !is.na(putative) &
@@ -816,7 +819,8 @@ annovar <- annovar %>%
   )
 
 # --- Finalise combined filter and CHIP info ---
-annovar <- annovar %>%
+df <- df %>%
+  # Combine variant-level filters into a single semicolon-separated string
   group_by(
     CHROM,
     POS,
@@ -860,6 +864,7 @@ annovar <- annovar %>%
     -VARIANT_LEVEL_FILTER_STR_COMB,
     -VARIANT_LEVEL_FILTER_LIST
   ) %>%
+  # Combine CHIP filters into a single semicolon-separated string
   mutate(
     CHIP_MUTATION_FILTER_STR_COMB = paste(
       CHIP_MUTATION_FILTER,
@@ -886,27 +891,217 @@ annovar <- annovar %>%
     -CHIP_MUTATION_FILTER_STR_COMB,
     -CHIP_MUTATION_FILTER_LIST
   ) %>%
+  # Create CHIP_INFO column
   mutate(
     CHIP_INFO = case_when(
-      CHIP_MUTATION_FILTER == "" ~ paste(Transcript, AAChange, GeneDetail, mutation_class, mutation_definition, sep = ";"),
+      CHIP_MUTATION_FILTER == "" ~ paste0(
+        "CHIP_Transcript=", Transcript, ";",
+        "AAChange=", AAChange, ";",
+        "GeneDetail=", GeneDetail, ";",
+        "CHIP_Mutation_Class=", mutation_class, ";",
+        "CHIP_Mutation_Definition=", mutation_definition, ";",
+        "CHIP_Publication_Source=", gsub(";", ",", publication_source_concat, fixed = TRUE)
+      ),
       .default = ""
     )
   ) %>%
+  # Consolidate CHIP FILTER strings into one per variant
+  group_by(
+    CHROM,
+    POS,
+    REF,
+    ALT
+  ) %>%
+  mutate(
+    CHIP_VARIANT_LEVEL_FILTER = case_when(
+      any(CHIP_FILTER == "") ~ "",
+      .default = paste(CHIP_FILTER, collapse = ";")
+    )
+  ) %>%
+  mutate(
+    CHIP_VARIANT_LEVEL_FILTER_LIST = str_split(CHIP_VARIANT_LEVEL_FILTER, ";")
+  ) %>%
+  mutate(
+    CHIP_VARIANT_LEVEL_FILTER_LIST = map(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
+  ) %>%
+  mutate(
+    CHIP_VARIANT_LEVEL_FILTER = map_chr(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
+  ) %>%
+  select(
+    -CHIP_VARIANT_LEVEL_FILTER_LIST
+  ) %>%
+  # Consolidate CHIP INFO strings into one per variant
+  mutate(
+    CHIP_VARIANT_LEVEL_INFO = unique(CHIP_INFO[CHIP_INFO != ""]) %>% paste(collapse = ";")
+  ) %>%
+  ungroup() %>%
+  # Create a combined filter column
   mutate(
     COMBINED_FILTER = case_when(
       VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER == "" ~ "PASS",
       VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER != "" ~ CHIP_FILTER,
       VARIANT_LEVEL_FILTER != "PASS" & CHIP_FILTER == "" ~ VARIANT_LEVEL_FILTER,
       .default = paste(VARIANT_LEVEL_FILTER, CHIP_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+    ),
+    COMBINED_VARIANT_LEVEL_FILTER = case_when(
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ "PASS",
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER != "" ~ CHIP_VARIANT_LEVEL_FILTER,
+      VARIANT_LEVEL_FILTER != "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ VARIANT_LEVEL_FILTER,
+      .default = paste(VARIANT_LEVEL_FILTER, CHIP_VARIANT_LEVEL_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+    )
+  )
+
+# --- Add back in variants that failed to pass filters ---
+df_filtered <- df_filtered %>%
+  bind_rows(df_chip_tx_filtered) %>%
+  # Handle NAs from bind
+  mutate(
+    SOMATICISM_FILTER = case_when(
+      !is.na(SOMATICISM_FILTER) ~ SOMATICISM_FILTER,
+      .default = ""
+    ),
+    EXONIC_SPLICING_FILTER = case_when(
+      !is.na(EXONIC_SPLICING_FILTER) ~ EXONIC_SPLICING_FILTER,
+      .default = ""
+    ),
+    CHIP_TRANSCRIPT_FILTER = case_when(
+      !is.na(CHIP_TRANSCRIPT_FILTER) ~ CHIP_TRANSCRIPT_FILTER,
+      .default = ""
+    )
+  ) %>%
+  # Combine variant-level filters into a single semicolon-separated string
+  group_by(
+    CHROM,
+    POS,
+    REF,
+    ALT
+  ) %>%
+  mutate(
+    COMBINED_VARIANT_LEVEL_FILTER_STR_COMB = paste(
+      FILTER,
+      HARD_FILTER_AF,
+      HARD_FILTER_VAF,
+      HOMOPOLYMER_INDEL_FILTER,
+      SOMATICISM_FILTER,
+      EXONIC_SPLICING_FILTER,
+      CHIP_TRANSCRIPT_FILTER,
+      sep = ";"
     )
   ) %>%
   mutate(
-    COMBINED_VARIANT_LEVEL_FILTER = ""  # TODO
+    COMBINED_VARIANT_LEVEL_FILTER_STR_COMB = paste(COMBINED_VARIANT_LEVEL_FILTER_STR_COMB, collapse = ";")
+  ) %>%
+  ungroup() %>%
+  mutate(
+    COMBINED_VARIANT_LEVEL_FILTER_LIST = str_split(COMBINED_VARIANT_LEVEL_FILTER_STR_COMB, ";")
+  ) %>%
+  mutate(
+    COMBINED_VARIANT_LEVEL_FILTER_LIST = map(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
+  ) %>%
+  mutate(
+    # Remove 'PASS' (none of the variants have passed)
+    COMBINED_VARIANT_LEVEL_FILTER_LIST = map(
+      COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ if_else(
+        length(.x) > 1,
+        list(.x[.x != "PASS"]),
+        list(.x)
+      )[[1]]
+    )
+  ) %>%
+  mutate(
+    COMBINED_VARIANT_LEVEL_FILTER = map_chr(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
+  ) %>%
+  select(
+    -COMBINED_VARIANT_LEVEL_FILTER_STR_COMB,
+    -COMBINED_VARIANT_LEVEL_FILTER_LIST
   )
 
+common_cols <- intersect(
+  colnames(df),
+  colnames(df_filtered)
+)
 
-# --- Add back in variants that failed to pass filters ---
-
+df_final <- df %>%
+  bind_rows(df_filtered[common_cols]) %>%
+  select(
+    CHROM,
+    POS,
+    ID,
+    REF,
+    ALT,
+    QUAL,
+    COMBINED_VARIANT_LEVEL_FILTER,
+    CHIP_VARIANT_LEVEL_INFO,
+    FORMAT,
+    SAMPLE,
+    Transcript,
+    AAChange,
+    GeneDetail,
+    Func,
+    ExonicFunc,
+    gnomAD_AF,
+    VAF,
+    AD_REF,
+    AD_ALT,
+    F1R2_REF,
+    F1R2_ALT,
+    F2R1_REF,
+    F2R1_ALT,
+    SEQ_REF,
+    SEQ_ALT,
+    FILTER,
+    HARD_FILTER_AF,
+    HARD_FILTER_VAF,
+    HOMOPOLYMER_FILTER,
+    HOMOPOLYMER_INDEL_FILTER,
+    SOMATICISM_FILTER,
+    CHIP_MUTATION_FILTER,
+    PUTATIVE_CHIP_FILTER,
+    CHIP_INFO
+  ) %>%
+  rename(
+    ORIGINAL_FILTER = FILTER,
+    FILTER = COMBINED_VARIANT_LEVEL_FILTER,
+    INFO = CHIP_VARIANT_LEVEL_INFO
+  ) %>%
+  distinct() %>%
+  # The COMBINED_VARIANT_LEVEL_FILTER and CHIP_VARIANT_LEVEL_INFO columns
+  # *should* be the same for all rows with the same CHROM, POS, REF, and ALT
+  # but in case they're not, we'll do one final merge
+  group_by(
+    CHROM,
+    POS,
+    REF,
+    ALT
+  ) %>%
+  mutate(
+    FILTER = paste(FILTER, collapse = ";"),
+    INFO = paste(INFO, collapse = ";")
+  ) %>%
+  ungroup() %>%
+  mutate(
+    FILTER = str_split(FILTER, ";"),
+    INFO = str_split(INFO, ";")
+  ) %>%
+  mutate(
+    FILTER = map(FILTER, ~ unique(.x[.x != ""])),
+    INFO = map(INFO, ~ unique(.x[.x != ""]))
+  ) %>%
+  mutate(
+    # Remove 'PASS' if there are other filters
+    FILTER = map(
+      FILTER, ~ if_else(
+        length(.x) > 1 & "PASS" %in% .x,
+        list(.x[.x != "PASS"]),
+        list(.x)
+      )[[1]]
+    )
+  ) %>%
+  mutate(
+    FILTER = map_chr(FILTER, ~ paste(.x, collapse = ";")),
+    INFO = map_chr(INFO, ~ paste(.x, collapse = ";"))
+  ) %>%
+  distinct()
 
 # --- Construct output VCF for annotation ---
 
