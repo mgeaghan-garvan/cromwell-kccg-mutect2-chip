@@ -1,5 +1,5 @@
 """
-Submit the full pipeline to cromwell via hail batch
+Submit the PoN generation pipeline to cromwell via hail batch
 """
 import hailtop.batch as hb
 from hailtop.batch import Resource
@@ -77,7 +77,7 @@ DRIVER_IMAGE = _config['workflow']['driver_image']
 
 b = get_batch()
 
-input_prefix = 'Mutect2CHIP'
+input_prefix = 'Mutect2_Panel'
 
 input_dict = {
     f'{input_prefix}.{k}': v
@@ -86,10 +86,10 @@ input_dict = {
 
 submit_j, workflow_id_file = submit_cromwell_workflow(
     b=b,
-    job_prefix='mutect2-chip-full',
+    job_prefix='mutect2-chip-pon',
     dataset=DATASET,
     access_level=ACCESS_LEVEL,
-    workflow='full.wdl',
+    workflow='pon.wdl',
     output_prefix=OUTPUT_PREFIX,
     cwd='workflow/',
     input_dict=input_dict,

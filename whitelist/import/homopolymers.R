@@ -100,7 +100,7 @@ apply_homopolymer_indel_filter <- function(df, fasta_file) {
       a <- strsplit(as.character(x[[4]]), ",")[[1]]
       l <- e - s + 1  # l <- nchar(r)
       rs <- as.character(x[[5]])
-      if (length(a) == 0 || is.null(a) || is.na(a) || is.na(rs)) {
+      if (length(a) == 0 || is.null(a) || any(is.na(a)) || is.na(rs)) {
         return(data.frame(VAR_ALT_SEQ_CONTEXT = "", HOMOPOLYMER_FILTER = "FAIL"))  # This shouldn't ever occur, but if it does we have an invalid variant so it should FAIL
       }
       as_list = list()
