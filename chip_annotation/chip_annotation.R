@@ -8,23 +8,16 @@ options(tidyverse.quiet = TRUE)
 
 library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(optparse, quietly = TRUE, warn.conflicts = FALSE)
-# library(vcfR, quietly = TRUE, warn.conflicts = FALSE)
 
 source("match_mutation.R")
 
 # Parse command line arguments
 option_list <- list(
   make_option(
-    c("-i", "--input"),
+    c("-v", "--vcf_header"),
     type = "character",
     default = NULL,
-    help = "Path to input VCF containing variants to compare against known CHIP mutations"
-  ),
-  make_option(
-    c("-I", "--failed_variants"),
-    type = "character",
-    default = NULL,
-    help = "Path to an optional VCF containing variants that failed to pass filters; FILTER and INFO fields will be copied to the output VCF"
+    help = "Path to the header of the VCF being annotated"
   ),
   make_option(
     c("-s", "--sample"),
@@ -105,16 +98,16 @@ option_list <- list(
     help = "Path to file containing somaticism transcript IDs"
   ),
   make_option(
-    c("-o", "--output"),
+    c("-o", "--output_prefix"),
     type = "character",
     default = NULL,
-    help = "Path to output file"
+    help = "Prefix for output files"
   )
 )
 
 check_args <- function(args) {
-  if (is.null(args$input) || !file.exists(args$input)) {
-    stop("No input file specified")
+  if (is.null(args$vcf_header) || !file.exists(args$vcf_header)) {
+    stop("No VCF header file specified")
   }
   if (is.null(args$sample)) {
     stop("No sample ID specified")
@@ -155,8 +148,7 @@ if (DEBUG) {
   args <- parse_args(
     OptionParser(option_list = option_list),
     c(
-      "--input", "test_data/mutect2_out/test_sample.vcf.gz",
-      "--failed_variants", "test_data/filter/test_sample.non_chip_genes.so.chip_filter.vcf",
+      "--vcf_header", "test_data/mutect2_out/test_sample.vcf.header",
       "--sample", "test_sample",
       "--chip_definitions", "test_data/chip_mutations/chip_mutations.chr.csv",
       "--seq", "test_data/filter/test_sample.chip_genes.norm.seq.tsv",
@@ -164,7 +156,7 @@ if (DEBUG) {
       "--annovar_function", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.refGene.variant_function",
       "--annovar_exonic_function", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.refGene.exonic_variant_function",
       "--somaticism_transcripts", "chip_mutations/somaticism_filter_transcripts.txt",
-      "--output", "test_data/test_sample.chip_annotations.vcf"
+      "--output", "test_data/test_sample.chip_annotations"
     )
   )
 } else {
@@ -1119,17 +1111,86 @@ df_final_vcf <- df_final %>%
   ) %>%
   distinct()
 
-# Load failed variants VCF if it exists
-# TODO
-
 # --- Write output VCF ---
+# Read in header from input VCF
+vcf_header <- read_lines(args$vcf_header) %>%
+  keep(~ str_detect(.x, "^#"))
 
+# Define new FILTER fields
+filter_fields <- list(
+  gnomad_af_na = "Variant is not present in gnomAD, and NAs were not allowed to be interpreted as 0",
+  chip_gnomad_af_filter_fail = "Variant has a gnomAD AF >= 0.01",
+  chip_vaf_filter_fail = "Variant has a VAF < 0.02",
+  homopolymer_variant = "Variant is within a homopolymer region",
+  chip_homopolymer_indel_filter_fail = "Variant is an INDEL within a homopolymer region and has AD_ALT < 10 or VAF < 0.1",
+  not_exonic_or_splicing_variant = "Variant is not exonic or splicing",
+  chip_somaticism_filter_fail = "Variant is within a transcript specified in the somaticism_transcripts file and did not pass a binomial test (n = AD_ALT, k = DP, p = 0.5, alpha = 0.001)",
+  exonic_or_splicing_variant_not_in_chip_transcript = "Variant is exonic or splicing but is not within a CHIP transcript",
+  mutation_in_c_terminal = "Variant is within a CHIP gene but is in the C-terminal domain of the protein",
+  chip_mutation_match_filter_fail = "Variant does not match a CHIP mutation definition",
+  chip_putative_filter_fail = "Variant is putative and has AD_ALT < 5, VAF > 0.2, F1R2_REF < 2, F1R2_ALT < 2, F2R1_REF < 2, or F2R1_ALT < 2"
+)
+
+create_filter_header <- function(filter_name, filter_description) {
+  paste0(
+    "##FILTER=<ID=", filter_name, ",Description=\"", filter_description, "\">"
+  )
+}
+
+filter_fields_header <- map_chr(
+  names(filter_fields),
+  ~ create_filter_header(.x, filter_fields[[.x]])
+)
+
+info_fields <- list(
+  CHIP_Transcript = "Transcript ID of the variant",
+  AAChange = "Amino acid change of the variant",
+  GeneDetail = "Gene detail of the variant",
+  CHIP_Mutation_Class = "Mutation class of the variant",
+  CHIP_Mutation_Definition = "Mutation definition of the variant",
+  CHIP_Publication_Source = "Publication source of the mutation definition"
+)
+
+create_info_header <- function(info_name, info_description) {
+  paste0(
+    "##INFO=<ID=", info_name, ",Number=.,Type=String,Description=\"", info_description, "\">"
+  )
+}
+
+info_fields_header = map_chr(
+  names(info_fields),
+  ~ create_info_header(.x, info_fields[[.x]])
+)
+
+# Insert new FILTER and INFO fields into header
+vcf_header_filter_end <- grep("^##FILTER", vcf_header) %>% max()
+vcf_header_info_end <- grep("^##INFO", vcf_header) %>% max()
+filter_first <- vcf_header_filter_end < vcf_header_info_end
+vcf_header_length <- length(vcf_header)
+
+if (filter_first) {
+  vcf_header_1 <- vcf_header[1:vcf_header_filter_end]
+  vcf_header_2 <- vcf_header[(vcf_header_filter_end + 1):vcf_header_info_end]
+  new_vcf_header <- c(vcf_header_1, filter_fields_header, vcf_header_2, info_fields_header)
+  if (vcf_header_length > vcf_header_info_end) {
+    new_vcf_header <- c(new_vcf_header, vcf_header[(vcf_header_info_end + 1):vcf_header_length])
+  }
+} else {
+  vcf_header_1 <- vcf_header[1:vcf_header_info_end]
+  vcf_header_2 <- vcf_header[(vcf_header_info_end + 1):vcf_header_filter_end]
+  new_vcf_header <- c(vcf_header_1, info_fields_header, vcf_header_2, filter_fields_header)
+  if (vcf_header_length > vcf_header_filter_end) {
+    new_vcf_header <- c(new_vcf_header, vcf_header[(vcf_header_filter_end + 1):vcf_header_length])
+  }
+}
+
+# Write header to output VCF
+output_vcf <- paste0(args$output_prefix, ".vcf")
+write_lines(new_vcf_header, output_vcf)
+
+# Write variants to output VCF
+write_tsv(df_final_vcf, output_vcf, append = TRUE, col_names = FALSE)
 
 # --- Write output CSVs ---
-
-
-# --- Load VCFs ---
-# input_vcf <- read.vcfR(args$input)
-# if (!is.null(args$failed_variants) && file.exists(args$failed_variants)) {
-#   failed_variants_vcf <- read.vcfR(args$failed_variants)
-# }
+output_csv <- paste0(args$output_prefix, ".csv")
+write_csv(df_final, output_csv)
