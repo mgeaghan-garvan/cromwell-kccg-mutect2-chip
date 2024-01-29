@@ -892,7 +892,7 @@ df <- df %>%
         "GeneDetail=", GeneDetail, ";",
         "CHIP_Mutation_Class=", mutation_class, ";",
         "CHIP_Mutation_Definition=", mutation_definition, ";",
-        "CHIP_Publication_Source=", gsub(";", ",", publication_source_concat, fixed = TRUE)
+        "CHIP_Publication_Source=", gsub(";", "|", publication_source_concat, fixed = TRUE)
       ),
       .default = ""
     )
@@ -1081,16 +1081,18 @@ df_final <- df %>%
   ) %>%
   mutate(
     FILTER = paste(FILTER, collapse = ";"),
-    INFO = paste(INFO, collapse = ";")
+    INFO = unique(INFO[!(INFO %in% c("", "."))]) %>% paste(collapse = ";")
   ) %>%
   ungroup() %>%
   mutate(
     FILTER = str_split(FILTER, ";"),
-    INFO = str_split(INFO, ";")
+    INFO = case_when(
+      INFO == "" ~ ".",
+      .default = INFO
+    )
   ) %>%
   mutate(
     FILTER = map(FILTER, ~ unique(.x[.x != ""])),
-    INFO = map(INFO, ~ unique(.x[.x != ""]))
   ) %>%
   mutate(
     # Remove 'PASS' if there are other filters
@@ -1104,9 +1106,80 @@ df_final <- df %>%
   ) %>%
   mutate(
     FILTER = map_chr(FILTER, ~ paste(.x, collapse = ";")),
-    INFO = map_chr(INFO, ~ paste(.x, collapse = ";"))
   ) %>%
-  distinct()
+  distinct() %>%
+  # TODO: Merge INFO fields
+  # For example, if a variant has multiple CHIP transcripts, we should merge the CHIP_Transcript field:
+  # CHIP_Transcript=NM_0000001,NM_0000002
+  mutate(
+    INFO_split = str_split(INFO, ";")
+  ) %>%
+  mutate(
+    INFO_CHIP_Transcript = map_chr(
+      INFO_split, ~ (
+        grep("^CHIP_Transcript=", .x, value = TRUE) %>%
+          gsub("^CHIP_Transcript=", "", .) %>%
+          paste(collapse = ",")
+      )
+    ),
+    INFO_AAChange = map_chr(
+      INFO_split, ~ (
+        grep("^AAChange=", .x, value = TRUE) %>%
+          gsub("^AAChange=", "", .) %>%
+          paste(collapse = ",")
+      )
+    ),
+    INFO_GeneDetail = map_chr(
+      INFO_split, ~ (
+        grep("^GeneDetail=", .x, value = TRUE) %>%
+          gsub("^GeneDetail=", "", .) %>%
+          paste(collapse = ",")
+      )
+    ),
+    INFO_CHIP_Mutation_Class = map_chr(
+      INFO_split, ~ (
+        grep("^CHIP_Mutation_Class=", .x, value = TRUE) %>%
+          gsub("^CHIP_Mutation_Class=", "", .) %>%
+          paste(collapse = ",")
+      )
+    ),
+    INFO_CHIP_Mutation_Definition = map_chr(
+      INFO_split, ~ (
+        grep("^CHIP_Mutation_Definition=", .x, value = TRUE) %>%
+          gsub("^CHIP_Mutation_Definition=", "", .) %>%
+          paste(collapse = ",")
+      )
+    ),
+    INFO_CHIP_Publication_Source = map_chr(
+      INFO_split, ~ (
+        grep("^CHIP_Publication_Source=", .x, value = TRUE) %>%
+          gsub("^CHIP_Publication_Source=", "", .) %>%
+          paste(collapse = ",")
+      )
+    )
+  ) %>%
+  mutate(
+    INFO = case_when(
+      INFO_CHIP_Transcript == "" ~ ".",
+      .default = paste0(
+        "CHIP_Transcript=", INFO_CHIP_Transcript, ";",
+        "AAChange=", INFO_AAChange, ";",
+        "GeneDetail=", INFO_GeneDetail, ";",
+        "CHIP_Mutation_Class=", INFO_CHIP_Mutation_Class, ";",
+        "CHIP_Mutation_Definition=", INFO_CHIP_Mutation_Definition, ";",
+        "CHIP_Publication_Source=", INFO_CHIP_Publication_Source
+      )
+    )
+  ) %>%
+  select(
+    -INFO_split,
+    -INFO_CHIP_Transcript,
+    -INFO_AAChange,
+    -INFO_GeneDetail,
+    -INFO_CHIP_Mutation_Class,
+    -INFO_CHIP_Mutation_Definition,
+    -INFO_CHIP_Publication_Source
+  )
 
 # --- Construct output VCF for annotation ---
 df_final_vcf <- df_final %>%

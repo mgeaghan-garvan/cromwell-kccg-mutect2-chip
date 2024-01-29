@@ -139,7 +139,7 @@ bgzip -c ${TMP_VCF} > ${TMP_VCF}.gz
 tabix -f -s 1 -b 2 -e 2 ${TMP_VCF}.gz
 bcftools annotate \
     -a ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz \
-    -c "=FILTER,=INFO" \
+    -c "=FILTER,+INFO" \
     -o ${FINAL_VCF} \
     ${TMP_VCF}.gz
 bgzip -c ${FINAL_VCF} > ${FINAL_VCF}.gz
