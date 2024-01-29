@@ -1056,6 +1056,19 @@ df_final <- df %>%
     FILTER = COMBINED_VARIANT_LEVEL_FILTER,
     INFO = CHIP_VARIANT_LEVEL_INFO
   ) %>%
+  # Remove NAs from FILTER and INFO columns
+  mutate(
+    FILTER = if_else(
+      is.na(FILTER),
+      ".",
+      FILTER
+    ),
+    INFO = if_else(
+      is.na(INFO),
+      ".",
+      INFO
+    )
+  ) %>%
   distinct() %>%
   # The COMBINED_VARIANT_LEVEL_FILTER and CHIP_VARIANT_LEVEL_INFO columns
   # *should* be the same for all rows with the same CHROM, POS, REF, and ALT
@@ -1163,8 +1176,18 @@ info_fields_header = map_chr(
 )
 
 # Insert new FILTER and INFO fields into header
-vcf_header_filter_end <- grep("^##FILTER", vcf_header) %>% max()
-vcf_header_info_end <- grep("^##INFO", vcf_header) %>% max()
+vcf_header_filter_end <- grep("^##FILTER", vcf_header)
+if (length(vcf_header_filter_end) == 0) {
+  vcf_header_filter_end <- grep("^#CHROM", vcf_header) %>% max() - 1
+} else {
+  vcf_header_filter_end <- vcf_header_filter_end %>% max()
+}
+vcf_header_info_end <- grep("^##INFO", vcf_header)
+if (length(vcf_header_info_end) == 0) {
+  vcf_header_info_end <- grep("^#CHROM", vcf_header) %>% max() - 1
+} else {
+  vcf_header_info_end <- vcf_header_info_end %>% max()
+}
 filter_first <- vcf_header_filter_end < vcf_header_info_end
 vcf_header_length <- length(vcf_header)
 
@@ -1194,3 +1217,6 @@ write_tsv(df_final_vcf, output_vcf, append = TRUE, col_names = FALSE)
 # --- Write output CSVs ---
 output_csv <- paste0(args$output_prefix, ".csv")
 write_csv(df_final, output_csv)
+
+# --- Write RData ---
+save.image(paste0(args$output_prefix, ".RData"))
