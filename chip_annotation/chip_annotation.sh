@@ -99,7 +99,7 @@ bcftools filter \
 ANNOVAR_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.annot"
 table_annovar.pl \
     ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} \
-    ~/apps/annovar/humandb \
+    /software/annovar/humandb \
     -buildver hg38 \
     -out ${ANNOVAR_PREFIX} \
     -protocol refGene,ensGene,gnomad211_genome,gnomad211_exome \

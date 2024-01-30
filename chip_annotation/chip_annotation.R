@@ -1,15 +1,11 @@
 #!/usr/bin/env Rscript
 
-DEBUG <- TRUE
-
-setwd("chip_annotation")
-
 options(tidyverse.quiet = TRUE)
 
 library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(optparse, quietly = TRUE, warn.conflicts = FALSE)
 
-source("match_mutation.R")
+source("/R/scripts/match_mutation.R")
 
 # Parse command line arguments
 option_list <- list(
@@ -144,24 +140,7 @@ check_args <- function(args) {
   }
 }
 
-if (DEBUG) {
-  args <- parse_args(
-    OptionParser(option_list = option_list),
-    c(
-      "--vcf_header", "test_data/mutect2_out/test_sample.vcf.header",
-      "--sample", "test_sample",
-      "--chip_definitions", "test_data/chip_mutations/chip_mutations.chr.csv",
-      "--seq", "test_data/filter/test_sample.chip_genes.norm.seq.tsv",
-      "--annovar", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.hg38_multianno.txt",
-      "--annovar_function", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.refGene.variant_function",
-      "--annovar_exonic_function", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.refGene.exonic_variant_function",
-      "--somaticism_transcripts", "chip_mutations/somaticism_filter_transcripts.txt",
-      "--output_prefix", "test_data/test_sample.chip_annotations"
-    )
-  )
-} else {
-  args <- parse_args(OptionParser(option_list = option_list))
-}
+args <- parse_args(OptionParser(option_list = option_list))
 check_args(args)
 
 # ===== Function definitions =====
