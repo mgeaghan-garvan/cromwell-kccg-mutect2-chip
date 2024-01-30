@@ -5,12 +5,16 @@ CHIP_MUTATIONS_CSV=${2}
 REF_FASTA=${3}
 SOMATICISM_TRANSCRIPTS=${4}
 
+TEMP_DIR=$(mktemp -d)
+OUT_DIR=output
+mkdir -p output
+
 set -euo pipefail
 
 # === STEP 1: Create BED file of CHIP gene regions ===
 
-CHIP_MUTATIONS_TMP_BED="chip_mutations.genomic_regions.bed"
-CHIP_MUTATIONS_BED="chip_mutations.genomic_regions.merged.bed"
+CHIP_MUTATIONS_TMP_BED="${TEMP_DIR}/chip_mutations.genomic_regions.bed"
+CHIP_MUTATIONS_BED="${TEMP_DIR}/chip_mutations.genomic_regions.merged.bed"
 
 R --vanilla <<EOF
 library(tidyverse)
@@ -25,15 +29,15 @@ bedtools merge -i ${CHIP_MUTATIONS_TMP_BED} > ${CHIP_MUTATIONS_BED}
 # === STEP 2: Filter input VCF for CHIP gene regions ===
 # INPUT_VCF_BN="$(echo ${INPUT_VCF} | sed -E -e 's/\.vcf(\.gz)?$//g')"
 INPUT_VCF_BN="$(basename $(basename ${INPUT_VCF} .gz) .vcf)"
-CHIP_GENES_VCF="${INPUT_VCF_BN}.chip_genes.vcf"
-NON_CHIP_GENES_SITES_ONLY_VCF="${INPUT_VCF_BN}.non_chip_genes.so.vcf"
+CHIP_GENES_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.chip_genes.vcf"
+NON_CHIP_GENES_SITES_ONLY_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.non_chip_genes.so.vcf"
 bedtools intersect -a ${INPUT_VCF} -b ${CHIP_MUTATIONS_BED} -wa -header > ${CHIP_GENES_VCF}
 
 # === STEP 3: Create a non-CHIP gene regions VCF ===
 bedtools intersect -a ${INPUT_VCF} -b ${CHIP_MUTATIONS_BED} -wa -header -v | cut -f 1-8 > ${NON_CHIP_GENES_SITES_ONLY_VCF}
 
 # Update FILTER column and strip the INFO column
-NON_CHIP_GENES_SITES_ONLY_FILTER_VCF="${INPUT_VCF_BN}.non_chip_genes.so.filter.vcf"
+NON_CHIP_GENES_SITES_ONLY_FILTER_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.non_chip_genes.so.filter.vcf"
 awk -v FS="\t" -v OFS="\t" '
 	$0 ~ /^#/ { print $0 }
 	$0 !~ /^#/ {
@@ -55,24 +59,24 @@ NON_CHIP_GENES_SITES_ONLY_FILTER_VCF="${NON_CHIP_GENES_SITES_ONLY_FILTER_VCF}.gz
 
 # === STEP 4: Create normalized VCF with multi-allelic variants split ===
 CHIP_GENES_VCF_BN="$(basename ${CHIP_GENES_VCF} .vcf)"
-CHIP_GENES_NORM_VCF="${CHIP_GENES_VCF_BN}.norm.vcf"
+CHIP_GENES_NORM_VCF="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.vcf"
 bcftools norm -m -any -o ${CHIP_GENES_NORM_VCF} ${CHIP_GENES_VCF}
 
 # === STEP 5: Create BED file with 10bp flanking regions ===
 
-CHIP_GENES_NORM_BED="${INPUT_VCF_BN}.norm.bed"
+CHIP_GENES_NORM_BED="${TEMP_DIR}/${INPUT_VCF_BN}.norm.bed"
 awk -v OFS="\t" '$0 !~ /^#/ {print $1, $2 - 11, $2 + length($4) + 9, $1":"$2":"$4":"$5}' ${CHIP_GENES_NORM_VCF} > ${CHIP_GENES_NORM_BED}
 
 # === STEP 6: Create a sequence context TSV ===
-SEQ_TSV="${INPUT_VCF_BN}.seq.tsv"
+SEQ_TSV="${TEMP_DIR}/${INPUT_VCF_BN}.seq.tsv"
 bedtools getfasta -fi ${REF_FASTA} -bed ${CHIP_GENES_NORM_BED} -tab -nameOnly > ${SEQ_TSV}
 
 # === STEP 7: Strip INFO field from CHIP gene regions VCF ===
-CHIP_GENES_NORM_NO_INFO_VCF="${CHIP_GENES_VCF_BN}.norm.no_info.vcf"
+CHIP_GENES_NORM_NO_INFO_VCF="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.vcf"
 bcftools annotate -x INFO -o ${CHIP_GENES_NORM_NO_INFO_VCF} ${CHIP_GENES_NORM_VCF}
 
 # === STEP 8: Apply hard filters to CHIP genes VCF ===
-FILTERED_CHIP_GENES_NORM_NO_INFO_VCF="${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.vcf"
+FILTERED_CHIP_GENES_NORM_NO_INFO_VCF="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.vcf"
 cat ${CHIP_GENES_NORM_NO_INFO_VCF} | \
 bcftools filter \
     -s chip_ad_filter_fail \
@@ -92,7 +96,7 @@ bcftools filter \
     -e 'FORMAT/F2R1[0:*]<1' > ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF}
 
 # === STEP 9: Run Annovar on filtered VCF ===
-ANNOVAR_PREFIX="${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.annot"
+ANNOVAR_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.annot"
 table_annovar.pl \
     ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} \
     ~/apps/annovar/humandb \
@@ -110,7 +114,7 @@ FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER="${FILTERED_CHIP_GENES_NORM_NO_INFO_
 grep "^#" ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} > ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER}
 
 # === STEP 10: Run R script ===
-CHIP_ANNOTATION_PREFIX="${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.chip_annotations"
+CHIP_ANNOTATION_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.chip_annotations"
 Rscript --vanilla chip_annotation.R \
     --sample ${INPUT_VCF_BN} \
     --vcf_header ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER} \
@@ -120,7 +124,7 @@ Rscript --vanilla chip_annotation.R \
     --annovar_function ${ANNOVAR_PREFIX}.refGene.variant_function \
     --annovar_exonic_function ${ANNOVAR_PREFIX}.refGene.exonic_variant_function \
     --somaticism_transcripts ${SOMATICISM_TRANSCRIPTS} \
-    --output ${CHIP_ANNOTATION_PREFIX}
+    --output_prefix ${CHIP_ANNOTATION_PREFIX}
 
 # BGZIP and tabix the CHIP annotations
 bcftools sort ${CHIP_ANNOTATION_PREFIX}.vcf > ${CHIP_ANNOTATION_PREFIX}.sorted.vcf
@@ -128,8 +132,8 @@ bgzip -c ${CHIP_ANNOTATION_PREFIX}.sorted.vcf > ${CHIP_ANNOTATION_PREFIX}.sorted
 tabix -f -s 1 -b 2 -e 2 ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz
 
 # === STEP 11: Annotate the original VCF with both CHIP annotations and non-CHIP gene annotations ===
-TMP_VCF="${INPUT_VCF_BN}.chip.tmp.vcf"
-FINAL_VCF="${INPUT_VCF_BN}.chip.vcf"
+TMP_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.chip.tmp.vcf"
+FINAL_VCF="${OUT_DIR}/${INPUT_VCF_BN}.chip.vcf"
 bcftools annotate \
     -a ${NON_CHIP_GENES_SITES_ONLY_FILTER_VCF} \
     -c "=FILTER" \
@@ -145,6 +149,12 @@ bcftools annotate \
 bgzip -c ${FINAL_VCF} > ${FINAL_VCF}.gz
 tabix -f -s 1 -b 2 -e 2 ${FINAL_VCF}.gz
 
-rm ${TMP_VCF} ${TMP_VCF}.gz ${TMP_VCF}.gz.tbi
+rm ${TMP_VCF} ${TMP_VCF}.gz ${TMP_VCF}.gz.tbi ${FINAL_VCF}
+
+# === STEP 12: Move the CHIP CSV and RData to the output directory and rename them ===
+mv ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz ${OUT_DIR}/${INPUT_VCF_BN}.chip_annotations.vcf.gz
+mv ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz.tbi ${OUT_DIR}/${INPUT_VCF_BN}.chip_annotations.vcf.gz.tbi
+mv ${CHIP_ANNOTATION_PREFIX}.csv ${OUT_DIR}/${INPUT_VCF_BN}.chip.csv
+mv ${CHIP_ANNOTATION_PREFIX}.RData ${OUT_DIR}/${INPUT_VCF_BN}.chip.RData
 
 echo DONE

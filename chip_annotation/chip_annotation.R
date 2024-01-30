@@ -139,8 +139,8 @@ check_args <- function(args) {
   if (is.null(args$somaticism_transcripts) || !file.exists(args$somaticism_transcripts)) {
     stop("No somaticism transcripts file specified")
   }
-  if (is.null(args$output)) {
-    stop("No output file specified")
+  if (is.null(args$output_prefix)) {
+    stop("No output prefix specified")
   }
 }
 
@@ -156,7 +156,7 @@ if (DEBUG) {
       "--annovar_function", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.refGene.variant_function",
       "--annovar_exonic_function", "test_data/annovar/test_sample.chip_genes.norm.no_info.annot.refGene.exonic_variant_function",
       "--somaticism_transcripts", "chip_mutations/somaticism_filter_transcripts.txt",
-      "--output", "test_data/test_sample.chip_annotations"
+      "--output_prefix", "test_data/test_sample.chip_annotations"
     )
   )
 } else {
