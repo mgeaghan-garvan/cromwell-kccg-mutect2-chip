@@ -4,12 +4,26 @@ INPUT_VCF=${1}
 CHIP_MUTATIONS_CSV=${2}
 REF_FASTA=${3}
 SOMATICISM_TRANSCRIPTS=${4}
+ANNOVAR_DB=${5}
+CONTAINER=${6}
 
 TEMP_DIR=$(mktemp -d)
 OUT_DIR=output
 mkdir -p output
 
 set -euo pipefail
+
+# === STEP 0: Check if docker or singularity is installed ===
+if [ -x "$(command -v docker)" ]; then
+    echo "Docker is installed"
+    DOCKER_CMD="docker run --rm -v ${PWD}:${PWD} -w ${PWD} ${CONTAINER}"
+elif [ -x "$(command -v singularity)" ]; then
+    echo "Singularity is installed"
+    DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -W ${PWD} ${CONTAINER}"
+else
+    echo "Neither docker nor singularity is installed"
+    exit 1
+fi
 
 # === STEP 1: Create BED file of CHIP gene regions ===
 
@@ -99,7 +113,7 @@ bcftools filter \
 ANNOVAR_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.annot"
 table_annovar.pl \
     ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} \
-    /software/annovar/humandb \
+    ${ANNOVAR_DB} \
     -buildver hg38 \
     -out ${ANNOVAR_PREFIX} \
     -protocol refGene,ensGene,gnomad211_genome,gnomad211_exome \
@@ -113,9 +127,9 @@ table_annovar.pl \
 FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER="${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF}.header"
 grep "^#" ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} > ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER}
 
-# === STEP 10: Run R script ===
+# === STEP 10: Run CHIP annotation ===
 CHIP_ANNOTATION_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.chip_annotations"
-Rscript --vanilla chip_annotation.R \
+${DOCKER_CMD} annotate_chip \
     --sample ${INPUT_VCF_BN} \
     --vcf_header ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER} \
     --chip_definitions ${CHIP_MUTATIONS_CSV} \
