@@ -72,11 +72,11 @@ workflow Mutect2CHIP {
 
         # Annovar settings
         Boolean annovar = true
-        File? annovar_archive
+        Array[File]? annovar_db_files
         String annovar_assembly = "hg38"
         String annovar_protocols = "refGene"
         String annovar_operations = "g"
-        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261"  # :5.34.0
+        String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/annovar@sha256:842e9f88dd39999ee2129aeb992e8eced10ac2a33642d4b34d0f0c0254aa5035"  # :5.34.0
 
         # SpliceAI settings
         Boolean spliceai = false
@@ -86,14 +86,15 @@ workflow Mutect2CHIP {
         Boolean spliceai_mask = false
         String spliceai_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530"  # :v1.3.1
 
-        # Whitelist Filter settings
+        # CHIP Annotation settings
+        File chip_mutations_csv
+        File somaticism_filter_transcripts
         Boolean run_chip_detection = true
         Boolean treat_missing_as_rare = true
-        Boolean whitelist_genome = true
-        Boolean whitelist_use_ensembl_annotation = false
-        Boolean run_chip_on_unannotated_vcf = false
+        Boolean use_gnomad_genome = true
+        Boolean use_ensembl_annotation = false
         String gnomad_pop = "AF"
-        String whitelist_filter_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d"  # :latest
+        String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d"  # :latest
 
         # Samtools settings
         String samtools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
@@ -117,12 +118,11 @@ workflow Mutect2CHIP {
         Int vep_tmp_disk = 100
         Int annovar_mem_mb = 4000
         Int annovar_disk = 100
-        Int annovar_tmp_disk = 200
         Int spliceai_disk = 100
         Int spliceai_mem_mb = 16000
         Int spliceai_cpu = 4
-        Int whitelist_mem_mb = 10000
-        Int whitelist_disk = 300
+        Int chip_mem_mb = 10000
+        Int chip_disk = 300
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
@@ -210,19 +210,18 @@ workflow Mutect2CHIP {
     }
 
     File annovar_input_vcf = select_first([VEP_wf.out_vep_vcf, Mutect2_wf.filtered_vcf])
-    File annovar_archive_file = select_first([annovar_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
+    Array[File] annovar_db_file_list = select_first([annovar_db_files, ["ANNOVAR_ARCHIVE_NOT_SUPPLIED"]])
 
     # Optionally run Annovar
-    if (annovar && defined(annovar_archive)) {
+    if (annovar && defined(annovar_db_files)) {
         call Annovar.Annovar as Annovar_wf {
             input:
                 input_vcf = annovar_input_vcf,
                 annovar_mem_mb = annovar_mem_mb,
                 annovar_disk = annovar_disk,
-                annovar_tmp_disk = annovar_tmp_disk,
                 annovar_cpu = 1,
                 annovar_docker = annovar_docker,
-                annovar_archive = annovar_archive_file,
+                annovar_db_files = annovar_db_file_list,
                 ref_name = annovar_assembly,
                 annovar_protocols = annovar_protocols,
                 annovar_operations = annovar_operations,
@@ -254,10 +253,10 @@ workflow Mutect2CHIP {
         }
     }
 
-    File chip_detection_input_vcf = if (run_chip_on_unannotated_vcf) then Mutect2_wf.filtered_vcf else select_first([SpliceAI_wf.spliceai_output_vcf, splieai_input_vcf])
+    File chip_detection_input_vcf = select_first([SpliceAI_wf.spliceai_output_vcf, splieai_input_vcf])
     
     # Optionally run CHIP
-    if (run_chip_detection && defined(annovar_archive)) {
+    if (run_chip_detection && defined(annovar_db_files)) {
         String tumor_sample_name = Mutect2_wf.tumor_sample
         call CHIP.CHIP as CHIP_wf {
             input:
@@ -265,20 +264,21 @@ workflow Mutect2CHIP {
                 tumor_sample_name = tumor_sample_name,
                 annovar_mem_mb = annovar_mem_mb,
                 annovar_disk = annovar_disk,
-                annovar_tmp_disk = annovar_tmp_disk,
                 annovar_cpu = 1,
                 annovar_docker = annovar_docker,
-                annovar_archive = annovar_archive_file,
-                whitelist_mem_mb = whitelist_mem_mb,
-                whitelist_disk = whitelist_disk,
-                whitelist_cpu = 1,
-                treat_missing_as_rare = treat_missing_as_rare,
-                whitelist_genome = whitelist_genome,
-                whitelist_use_ensembl_annotation = whitelist_use_ensembl_annotation,
-                gnomad_pop = gnomad_pop,
-                whitelist_docker = whitelist_filter_docker,
-                ref_fasta = ref_fasta,
+                annovar_db_files = annovar_db_file_list,
                 ref_name = annovar_assembly,
+                chip_mem_mb = chip_mem_mb,
+                chip_disk = chip_disk,
+                chip_cpu = 1,
+                treat_missing_as_rare = treat_missing_as_rare,
+                use_gnomad_genome = use_gnomad_genome,
+                use_ensembl_annotation = use_ensembl_annotation,
+                gnomad_pop = gnomad_pop,
+                chip_docker = chip_docker,
+                ref_fasta = ref_fasta,
+                chip_mutations_csv = chip_mutations_csv,
+                somaticism_filter_transcripts = somaticism_filter_transcripts,
                 preemptible = preemptible,
                 max_retries = max_retries,
                 boot_disk_size = boot_disk_size
@@ -299,18 +299,11 @@ workflow Mutect2CHIP {
         File? out_annovar_vcf = Annovar_wf.out_annovar_vcf
         File? out_annovar_table = Annovar_wf.out_annovar_table
         File? out_spliceai_vcf = SpliceAI_wf.spliceai_output_vcf
-        File? out_whitelist_annovar_vcf = CHIP_wf.out_whitelist_annovar_vcf
-        File? out_whitelist_annovar_table = CHIP_wf.out_whitelist_annovar_table
-        File? out_whitelist_annovar_output_refgene_variant_function = CHIP_wf.out_whitelist_annovar_output_refgene_variant_function
-        File? out_whitelist_annovar_output_ensgene_variant_function = CHIP_wf.out_whitelist_annovar_output_ensgene_variant_function
-        File? out_whitelist_annovar_output_refgene_variant_exonic_function = CHIP_wf.out_whitelist_annovar_output_refgene_variant_exonic_function
-        File? out_whitelist_annovar_output_ensgene_variant_exonic_function = CHIP_wf.out_whitelist_annovar_output_ensgene_variant_exonic_function
-        File? out_whitelist_filter_output_csv = CHIP_wf.out_whitelist_filter_output_csv
-        File? out_whitelist_filter_output_allvariants_csv = CHIP_wf.out_whitelist_filter_output_allvariants_csv
-        File? out_whitelist_filter_output_allvariantsfiltered_csv = CHIP_wf.out_whitelist_filter_output_allvariantsfiltered_csv
-        File? out_whitelist_filter_output_exonicsplicingvariants_csv = CHIP_wf.out_whitelist_filter_output_exonicsplicingvariants_csv
-        File? out_whitelist_filter_output_chiptranscriptvariants_csv = CHIP_wf.out_whitelist_filter_output_chiptranscriptvariants_csv
-        File? out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv = CHIP_wf.out_whitelist_filter_output_chiptranscriptvariantsfiltered_csv
-        File? out_whitelist_filter_output_putativefilter_csv = CHIP_wf.out_whitelist_filter_output_putativefilter_csv
+        File? out_chip_vcf = CHIP_wf.out_vcf
+        File? out_chip_vcf_idx = CHIP_wf.out_vcf_idx
+        File? out_chip_annotation_vcf = CHIP_wf.chip_vcf
+        File? out_chip_annotation_vcf_idx = CHIP_wf.chip_vcf_idx
+        File? out_chip_annotation_csv = CHIP_wf.chip_csv
+        File? out_chip_annotation_rdata = CHIP_wf.chip_rdata
     }
 }
