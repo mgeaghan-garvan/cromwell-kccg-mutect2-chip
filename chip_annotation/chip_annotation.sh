@@ -5,7 +5,8 @@ CHIP_MUTATIONS_CSV=${2}
 REF_FASTA=${3}
 SOMATICISM_TRANSCRIPTS=${4}
 ANNOVAR_DB=${5}
-CONTAINER=${6}
+ANNOVAR_CONTAINER=${6}
+CHIP_CONTAINER=${7}
 
 TEMP_DIR=$(mktemp -d)
 OUT_DIR=output
@@ -16,10 +17,12 @@ set -euo pipefail
 # === STEP 0: Check if docker or singularity is installed ===
 if [ -x "$(command -v docker)" ]; then
     echo "Docker is installed"
-    DOCKER_CMD="docker run --rm -v ${PWD}:${PWD} -w ${PWD} ${CONTAINER}"
+    CHIP_DOCKER_CMD="docker run --rm -v ${PWD}:${PWD} -w ${PWD} ${CHIP_CONTAINER}"
+    ANNOVAR_DOCKER_CMD="docker run --rm -v ${PWD}:${PWD} -v ${ANNOVAR_DB}:/annovar_db -w ${PWD} ${ANNOVAR_CONTAINER}"
 elif [ -x "$(command -v singularity)" ]; then
     echo "Singularity is installed"
-    DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -W ${PWD} ${CONTAINER}"
+    CHIP_DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -W ${PWD} ${CHIP_CONTAINER}"
+    ANNOVAR_DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -B ${ANNOVAR_DB}:/annovar_db -W ${PWD} ${ANNOVAR_CONTAINER}"
 else
     echo "Neither docker nor singularity is installed"
     exit 1
@@ -111,9 +114,9 @@ bcftools filter \
 
 # === STEP 9: Run Annovar on filtered VCF ===
 ANNOVAR_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.annot"
-table_annovar.pl \
+${ANNOVAR_DOCKER_CMD} table_annovar.pl \
     ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} \
-    ${ANNOVAR_DB} \
+    /annovar_db/ \
     -buildver hg38 \
     -out ${ANNOVAR_PREFIX} \
     -protocol refGene,ensGene,gnomad211_genome,gnomad211_exome \
@@ -129,7 +132,7 @@ grep "^#" ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF} > ${FILTERED_CHIP_GENES_NORM_N
 
 # === STEP 10: Run CHIP annotation ===
 CHIP_ANNOTATION_PREFIX="${TEMP_DIR}/${CHIP_GENES_VCF_BN}.norm.no_info.hard_filter.chip_annotations"
-${DOCKER_CMD} annotate_chip \
+${CHIP_DOCKER_CMD} annotate_chip \
     --sample ${INPUT_VCF_BN} \
     --vcf_header ${FILTERED_CHIP_GENES_NORM_NO_INFO_VCF_HEADER} \
     --chip_definitions ${CHIP_MUTATIONS_CSV} \
