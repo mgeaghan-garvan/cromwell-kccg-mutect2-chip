@@ -319,6 +319,10 @@ task CHIPAnnotation {
       bcftools sort ~{output_prefix}.vcf > ~{output_prefix}.sorted.vcf
       bgzip -c ~{output_prefix}.sorted.vcf > ~{output_prefix}.sorted.vcf.gz
       tabix -s 1 -b 2 -e 2 ~{output_prefix}.sorted.vcf.gz
+
+      bcftoolss sort ~{output_prefix}.merged.vcf > ~{output_prefix}.merged.sorted.vcf
+      bgzip -c ~{output_prefix}.merged.sorted.vcf > ~{output_prefix}.merged.sorted.vcf.gz
+      tabix -s 1 -b 2 -e 2 ~{output_prefix}.merged.sorted.vcf.gz
     >>>
 
     runtime {
@@ -332,8 +336,10 @@ task CHIPAnnotation {
     }
 
     output {
-      File chip_vcf = output_prefix + ".sorted.vcf.gz"
-      File chip_vcf_idx = output_prefix + ".sorted.vcf.gz.tbi"
+      File chip_vcf = output_prefix + ".merged.sorted.vcf.gz"
+      File chip_vcf_idx = output_prefix + ".merged.sorted.vcf.gz.tbi"
+      File chip_split_vcf = output_prefix + ".sorted.vcf.gz"
+      File chip_split_vcf_idx = output_prefix + ".sorted.vcf.gz.tbi"
       File chip_csv = output_prefix + ".csv"
       File chip_rdata = output_prefix + ".RData"
     }

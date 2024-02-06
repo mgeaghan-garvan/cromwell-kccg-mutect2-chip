@@ -148,6 +148,10 @@ bcftools sort ${CHIP_ANNOTATION_PREFIX}.vcf > ${CHIP_ANNOTATION_PREFIX}.sorted.v
 bgzip -c ${CHIP_ANNOTATION_PREFIX}.sorted.vcf > ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz
 tabix -f -s 1 -b 2 -e 2 ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz
 
+bcftools sort ${CHIP_ANNOTATION_PREFIX}.merged.vcf > ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf
+bgzip -c ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf > ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz
+tabix -f -s 1 -b 2 -e 2 ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz
+
 # === STEP 11: Annotate the original VCF with both CHIP annotations and non-CHIP gene annotations ===
 TMP_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.chip.tmp.vcf"
 FINAL_VCF="${OUT_DIR}/${INPUT_VCF_BN}.chip.vcf"
@@ -159,7 +163,7 @@ bcftools annotate \
 bgzip -c ${TMP_VCF} > ${TMP_VCF}.gz
 tabix -f -s 1 -b 2 -e 2 ${TMP_VCF}.gz
 bcftools annotate \
-    -a ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz \
+    -a ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz \
     -c "=FILTER,+INFO" \
     -o ${FINAL_VCF} \
     ${TMP_VCF}.gz
@@ -171,6 +175,8 @@ rm ${TMP_VCF} ${TMP_VCF}.gz ${TMP_VCF}.gz.tbi ${FINAL_VCF}
 # === STEP 12: Move the CHIP CSV and RData to the output directory and rename them ===
 mv ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz ${OUT_DIR}/${INPUT_VCF_BN}.chip_annotations.vcf.gz
 mv ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz.tbi ${OUT_DIR}/${INPUT_VCF_BN}.chip_annotations.vcf.gz.tbi
+mv ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz ${OUT_DIR}/${INPUT_VCF_BN}.chip_annotations.merged.vcf.gz
+mv ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz.tbi ${OUT_DIR}/${INPUT_VCF_BN}.chip_annotations.merged.vcf.gz.tbi
 mv ${CHIP_ANNOTATION_PREFIX}.csv ${OUT_DIR}/${INPUT_VCF_BN}.chip.csv
 mv ${CHIP_ANNOTATION_PREFIX}.RData ${OUT_DIR}/${INPUT_VCF_BN}.chip.RData
 
