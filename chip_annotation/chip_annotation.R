@@ -775,7 +775,7 @@ df <- df %>%
     )
   ) %>%
   ungroup() %>%
-  select(-gene_detail_info, -aa_change_info, -chip_info, -variant_class, -chip_mutation_match_filter, -mut_in_c_term)
+  select(-gene_detail_info, -aa_change_info, -chip_info, -variant_class, -mut_in_c_term)
 
 # --- Apply a putative CHIP filter ---
 df <- df %>%
