@@ -669,7 +669,9 @@ df_filtered <- df_unfiltered %>%
 
 # --- Apply somaticism filter ---
 df <- df %>%
-  mutate(ad_dp_binom_test = map2_dbl(AD_ALT, DP, ~ binom.test(.x, .y, 0.5)$p.value)) %>%
+  mutate(
+    ad_dp_binom_test = case_when(DP > 0 ~ map2_dbl(AD_ALT, DP, ~ binom.test(.x, .y, 0.5)$p.value), .default = 1)
+  ) %>%
   mutate(
     SOMATICISM_FILTER = case_when(
       Transcript_no_version %in% somaticism_transcripts & ad_dp_binom_test >= 0.001 ~ "chip_somaticism_filter_fail",
@@ -749,16 +751,20 @@ df <- df %>%
   ) %>%
   mutate(
     # Dynamically picks the appropriate function to use based on the mutation pattern
-    chip_mutation_match_filter = chip_def_match_funcs[[chip_info$mutation_pattern]](
-      chip_info = chip_info,
-      aa_change_info = aa_change_info,
-      gene_detail_info = gene_detail_info,
-      mut_class = variant_class,
-      chip_mut_c_term_start = c_term_genomic_start,
-      chip_mut_c_term_end = c_term_genomic_end,
-      mut_start = Start,
-      mut_end = End,
-      mut_in_c_term = mut_in_c_term
+    chip_mutation_match_filter = case_when(
+      is.na(variant_class) ~ "chip_mutation_match_filter_fail",
+      variant_class != mutation_class ~ "chip_mutation_match_filter_fail",
+      .default = chip_def_match_funcs[[chip_info$mutation_pattern]](
+        chip_info = chip_info,
+        aa_change_info = aa_change_info,
+        gene_detail_info = gene_detail_info,
+        mut_class = variant_class,
+        chip_mut_c_term_start = c_term_genomic_start,
+        chip_mut_c_term_end = c_term_genomic_end,
+        mut_start = Start,
+        mut_end = End,
+        mut_in_c_term = mut_in_c_term
+      )
     )
   ) %>%
   ungroup() %>%
