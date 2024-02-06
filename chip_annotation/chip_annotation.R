@@ -751,7 +751,7 @@ df <- df %>%
   ) %>%
   mutate(
     # Dynamically picks the appropriate function to use based on the mutation pattern
-    chip_mutation_match_filter = case_when(
+    CHIP_MUTATION_FILTER = case_when(
       is.na(variant_class) ~ "chip_mutation_match_filter_fail",
       variant_class != mutation_class ~ "chip_mutation_match_filter_fail",
       .default = chip_def_match_funcs[[chip_info$mutation_pattern]](
@@ -768,13 +768,6 @@ df <- df %>%
     )
   ) %>%
   ungroup() %>%
-  mutate(
-    CHIP_MUTATION_FILTER = case_when(
-      is.na(variant_class) ~ "chip_mutation_match_filter_fail",
-      variant_class != mutation_class ~ "chip_mutation_match_filter_fail",
-      .default = chip_mutation_match_filter
-    )
-  ) %>%
   select(-gene_detail_info, -aa_change_info, -chip_info, -variant_class, -chip_mutation_match_filter, -mut_in_c_term)
 
 # --- Apply a putative CHIP filter ---
