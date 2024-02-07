@@ -1034,7 +1034,6 @@ df_final <- df %>%
     SOMATICISM_FILTER,
     CHIP_MUTATION_FILTER,
     PUTATIVE_CHIP_FILTER,
-    CHIP_INFO
   ) %>%
   rename(
     ORIGINAL_FILTER = FILTER,
@@ -1145,7 +1144,7 @@ df_final <- df %>%
   ) %>%
   mutate(
     INFO = case_when(
-      INFO_CHIP_Transcript == "" ~ ".",
+      INFO_CHIP_Transcript == "" ~ "CHIP_Transcript=.;AAChange=.;GeneDetail=.;CHIP_Mutation_Class=.;CHIP_Mutation_Definition=.;CHIP_Publication_Source=.",
       .default = paste0(
         "CHIP_Transcript=", INFO_CHIP_Transcript, ";",
         "AAChange=", INFO_AAChange, ";",
@@ -1194,9 +1193,7 @@ df_final_vcf <- df_final %>%
   ungroup() %>%
   mutate(
     INFO = case_when(
-      INFO == "." & INFO_CHIP_Multiallelic_Filters == "" ~ ".",
-      INFO == "." & INFO_CHIP_Multiallelic_Filters != "" ~ INFO_CHIP_Multiallelic_Filters,
-      INFO != "." & INFO_CHIP_Multiallelic_Filters != "" ~ paste0(INFO, ";", INFO_CHIP_Multiallelic_Filters),
+      INFO_CHIP_Multiallelic_Filters != "" ~ paste0(INFO, ";", INFO_CHIP_Multiallelic_Filters),
       .default = INFO
     )
   ) %>%
