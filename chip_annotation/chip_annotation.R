@@ -1309,7 +1309,13 @@ write_tsv(df_final_vcf, output_vcf, append = TRUE, col_names = FALSE)
 
 # --- Write output CSVs ---
 output_csv <- paste0(args$output_prefix, ".csv")
-write_csv(df_final, output_csv)
+# Replace "." and NAs in all columns with empty strings
+df_final_csv <- df_final %>%
+  mutate(
+    across(everything(), ~ if_else(is.na(.), "", .)),
+    across(everything(), ~ if_else(. == ".", "", .))
+  )
+write_csv(df_final_csv, output_csv)
 
 # --- Write RData ---
 save.image(paste0(args$output_prefix, ".RData"))
