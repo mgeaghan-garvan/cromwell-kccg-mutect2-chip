@@ -149,7 +149,7 @@ bgzip -c ${CHIP_ANNOTATION_PREFIX}.sorted.vcf > ${CHIP_ANNOTATION_PREFIX}.sorted
 tabix -f -s 1 -b 2 -e 2 ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz
 
 bcftools norm -m +any -o ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz -O z ${CHIP_ANNOTATION_PREFIX}.sorted.vcf.gz
-bcftools index -f ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz
+tabix -f -s 1 -b 2 -e 2 ${CHIP_ANNOTATION_PREFIX}.merged.sorted.vcf.gz
 
 # === STEP 11: Annotate the original VCF with both CHIP annotations and non-CHIP gene annotations ===
 TMP_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.chip.tmp.vcf"
