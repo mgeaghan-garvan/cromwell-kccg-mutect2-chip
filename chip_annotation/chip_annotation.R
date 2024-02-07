@@ -1310,11 +1310,12 @@ write_tsv(df_final_vcf, output_vcf, append = TRUE, col_names = FALSE)
 output_csv <- paste0(args$output_prefix, ".csv")
 # Replace "." and NAs in all columns with empty strings
 df_final_csv <- df_final %>%
-  # First, convert integer and double columns to characters
+  # First, convert integer, double, and logical columns to characters
   # Ensure that numbers are not converted to scientific notation
   mutate(
     across(where(is.integer), ~ format(.x, scientific = FALSE, trim = TRUE, justify = "none")),
-    across(where(is.double), ~ format(.x, scientific = FALSE, trim = TRUE, justify = "none"))
+    across(where(is.double), ~ format(.x, scientific = FALSE, trim = TRUE, justify = "none")),
+    across(where(is.logical), ~ if_else(.x, "TRUE", "FALSE"))
   ) %>%
   mutate(
     across(everything(), ~ if_else(is.na(.), "", .)),
