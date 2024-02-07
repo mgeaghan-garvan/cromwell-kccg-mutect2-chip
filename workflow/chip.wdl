@@ -140,6 +140,8 @@ workflow CHIP {
         File out_vcf_idx = FinaliseCHIPFilter.chip_vcf_idx
         File chip_vcf = CHIPAnnotation.chip_vcf
         File chip_vcf_idx = CHIPAnnotation.chip_vcf_idx
+        File chip_split_vcf = CHIPAnnotation.chip_split_vcf
+        File chip_split_vcf_idx = CHIPAnnotation.chip_split_vcf_idx
         File chip_csv = CHIPAnnotation.chip_csv
         File chip_rdata = CHIPAnnotation.chip_rdata
     }
@@ -320,9 +322,8 @@ task CHIPAnnotation {
       bgzip -c ~{output_prefix}.sorted.vcf > ~{output_prefix}.sorted.vcf.gz
       tabix -s 1 -b 2 -e 2 ~{output_prefix}.sorted.vcf.gz
 
-      bcftoolss sort ~{output_prefix}.merged.vcf > ~{output_prefix}.merged.sorted.vcf
-      bgzip -c ~{output_prefix}.merged.sorted.vcf > ~{output_prefix}.merged.sorted.vcf.gz
-      tabix -s 1 -b 2 -e 2 ~{output_prefix}.merged.sorted.vcf.gz
+      bcftools norm -m +any -o ~{output_prefix}.merged.sorted.vcf.gz -O z ~{output_prefix}.sorted.vcf.gz
+      tabix -f -s 1 -b 2 -e 2 ~{output_prefix}.merged.sorted.vcf.gz
     >>>
 
     runtime {

@@ -14,6 +14,11 @@ mkdir -p output
 
 set -euo pipefail
 
+if [ ! -f ${INPUT_VCF}.tbi ]; then
+    echo "Indexing VCF"
+    tabix -f -s 1 -b 2 -e 2 ${INPUT_VCF}
+fi
+
 # === STEP 0: Check if docker or singularity is installed ===
 if [ -x "$(command -v docker)" ]; then
     echo "Docker is installed"
