@@ -1302,7 +1302,7 @@ new_vcf_header_no_format[length(new_vcf_header_no_format)] <- gsub("\\tFORMAT.*$
 
 # Write header to output VCF
 output_vcf <- paste0(args$output_prefix, ".vcf")
-write_lines(new_vcf_header, output_vcf)
+write_lines(new_vcf_header_no_format, output_vcf)
 
 # Write variants to output VCF
 write_tsv(df_final_vcf, output_vcf, append = TRUE, col_names = FALSE)
