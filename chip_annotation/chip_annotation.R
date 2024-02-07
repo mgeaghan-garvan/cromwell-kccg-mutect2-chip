@@ -1194,16 +1194,10 @@ df_final_vcf <- df_final %>%
   ungroup() %>%
   mutate(
     INFO = case_when(
-      INFO_CHIP_Transcript == "" ~ ".",
-      .default = paste0(
-        "CHIP_Transcript=", INFO_CHIP_Transcript, ";",
-        "AAChange=", INFO_AAChange, ";",
-        "GeneDetail=", INFO_GeneDetail, ";",
-        "CHIP_Mutation_Class=", INFO_CHIP_Mutation_Class, ";",
-        "CHIP_Mutation_Definition=", INFO_CHIP_Mutation_Definition, ";",
-        "CHIP_Publication_Source=", INFO_CHIP_Publication_Source, ";",
-        INFO_CHIP_Multiallelic_Filters
-      )
+      INFO == "." & INFO_CHIP_Multiallelic_Filters == "" ~ ".",
+      INFO == "." & INFO_CHIP_Multiallelic_Filters != "" ~ INFO_CHIP_Multiallelic_Filters,
+      INFO != "." & INFO_CHIP_Multiallelic_Filters != "" ~ paste0(INFO, ";", INFO_CHIP_Multiallelic_Filters),
+      .default = INFO
     )
   ) %>%
   select(
