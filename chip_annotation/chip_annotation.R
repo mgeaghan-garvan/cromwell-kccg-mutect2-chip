@@ -1034,6 +1034,8 @@ df_final <- df %>%
     SOMATICISM_FILTER,
     CHIP_MUTATION_FILTER,
     PUTATIVE_CHIP_FILTER,
+    CHIP_INFO,
+    all_of(colnames(chip_definitions)[colnames(chip_definitions) %in% colnames(df)])
   ) %>%
   rename(
     ORIGINAL_FILTER = FILTER,
