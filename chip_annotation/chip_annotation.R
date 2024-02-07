@@ -670,7 +670,7 @@ df_filtered <- df_unfiltered %>%
 # --- Apply somaticism filter ---
 df <- df %>%
   mutate(
-    ad_dp_binom_test = case_when(DP > 0 ~ map2_dbl(AD_ALT, DP, ~ binom.test(.x, .y, 0.5)$p.value), .default = 1)
+    ad_dp_binom_test = map2_dbl(AD_ALT, DP, ~ if (.y > 0) { binom.test(.x, .y, 0.5)$p.value } else { 1 })
   ) %>%
   mutate(
     SOMATICISM_FILTER = case_when(
