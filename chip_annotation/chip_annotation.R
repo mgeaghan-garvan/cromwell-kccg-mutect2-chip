@@ -1167,7 +1167,7 @@ df_final <- df %>%
   ) %>%
   distinct()
 
-# --- Construct output VCFs for annotation ---
+# --- Construct output VCF for annotation ---
 df_final_vcf <- df_final %>%
   select(
     CHROM,
@@ -1177,105 +1177,21 @@ df_final_vcf <- df_final %>%
     ALT,
     QUAL,
     FILTER,
-    INFO,
-    FORMAT,
-    SAMPLE
-  ) %>%
-  distinct()
-
-# --- Create a merged-multiallelic VCF ---
-df_final_vcf_merged <- df_final_vcf %>%
-  select(
-    -FORMAT,
-    -SAMPLE
+    INFO
   ) %>%
   distinct() %>%
-  mutate(
-    SPLIT_MA_ALT = ALT,
-    SPLIT_MA_FILTER = gsub(";", "|", FILTER, fixed = TRUE),
-    SPLIT_MA_INFO = INFO
-  ) %>%
   group_by(
     CHROM,
     POS,
     REF
   ) %>%
   mutate(
-    ALT = paste(ALT, collapse = ","),
-    FILTER = paste(FILTER, collapse = ";"),
-    SPLIT_MA_FILTER_COMBINED = paste(SPLIT_MA_FILTER, collapse = ","),
-    INFO = paste(INFO, collapse = ";")
-  ) %>%
-  ungroup() %>%
-  mutate(
-    FILTER_SPLIT = str_split(FILTER, ";"),
-    INFO_SPLIT = str_split(INFO, ";")
-  ) %>%
-  mutate(
-    FILTER_SPLIT = map(FILTER_SPLIT, ~ unique(.x[.x != ""])),
-  ) %>%
-  mutate(
-    # Remove 'PASS' if there are other filters
-    FILTER_SPLIT = map(
-      FILTER_SPLIT, ~ if_else(
-        length(.x) > 1 & "PASS" %in% .x,
-        list(.x[.x != "PASS"]),
-        list(.x)
-      )[[1]]
-    )
-  ) %>%
-  mutate(
-    FILTER = map_chr(FILTER_SPLIT, ~ paste(.x, collapse = ";")),
-  ) %>%
-  distinct() %>%
-  mutate(
-    INFO_CHIP_Transcript = map_chr(
-      INFO_SPLIT, ~ (
-        grep("^CHIP_Transcript=", .x, value = TRUE) %>%
-          gsub("^CHIP_Transcript=", "", .) %>%
-          paste(collapse = ",")
-      )
-    ),
-    INFO_AAChange = map_chr(
-      INFO_SPLIT, ~ (
-        grep("^AAChange=", .x, value = TRUE) %>%
-          gsub("^AAChange=", "", .) %>%
-          paste(collapse = ",")
-      )
-    ),
-    INFO_GeneDetail = map_chr(
-      INFO_SPLIT, ~ (
-        grep("^GeneDetail=", .x, value = TRUE) %>%
-          gsub("^GeneDetail=", "", .) %>%
-          paste(collapse = ",")
-      )
-    ),
-    INFO_CHIP_Mutation_Class = map_chr(
-      INFO_SPLIT, ~ (
-        grep("^CHIP_Mutation_Class=", .x, value = TRUE) %>%
-          gsub("^CHIP_Mutation_Class=", "", .) %>%
-          paste(collapse = ",")
-      )
-    ),
-    INFO_CHIP_Mutation_Definition = map_chr(
-      INFO_SPLIT, ~ (
-        grep("^CHIP_Mutation_Definition=", .x, value = TRUE) %>%
-          gsub("^CHIP_Mutation_Definition=", "", .) %>%
-          paste(collapse = ",")
-      )
-    ),
-    INFO_CHIP_Publication_Source = map_chr(
-      INFO_SPLIT, ~ (
-        grep("^CHIP_Publication_Source=", .x, value = TRUE) %>%
-          gsub("^CHIP_Publication_Source=", "", .) %>%
-          paste(collapse = ",")
-      )
-    ),
     INFO_CHIP_Multiallelic_Filters = case_when(
-      grepl(",", ALT) ~ paste0("CHIP_Multiallelic_Filters=", SPLIT_MA_FILTER_COMBINED),
+      length(unique(FILTER)) > 1 ~ paste0("CHIP_Multiallelic_Filters=", FILTER),
       .default = ""
     )
   ) %>%
+  ungroup() %>%
   mutate(
     INFO = case_when(
       INFO_CHIP_Transcript == "" ~ ".",
@@ -1392,13 +1308,10 @@ new_vcf_header_no_format[length(new_vcf_header_no_format)] <- gsub("\\tFORMAT.*$
 
 # Write header to output VCF
 output_vcf <- paste0(args$output_prefix, ".vcf")
-output_vcf_merged <- paste0(args$output_prefix, ".merged.vcf")
 write_lines(new_vcf_header, output_vcf)
-write_lines(new_vcf_header_no_format, output_vcf_merged)
 
 # Write variants to output VCF
 write_tsv(df_final_vcf, output_vcf, append = TRUE, col_names = FALSE)
-write_tsv(df_final_vcf_merged, output_vcf_merged, append = TRUE, col_names = FALSE)
 
 # --- Write output CSVs ---
 output_csv <- paste0(args$output_prefix, ".csv")
