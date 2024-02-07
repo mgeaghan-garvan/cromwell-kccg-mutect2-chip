@@ -1187,7 +1187,7 @@ df_final_vcf <- df_final %>%
   ) %>%
   mutate(
     INFO_CHIP_Multiallelic_Filters = case_when(
-      length(unique(FILTER)) > 1 ~ paste0("CHIP_Multiallelic_Filters=", gsub(";", "|", FILTER, fixed)),
+      length(unique(FILTER)) > 1 ~ paste0("CHIP_Multiallelic_Filters=", gsub(";", "|", FILTER, fixed = TRUE)),
       .default = ""
     )
   ) %>%
