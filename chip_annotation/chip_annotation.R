@@ -450,7 +450,7 @@ df <- df %>%
   mutate(
     HARD_FILTER_AF = case_when(
       is.na(gnomAD_AF) ~ "gnomad_af_na",
-      gnomAD_AF >= 0.01 ~ "chip_gnomad_af_filter_fail",
+      gnomAD_AF >= 0.001 ~ "chip_gnomad_af_filter_fail",
       .default = ""
     )
   )
@@ -498,7 +498,11 @@ df <- df %>%
     AD_REF = as.integer(AD_REF),
     AD_ALT = as.integer(AD_ALT),
     DP = as.integer(DP),
-    AF = as.numeric(AF)
+    AF = as.numeric(AF),
+    F1R2_REF = as.integer(F1R2_REF),
+    F1R2_ALT = as.integer(F1R2_ALT),
+    F2R1_REF = as.integer(F2R1_REF),
+    F2R1_ALT = as.integer(F2R1_ALT)
   ) %>%
   select(
     -FORMAT_split,
