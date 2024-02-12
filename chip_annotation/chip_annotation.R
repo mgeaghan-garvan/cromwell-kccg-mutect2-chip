@@ -910,21 +910,24 @@ df <- df %>%
   mutate(
     CHIP_VARIANT_LEVEL_FILTER_LIST = map(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
   ) %>%
+  # Remove 'chip_mutation_match_filter_fail' and 'mutation_in_c_terminal' if CHIP_VARIANT_LEVEL_INFO is present
+  # i.e. the mutation matches at least one CHIP definition
   mutate(
-    # Remove 'chip_mutation_match_filter_fail' and 'mutation_in_c_terminal' if CHIP_VARIANT_LEVEL_INFO is present
-    # i.e. the mutation matches at least one CHIP definition
-    CHIP_VARIANT_LEVEL_FILTER_LIST = map(
-      CHIP_VARIANT_LEVEL_FILTER_LIST, ~ case_when(
-        CHIP_VARIANT_LEVEL_INFO != "" ~ .x[!(.x %in% c("chip_mutation_match_filter_fail", "mutation_in_c_terminal"))],
-      ),
-      .default = .x
+    CHIP_VARIANT_LEVEL_FILTER_LIST_NO_CHIP_FAIL = map(
+      CHIP_VARIANT_LEVEL_FILTER_LIST, ~ .x[!(.x %in% c("chip_mutation_match_filter_fail", "mutation_in_c_terminal"))]
+    )
+  ) %>%
+  mutate(
+    CHIP_VARIANT_LEVEL_FILTER_LIST = case_when(
+      CHIP_VARIANT_LEVEL_INFO != "" ~ CHIP_VARIANT_LEVEL_FILTER_LIST_NO_CHIP_FAIL,
+      .default = CHIP_VARIANT_LEVEL_FILTER_LIST
     )
   ) %>%
   mutate(
     CHIP_VARIANT_LEVEL_FILTER = map_chr(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
   ) %>%
   select(
-    -CHIP_VARIANT_LEVEL_FILTER_LIST
+    -CHIP_VARIANT_LEVEL_FILTER_LIST, -CHIP_VARIANT_LEVEL_FILTER_LIST_NO_CHIP_FAIL
   ) %>%
   ungroup() %>%
   # Create a combined filter column
