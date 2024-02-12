@@ -26,8 +26,8 @@ if [ -x "$(command -v docker)" ]; then
     ANNOVAR_DOCKER_CMD="docker run --rm -v ${PWD}:${PWD} -v ${ANNOVAR_DB}:/annovar_db -w ${PWD} ${ANNOVAR_CONTAINER}"
 elif [ -x "$(command -v singularity)" ]; then
     echo "Singularity is installed"
-    CHIP_DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -W ${PWD} ${CHIP_CONTAINER}"
-    ANNOVAR_DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -B ${ANNOVAR_DB}:/annovar_db -W ${PWD} ${ANNOVAR_CONTAINER}"
+    CHIP_DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} --pwd ${PWD} ${CHIP_CONTAINER}"
+    ANNOVAR_DOCKER_CMD="singularity exec --containall -B ${PWD}:${PWD} -B ${ANNOVAR_DB}:/annovar_db --pwd ${PWD} ${ANNOVAR_CONTAINER}"
 else
     echo "Neither docker nor singularity is installed"
     exit 1
