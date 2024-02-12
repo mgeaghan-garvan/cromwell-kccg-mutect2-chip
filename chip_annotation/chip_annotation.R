@@ -886,13 +886,18 @@ df <- df %>%
       .default = ""
     )
   ) %>%
-  # Consolidate CHIP FILTER strings into one per variant
+  # Consolidate CHIP INFO and FILTER strings into one per variant
   group_by(
     CHROM,
     POS,
     REF,
     ALT
   ) %>%
+  # Consolidate CHIP INFO strings into one per variant
+  mutate(
+    CHIP_VARIANT_LEVEL_INFO = unique(CHIP_INFO[CHIP_INFO != ""]) %>% paste(collapse = ";")
+  ) %>%
+  # Consolidate CHIP FILTER strings into one per variant
   mutate(
     CHIP_VARIANT_LEVEL_FILTER = case_when(
       any(CHIP_FILTER == "") ~ "",
@@ -906,14 +911,20 @@ df <- df %>%
     CHIP_VARIANT_LEVEL_FILTER_LIST = map(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
   ) %>%
   mutate(
+    # Remove 'chip_mutation_match_filter_fail' and 'mutation_in_c_terminal' if CHIP_VARIANT_LEVEL_INFO is present
+    # i.e. the mutation matches at least one CHIP definition
+    CHIP_VARIANT_LEVEL_FILTER_LIST = map(
+      CHIP_VARIANT_LEVEL_FILTER_LIST, ~ case_when(
+        CHIP_VARIANT_LEVEL_INFO != "" ~ .x[!(.x %in% c("chip_mutation_match_filter_fail", "mutation_in_c_terminal"))],
+      ),
+      .default = .x
+    )
+  ) %>%
+  mutate(
     CHIP_VARIANT_LEVEL_FILTER = map_chr(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
   ) %>%
   select(
     -CHIP_VARIANT_LEVEL_FILTER_LIST
-  ) %>%
-  # Consolidate CHIP INFO strings into one per variant
-  mutate(
-    CHIP_VARIANT_LEVEL_INFO = unique(CHIP_INFO[CHIP_INFO != ""]) %>% paste(collapse = ";")
   ) %>%
   ungroup() %>%
   # Create a combined filter column
