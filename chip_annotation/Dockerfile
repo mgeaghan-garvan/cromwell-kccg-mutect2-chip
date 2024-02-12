@@ -4,9 +4,6 @@ ENV CONDA_ROOT_PREFIX /miniforge
 ENV PATH $CONDA_ROOT_PREFIX/bin:/software:$PATH
 ARG RVERSION=${RVERSION:-4.3.1}
 
-COPY *.R /R/scripts/
-COPY annotate_chip /software/annotate_chip
-
 RUN apt-get update && apt-get install -y libbz2-dev liblzma-dev git wget bash bzip2 zip curl gcc zlib1g-dev \
   && rm -r /var/lib/apt/lists/* \
   && rm -r /var/cache/apt/* \
@@ -16,5 +13,8 @@ RUN apt-get update && apt-get install -y libbz2-dev liblzma-dev git wget bash bz
   && rm -rf /tmp/miniforge \
   && conda install -y --prefix ${CONDA_ROOT_PREFIX} -c conda-forge \
       r-base=${RVERSION} r-tidyverse r-optparse \
-  && conda init \
-  && chmod +x /software/annotate_chip
+  && conda init
+
+COPY annotate_chip /software/annotate_chip
+RUN chmod +x /software/annotate_chip
+COPY *.R /R/scripts/
