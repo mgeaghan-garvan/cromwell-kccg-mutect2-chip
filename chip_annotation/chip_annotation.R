@@ -719,6 +719,15 @@ df <- df %>%
   distinct()
 
 # --- Match mutations to CHIP definitions ---
+# Define FILTER strings
+CHIP_MUTATION_MATCH_FILTER_STRING = "chip_mutation_match_filter_fail"
+C_TERM_FILTER_STRING = "mutation_in_c_terminal"
+
+CHIP_MUTATION_FILTER_STRINGS = c(
+  CHIP_MUTATION_MATCH_FILTER_STRING,
+  C_TERM_FILTER_STRING
+)
+
 df <- df %>%
   mutate(
     mut_in_c_term = case_when(
@@ -762,9 +771,9 @@ df <- df %>%
   mutate(
     # Dynamically picks the appropriate function to use based on the mutation pattern
     CHIP_MUTATION_FILTER = case_when(
-      is.na(variant_class) ~ "chip_mutation_match_filter_fail",
-      variant_class == "" ~ "chip_mutation_match_filter_fail",
-      variant_class != mutation_class ~ "chip_mutation_match_filter_fail",
+      is.na(variant_class) ~ CHIP_MUTATION_MATCH_FILTER_STRING,
+      variant_class == "" ~ CHIP_MUTATION_MATCH_FILTER_STRING,
+      variant_class != mutation_class ~ CHIP_MUTATION_MATCH_FILTER_STRING,
       .default = chip_def_match_funcs[[chip_info$mutation_pattern]](
         chip_info = chip_info,
         aa_change_info = aa_change_info,
@@ -808,26 +817,38 @@ df <- df %>%
     REF,
     ALT
   ) %>%
+  # Test a new approach to combining filters
   mutate(
-    VARIANT_LEVEL_FILTER_STR_COMB = paste(
+    VARIANT_LEVEL_FILTER_LIST = list(c(
       FILTER,
       HARD_FILTER_AF,
       HARD_FILTER_VAF,
-      HOMOPOLYMER_INDEL_FILTER,
-      SOMATICISM_FILTER,
-      sep = ";"
-    )
-  ) %>%
-  mutate(
-    VARIANT_LEVEL_FILTER_STR_COMB = paste(VARIANT_LEVEL_FILTER_STR_COMB, collapse = ";")
+      HOMOPOLYMER_INDEL_FILTER
+    ))
   ) %>%
   ungroup() %>%
   mutate(
-    VARIANT_LEVEL_FILTER_LIST = str_split(VARIANT_LEVEL_FILTER_STR_COMB, ";")
-  ) %>%
-  mutate(
     VARIANT_LEVEL_FILTER_LIST = map(VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
   ) %>%
+  # mutate(
+  #   VARIANT_LEVEL_FILTER_STR_COMB = paste(
+  #     FILTER,
+  #     HARD_FILTER_AF,
+  #     HARD_FILTER_VAF,
+  #     HOMOPOLYMER_INDEL_FILTER,
+  #     sep = ";"
+  #   )
+  # ) %>%
+  # mutate(
+  #   VARIANT_LEVEL_FILTER_STR_COMB = paste(VARIANT_LEVEL_FILTER_STR_COMB, collapse = ";")
+  # ) %>%
+  # ungroup() %>%
+  # mutate(
+  #   VARIANT_LEVEL_FILTER_LIST = str_split(VARIANT_LEVEL_FILTER_STR_COMB, ";")
+  # ) %>%
+  # mutate(
+  #   VARIANT_LEVEL_FILTER_LIST = map(VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
+  # ) %>%
   mutate(
     # Remove 'PASS' if there are other filters
     VARIANT_LEVEL_FILTER_LIST = map(
@@ -841,37 +862,50 @@ df <- df %>%
   mutate(
     VARIANT_LEVEL_FILTER = map_chr(VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
   ) %>%
-  select(
-    -VARIANT_LEVEL_FILTER_STR_COMB,
-    -VARIANT_LEVEL_FILTER_LIST
-  ) %>%
+  # select(
+  #   # -VARIANT_LEVEL_FILTER_STR_COMB,
+  #   -VARIANT_LEVEL_FILTER_LIST
+  # ) %>%
   # Combine CHIP filters into a single semicolon-separated string
+  rowwise() %>%
   mutate(
-    CHIP_MUTATION_FILTER_STR_COMB = paste(
+    CHIP_FILTER_LIST = list(c(
       CHIP_MUTATION_FILTER,
       PUTATIVE_CHIP_FILTER,
-      sep = ";"
-    )
+      SOMATICISM_FILTER
+    ))
+  ) %>%
+  ungroup() %>%
+  # mutate(
+  #   CHIP_MUTATION_FILTER_STR_COMB = paste(
+  #     CHIP_MUTATION_FILTER,
+  #     PUTATIVE_CHIP_FILTER,
+  #     SOMATICISM_FILTER,
+  #     sep = ";"
+  #   )
+  # ) %>%
+  # mutate(
+  #   CHIP_MUTATION_FILTER_LIST = str_split(CHIP_MUTATION_FILTER_STR_COMB, ";")
+  # ) %>%
+  mutate(
+    CHIP_FILTER_LIST = map(CHIP_FILTER_LIST, ~ unique(.x[.x != ""]))
   ) %>%
   mutate(
-    CHIP_MUTATION_FILTER_LIST = str_split(CHIP_MUTATION_FILTER_STR_COMB, ";")
+    CHIP_FILTER = map_chr(CHIP_FILTER_LIST, ~ paste(.x, collapse = ";"))
   ) %>%
-  mutate(
-    CHIP_MUTATION_FILTER_LIST = map(CHIP_MUTATION_FILTER_LIST, ~ unique(.x[.x != ""]))
-  ) %>%
-  mutate(
-    CHIP_FILTER = map_chr(
-      CHIP_MUTATION_FILTER_LIST, ~ case_when(
-        length(.x) == 0 ~ "",
-        length(.x) == 1 ~ .x[1],
-        .default = paste(sort(.x), collapse = ";")
-      )
-    )
-  ) %>%
-  select(
-    -CHIP_MUTATION_FILTER_STR_COMB,
-    -CHIP_MUTATION_FILTER_LIST
-  ) %>%
+  # mutate(
+  #   CHIP_FILTER = map_chr(
+  #     CHIP_MUTATION_FILTER_LIST, ~ case_when(
+  #       length(.x) == 0 ~ "",
+  #       length(.x) == 1 ~ .x[1],
+  #       .default = paste(sort(.x), collapse = ";")
+  #     )
+  #   )
+  # ) %>%
+  # select(
+  #   # -CHIP_MUTATION_FILTER_STR_COMB,
+  #   -CHIP_FILTER_LIST
+  # ) %>%
   # Create CHIP_INFO column
   mutate(
     CHIP_INFO = case_when(
@@ -895,26 +929,38 @@ df <- df %>%
   ) %>%
   # Consolidate CHIP INFO strings into one per variant
   mutate(
-    CHIP_VARIANT_LEVEL_INFO = unique(CHIP_INFO[CHIP_INFO != ""]) %>% paste(collapse = ";")
+    CHIP_VARIANT_LEVEL_INFO_LIST = list(unique(CHIP_INFO[CHIP_INFO != ""]))
   ) %>%
+  mutate(
+    CHIP_VARIANT_LEVEL_INFO = map_chr(CHIP_VARIANT_LEVEL_INFO_LIST, ~ paste(.x, collapse = ";"))
+  ) %>%
+  # mutate(
+  #   CHIP_VARIANT_LEVEL_INFO = unique(CHIP_INFO[CHIP_INFO != ""]) %>% paste(collapse = ";")
+  # ) %>%
   # Consolidate CHIP FILTER strings into one per variant
   mutate(
-    CHIP_VARIANT_LEVEL_FILTER = case_when(
-      any(CHIP_FILTER == "") ~ "",
-      .default = paste(CHIP_FILTER, collapse = ";")
+    CHIP_VARIANT_LEVEL_FILTER_LIST = case_when(
+      any(CHIP_FILTER == "") ~ list(character()),
+      .default = unlist(CHIP_FILTER_LIST) %>% unique() %>% list()
     )
   ) %>%
-  mutate(
-    CHIP_VARIANT_LEVEL_FILTER_LIST = str_split(CHIP_VARIANT_LEVEL_FILTER, ";")
-  ) %>%
-  mutate(
-    CHIP_VARIANT_LEVEL_FILTER_LIST = map(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
-  ) %>%
-  # Remove 'chip_mutation_match_filter_fail' and 'mutation_in_c_terminal' if CHIP_VARIANT_LEVEL_INFO is present
-  # i.e. the mutation matches at least one CHIP definition
+  # mutate(
+  #   CHIP_VARIANT_LEVEL_FILTER = case_when(
+  #     any(CHIP_FILTER == "") ~ "",
+  #     .default = paste(CHIP_FILTER, collapse = ";")
+  #   )
+  # ) %>%
+  # mutate(
+  #   CHIP_VARIANT_LEVEL_FILTER_LIST = str_split(CHIP_VARIANT_LEVEL_FILTER, ";")
+  # ) %>%
+  # mutate(
+  #   CHIP_VARIANT_LEVEL_FILTER_LIST = map(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
+  # ) %>%
+  # For variants that fail, but match at least one CHIP definition,
+  # remove the 'chip_mutation_match_filter_fail' and 'mutation_in_c_terminal' filters
   mutate(
     CHIP_VARIANT_LEVEL_FILTER_LIST_NO_CHIP_FAIL = map(
-      CHIP_VARIANT_LEVEL_FILTER_LIST, ~ .x[!(.x %in% c("chip_mutation_match_filter_fail", "mutation_in_c_terminal"))]
+      CHIP_VARIANT_LEVEL_FILTER_LIST, ~ .x[!(.x %in% CHIP_MUTATION_FILTER_STRINGS)]
     )
   ) %>%
   mutate(
@@ -926,25 +972,45 @@ df <- df %>%
   mutate(
     CHIP_VARIANT_LEVEL_FILTER = map_chr(CHIP_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
   ) %>%
-  select(
-    -CHIP_VARIANT_LEVEL_FILTER_LIST, -CHIP_VARIANT_LEVEL_FILTER_LIST_NO_CHIP_FAIL
-  ) %>%
+  # select(
+  #   -CHIP_VARIANT_LEVEL_INFO_LIST, -CHIP_VARIANT_LEVEL_FILTER_LIST, -CHIP_VARIANT_LEVEL_FILTER_LIST_NO_CHIP_FAIL
+  # ) %>%
   ungroup() %>%
   # Create a combined filter column
+  rowwise() %>%
   mutate(
-    COMBINED_FILTER = case_when(
-      VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER == "" ~ "PASS",
-      VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER != "" ~ CHIP_FILTER,
-      VARIANT_LEVEL_FILTER != "PASS" & CHIP_FILTER == "" ~ VARIANT_LEVEL_FILTER,
-      .default = paste(VARIANT_LEVEL_FILTER, CHIP_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+    COMBINED_FILTER_LIST = case_when(
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER == "" ~ list("PASS"),
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER != "" ~ list(CHIP_FILTER_LIST),
+      VARIANT_LEVEL_FILTER != "PASS" & CHIP_FILTER == "" ~ list(VARIANT_LEVEL_FILTER_LIST),
+      .default = list(c(VARIANT_LEVEL_FILTER_LIST, CHIP_FILTER_LIST))
     ),
-    COMBINED_VARIANT_LEVEL_FILTER = case_when(
-      VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ "PASS",
-      VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER != "" ~ CHIP_VARIANT_LEVEL_FILTER,
-      VARIANT_LEVEL_FILTER != "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ VARIANT_LEVEL_FILTER,
-      .default = paste(VARIANT_LEVEL_FILTER, CHIP_VARIANT_LEVEL_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+    COMBINED_VARIANT_LEVEL_FILTER_LIST = case_when(
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ list("PASS"),
+      VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER != "" ~ list(CHIP_VARIANT_LEVEL_FILTER_LIST),
+      VARIANT_LEVEL_FILTER != "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ list(VARIANT_LEVEL_FILTER_LIST),
+      .default = list(c(VARIANT_LEVEL_FILTER_LIST, CHIP_VARIANT_LEVEL_FILTER_LIST))
     )
+  ) %>%
+  ungroup() %>%
+  mutate(
+    COMBINED_FILTER = map_chr(COMBINED_FILTER_LIST, ~ paste(., collapse = ";")),
+    COMBINED_VARIANT_LEVEL_FILTER = map_chr(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ paste(., collapse = ";"))
   )
+  # mutate(
+  #   COMBINED_FILTER = case_when(
+  #     VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER == "" ~ "PASS",
+  #     VARIANT_LEVEL_FILTER == "PASS" & CHIP_FILTER != "" ~ CHIP_FILTER,
+  #     VARIANT_LEVEL_FILTER != "PASS" & CHIP_FILTER == "" ~ VARIANT_LEVEL_FILTER,
+  #     .default = paste(VARIANT_LEVEL_FILTER, CHIP_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+  #   ),
+  #   COMBINED_VARIANT_LEVEL_FILTER = case_when(
+  #     VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ "PASS",
+  #     VARIANT_LEVEL_FILTER == "PASS" & CHIP_VARIANT_LEVEL_FILTER != "" ~ CHIP_VARIANT_LEVEL_FILTER,
+  #     VARIANT_LEVEL_FILTER != "PASS" & CHIP_VARIANT_LEVEL_FILTER == "" ~ VARIANT_LEVEL_FILTER,
+  #     .default = paste(VARIANT_LEVEL_FILTER, CHIP_VARIANT_LEVEL_FILTER, sep = ";") %>% str_replace_all("^;|;$", "")
+  #   )
+  # )
 
 # --- Add back in variants that failed to pass filters ---
 df_filtered <- df_filtered %>%
@@ -972,24 +1038,17 @@ df_filtered <- df_filtered %>%
     ALT
   ) %>%
   mutate(
-    COMBINED_VARIANT_LEVEL_FILTER_STR_COMB = paste(
+    COMBINED_VARIANT_LEVEL_FILTER_LIST = list(c(
       FILTER,
       HARD_FILTER_AF,
       HARD_FILTER_VAF,
       HOMOPOLYMER_INDEL_FILTER,
       SOMATICISM_FILTER,
       EXONIC_SPLICING_FILTER,
-      CHIP_TRANSCRIPT_FILTER,
-      sep = ";"
-    )
-  ) %>%
-  mutate(
-    COMBINED_VARIANT_LEVEL_FILTER_STR_COMB = paste(COMBINED_VARIANT_LEVEL_FILTER_STR_COMB, collapse = ";")
+      CHIP_TRANSCRIPT_FILTER
+    ))
   ) %>%
   ungroup() %>%
-  mutate(
-    COMBINED_VARIANT_LEVEL_FILTER_LIST = str_split(COMBINED_VARIANT_LEVEL_FILTER_STR_COMB, ";")
-  ) %>%
   mutate(
     COMBINED_VARIANT_LEVEL_FILTER_LIST = map(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
   ) %>%
@@ -1005,11 +1064,46 @@ df_filtered <- df_filtered %>%
   ) %>%
   mutate(
     COMBINED_VARIANT_LEVEL_FILTER = map_chr(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
-  ) %>%
-  select(
-    -COMBINED_VARIANT_LEVEL_FILTER_STR_COMB,
-    -COMBINED_VARIANT_LEVEL_FILTER_LIST
   )
+  # mutate(
+  #   COMBINED_VARIANT_LEVEL_FILTER_STR_COMB = paste(
+  #     FILTER,
+  #     HARD_FILTER_AF,
+  #     HARD_FILTER_VAF,
+  #     HOMOPOLYMER_INDEL_FILTER,
+  #     SOMATICISM_FILTER,
+  #     EXONIC_SPLICING_FILTER,
+  #     CHIP_TRANSCRIPT_FILTER,
+  #     sep = ";"
+  #   )
+  # ) %>%
+  # mutate(
+  #   COMBINED_VARIANT_LEVEL_FILTER_STR_COMB = paste(COMBINED_VARIANT_LEVEL_FILTER_STR_COMB, collapse = ";")
+  # ) %>%
+  # ungroup() %>%
+  # mutate(
+  #   COMBINED_VARIANT_LEVEL_FILTER_LIST = str_split(COMBINED_VARIANT_LEVEL_FILTER_STR_COMB, ";")
+  # ) %>%
+  # mutate(
+  #   COMBINED_VARIANT_LEVEL_FILTER_LIST = map(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ unique(.x[.x != ""]))
+  # ) %>%
+  # mutate(
+  #   # Remove 'PASS' (none of the variants have passed)
+  #   COMBINED_VARIANT_LEVEL_FILTER_LIST = map(
+  #     COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ if_else(
+  #       length(.x) > 1,
+  #       list(.x[.x != "PASS"]),
+  #       list(.x)
+  #     )[[1]]
+  #   )
+  # ) %>%
+  # mutate(
+  #   COMBINED_VARIANT_LEVEL_FILTER = map_chr(COMBINED_VARIANT_LEVEL_FILTER_LIST, ~ paste(.x, collapse = ";"))
+  # )  # %>%
+  # select(
+  #   -COMBINED_VARIANT_LEVEL_FILTER_STR_COMB,
+  #   -COMBINED_VARIANT_LEVEL_FILTER_LIST
+  # )
 
 common_cols <- intersect(
   colnames(df),
@@ -1025,8 +1119,10 @@ df_final <- df %>%
     REF,
     ALT,
     QUAL,
-    COMBINED_VARIANT_LEVEL_FILTER,
-    CHIP_VARIANT_LEVEL_INFO,
+    # COMBINED_VARIANT_LEVEL_FILTER,
+    # CHIP_VARIANT_LEVEL_INFO,
+    CHIP_VARIANT_LEVEL_INFO_LIST,
+    COMBINED_VARIANT_LEVEL_FILTER_LIST,
     FORMAT,
     SAMPLE,
     Transcript,
@@ -1053,30 +1149,45 @@ df_final <- df %>%
     CHIP_MUTATION_FILTER,
     PUTATIVE_CHIP_FILTER,
     CHIP_INFO,
-    all_of(colnames(chip_definitions)[colnames(chip_definitions) %in% colnames(df)])
+    all_of(colnames(chip_definitions)[colnames(chip_definitions) %in% colnames(df)]),
   ) %>%
   rename(
     ORIGINAL_FILTER = FILTER,
-    FILTER = COMBINED_VARIANT_LEVEL_FILTER,
-    INFO = CHIP_VARIANT_LEVEL_INFO
+    # FILTER = COMBINED_VARIANT_LEVEL_FILTER,
+    # INFO = CHIP_VARIANT_LEVEL_INFO,
+    FILTER_LIST = COMBINED_VARIANT_LEVEL_FILTER_LIST,
+    INFO_LIST = CHIP_VARIANT_LEVEL_INFO_LIST
   ) %>%
   # Remove NAs from FILTER and INFO columns
+  rowwise() %>%
   mutate(
-    FILTER = if_else(
-      is.na(FILTER),
-      ".",
-      FILTER
+    # FILTER = if_else(
+    #   is.na(FILTER),
+    #   ".",
+    #   FILTER
+    # ),
+    # INFO = if_else(
+    #   is.na(INFO),
+    #   ".",
+    #   INFO
+    # ),
+    FILTER_LIST = if_else(
+      any(is.na(FILTER_LIST)) | is.null(FILTER_LIST),
+      list(character()),
+      list(FILTER_LIST)
     ),
-    INFO = if_else(
-      is.na(INFO),
-      ".",
-      INFO
+    INFO_LIST = if_else(
+      any(is.na(INFO_LIST)) | is.null(INFO_LIST),
+      list(character()),
+      list(INFO_LIST)
     )
   ) %>%
+  ungroup() %>%
   distinct() %>%
   # The COMBINED_VARIANT_LEVEL_FILTER and CHIP_VARIANT_LEVEL_INFO columns
   # *should* be the same for all rows with the same CHROM, POS, REF, and ALT
   # but in case they're not, we'll do one final merge
+  # NOTE: UP TO HERE
   group_by(
     CHROM,
     POS,
@@ -1084,24 +1195,28 @@ df_final <- df %>%
     ALT
   ) %>%
   mutate(
-    FILTER = paste(FILTER, collapse = ";"),
-    INFO = unique(INFO[!(INFO %in% c("", "."))]) %>% paste(collapse = ";")
+    FILTER_LIST = unlist(FILTER_LIST) %>% unique() %>% list(),
+    INFO_LIST = unlist(INFO_LIST) %>% unique() %>% list()
   ) %>%
+  # mutate(
+  #   FILTER = paste(FILTER, collapse = ";"),
+  #   INFO = unique(INFO[!(INFO %in% c("", "."))]) %>% paste(collapse = ";")
+  # ) %>%
   ungroup() %>%
-  mutate(
-    FILTER = str_split(FILTER, ";"),
-    INFO = case_when(
-      INFO == "" ~ ".",
-      .default = INFO
-    )
-  ) %>%
-  mutate(
-    FILTER = map(FILTER, ~ unique(.x[.x != ""])),
-  ) %>%
+  # mutate(
+  #   FILTER = str_split(FILTER, ";"),
+  #   INFO = case_when(
+  #     INFO == "" ~ ".",
+  #     .default = INFO
+  #   )
+  # ) %>%
+  # mutate(
+  #   FILTER = map(FILTER, ~ unique(.x[.x != ""])),
+  # ) %>%
   mutate(
     # Remove 'PASS' if there are other filters
-    FILTER = map(
-      FILTER, ~ if_else(
+    FILTER_LIST = map(
+      FILTER_LIST, ~ if_else(
         length(.x) > 1 & "PASS" %in% .x,
         list(.x[.x != "PASS"]),
         list(.x)
@@ -1109,53 +1224,53 @@ df_final <- df %>%
     )
   ) %>%
   mutate(
-    FILTER = map_chr(FILTER, ~ paste(.x, collapse = ";")),
+    FILTER = map_chr(FILTER_LIST, ~ paste(.x, collapse = ";")),
   ) %>%
   distinct() %>%
   # Merge INFO fields
   # For example, if a variant has multiple CHIP transcripts, merge the CHIP_Transcript field:
   # CHIP_Transcript=NM_0000001|NM_0000002
-  mutate(
-    INFO_split = str_split(INFO, ";")
-  ) %>%
+  # mutate(
+  #   INFO_split = str_split(INFO, ";")
+  # ) %>%
   mutate(
     INFO_CHIP_Transcript = map_chr(
-      INFO_split, ~ (
+      INFO_LIST, ~ (
         grep("^CHIP_Transcript=", .x, value = TRUE) %>%
           gsub("^CHIP_Transcript=", "", .) %>%
           paste(collapse = "|")
       )
     ),
     INFO_AAChange = map_chr(
-      INFO_split, ~ (
+      INFO_LIST, ~ (
         grep("^AAChange=", .x, value = TRUE) %>%
           gsub("^AAChange=", "", .) %>%
           paste(collapse = "|")
       )
     ),
     INFO_GeneDetail = map_chr(
-      INFO_split, ~ (
+      INFO_LIST, ~ (
         grep("^GeneDetail=", .x, value = TRUE) %>%
           gsub("^GeneDetail=", "", .) %>%
           paste(collapse = "|")
       )
     ),
     INFO_CHIP_Mutation_Class = map_chr(
-      INFO_split, ~ (
+      INFO_LIST, ~ (
         grep("^CHIP_Mutation_Class=", .x, value = TRUE) %>%
           gsub("^CHIP_Mutation_Class=", "", .) %>%
           paste(collapse = "|")
       )
     ),
     INFO_CHIP_Mutation_Definition = map_chr(
-      INFO_split, ~ (
+      INFO_LIST, ~ (
         grep("^CHIP_Mutation_Definition=", .x, value = TRUE) %>%
           gsub("^CHIP_Mutation_Definition=", "", .) %>%
           paste(collapse = "|")
       )
     ),
     INFO_CHIP_Publication_Source = map_chr(
-      INFO_split, ~ (
+      INFO_LIST, ~ (
         grep("^CHIP_Publication_Source=", .x, value = TRUE) %>%
           gsub("^CHIP_Publication_Source=", "", .) %>%
           paste(collapse = "|")
@@ -1176,7 +1291,8 @@ df_final <- df %>%
     )
   ) %>%
   select(
-    -INFO_split,
+    -FILTER_LIST,
+    -INFO_LIST,
     -INFO_CHIP_Transcript,
     -INFO_AAChange,
     -INFO_GeneDetail,
