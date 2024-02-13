@@ -303,6 +303,8 @@ workflow Mutect2CHIP {
         File? out_chip_vcf_idx = CHIP_wf.out_vcf_idx
         File? out_chip_annotation_vcf = CHIP_wf.chip_vcf
         File? out_chip_annotation_vcf_idx = CHIP_wf.chip_vcf_idx
+        File? out_chip_annotation_split_vcf = CHIP_wf.chip_split_vcf
+        File? out_chip_annotation_split_vcf_idx = CHIP_wf.chip_split_vcf_idx
         File? out_chip_annotation_csv = CHIP_wf.chip_csv
         File? out_chip_annotation_rdata = CHIP_wf.chip_rdata
     }
