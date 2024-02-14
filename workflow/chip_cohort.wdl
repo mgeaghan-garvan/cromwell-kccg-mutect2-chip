@@ -84,7 +84,7 @@ workflow CHIPCohort {
         }
     }
 
-    call MergeStrippedVcfs {
+    call MergeStrippedVcfsAndSplitMultiAllelics {
         input:
             input_vcf_idx_pairs = StripFilterInfo.stripped_vcf_idx_pairs,
             cpu = small_task_cpu,
@@ -96,8 +96,8 @@ workflow CHIPCohort {
 
     call CHIPCohortFilter {
         input:
-            input_vcf = MergeStrippedVcfs.stripped_vcf,
-            input_vcf_idx = MergeStrippedVcfs.stripped_vcf_idx,
+            input_vcf = MergeStrippedVcfsAndSplitMultiAllelics.stripped_split_vcf,
+            input_vcf_idx = MergeStrippedVcfsAndSplitMultiAllelics.stripped_split_vcf_idx,
             cpu = small_task_cpu,
             mem_mb = small_task_mem,
             disk = small_task_disk,
@@ -161,7 +161,7 @@ task StripFilterInfo {
     }
 }
 
-task MergeStrippedVcfs {
+task MergeStrippedVcfsAndSplitMultiAllelics {
     input {
         Array[Array[File]] input_vcf_idx_pairs
         Int cpu
@@ -175,8 +175,9 @@ task MergeStrippedVcfs {
 
     command <<<
         # Use bcftools to merge the input VCF files
-        bcftools merge -O z -o cohort.stripped.vcf.gz ~{sep=" " input_vcfs}
-        tabix -s1 -b2 -e2 cohort.stripped.vcf.gz
+        bcftools merge -m all ~{sep=" " input_vcfs} | \
+            bcftools norm -m -any -O z -o cohort.stripped.split.vcf.gz
+        tabix -s1 -b2 -e2 cohort.stripped.split.vcf.gz
     >>>
 
     runtime {
@@ -190,8 +191,8 @@ task MergeStrippedVcfs {
     }
 
     output {
-        File stripped_vcf = "cohort.stripped.vcf.gz"
-        File stripped_vcf_idx = "cohort.stripped.vcf.gz.tbi"
+        File stripped_split_vcf = "cohort.stripped.split.vcf.gz"
+        File stripped_split_vcf_idx = "cohort.stripped.split.vcf.gz.tbi"
     }
 }
 
@@ -208,8 +209,9 @@ task CHIPCohortFilter {
     }
 
     command <<<
+        gunzip -c ~{input_vcf} > cohort.vcf
         annotate_chip_cohort \
-            --input_vcf ~{input_vcf} \
+            --input_vcf cohort.vcf \
             --prevalence_threshold ~{prevalence_threshold}
 
         bgzip -c cohort.annotated.vcf > cohort.annotated.vcf.gz
