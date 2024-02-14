@@ -1063,8 +1063,8 @@ df_final <- df %>%
     ALT
   ) %>%
   mutate(
-    FILTER_LIST = unlist(FILTER_LIST) %>% unique() %>% list(),
-    INFO_LIST = unlist(INFO_LIST) %>% unique() %>% list()
+    FILTER_LIST = unlist(FILTER_LIST) %>% unique() %>% sort() %>% list(),
+    INFO_LIST = unlist(INFO_LIST) %>% unique() %>% sort() %>% list()
   ) %>%
   ungroup() %>%
   mutate(
@@ -1084,6 +1084,10 @@ df_final <- df %>%
   # Merge INFO fields
   # For example, if a variant has multiple CHIP transcripts, merge the CHIP_Transcript field:
   # CHIP_Transcript=NM_0000001|NM_0000002
+  mutate(
+    # First, separate out the INFO fields and combine into one vector per row
+    INFO_LIST = map(INFO_LIST, ~ str_split(.x, ";") %>% unlist())
+  ) %>%
   mutate(
     INFO_CHIP_Transcript = map_chr(
       INFO_LIST, ~ (
