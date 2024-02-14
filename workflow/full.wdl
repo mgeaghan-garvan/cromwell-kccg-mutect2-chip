@@ -94,7 +94,8 @@ workflow Mutect2CHIP {
         Boolean use_gnomad_genome = true
         Boolean use_ensembl_annotation = false
         String gnomad_pop = "AF"
-        String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d"  # :latest
+        String chip_pre_post_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
+        String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
 
         # Samtools settings
         String samtools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
@@ -275,6 +276,7 @@ workflow Mutect2CHIP {
                 use_gnomad_genome = use_gnomad_genome,
                 use_ensembl_annotation = use_ensembl_annotation,
                 gnomad_pop = gnomad_pop,
+                chip_pre_post_docker = chip_pre_post_docker,
                 chip_docker = chip_docker,
                 ref_fasta = ref_fasta,
                 chip_mutations_csv = chip_mutations_csv,

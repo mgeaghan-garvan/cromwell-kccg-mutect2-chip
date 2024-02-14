@@ -41,7 +41,8 @@ workflow CHIP {
         Boolean use_gnomad_genome = true
         Boolean use_ensembl_annotation = false
         String gnomad_pop = "AF"
-        String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d"  # :latest
+        String chip_pre_post_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
+        String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
         File ref_fasta
         File chip_mutations_csv
         File somaticism_filter_transcripts
@@ -70,7 +71,7 @@ workflow CHIP {
         mem_mb = chip_mem_mb,
         disk_space = chip_disk,
         cpu = chip_cpu,
-        docker = chip_docker,
+        docker = chip_pre_post_docker,
         runtime_params = standard_runtime
     }
 
@@ -131,7 +132,7 @@ workflow CHIP {
             mem_mb = chip_mem_mb,
             disk_space = chip_disk,
             cpu = chip_cpu,
-            docker = chip_docker,
+            docker = chip_pre_post_docker,
             runtime_params = standard_runtime
     }
 
