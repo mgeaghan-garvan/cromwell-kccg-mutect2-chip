@@ -3,7 +3,13 @@ Move the CHIP annotation outputs to the analysis bucket
 """
 import hailtop.batch as hb
 from cpg_utils.config import get_config
-from cpg_utils.hail_batch import remote_tmpdir, get_batch
+from cpg_utils.hail_batch import get_batch, image_path
+
+import re
+
+VALID_PROJECTS = [
+    'kccg-genomics-med',
+]
 
 
 _config = get_config()
@@ -18,9 +24,22 @@ CROMWELL_OUTPUT_PATH = f'{CROMWELL_OUTPUT_BUCKET}/{CROMWELL_OUTPUT_PREFIX}'
 OUTPUT_BUCKET = _config['storage'][DATASET]['analysis']
 OUTPUT_PATH = f'{OUTPUT_BUCKET}/{CROMWELL_OUTPUT_PREFIX}'
 
+# Check for valid buckets
+if CROMWELL_OUTPUT_BUCKET not in [
+    f'gs://cpg-{project}-main'
+    for project in VALID_PROJECTS
+]:
+    raise ValueError(f'Invalid CROMWELL_OUTPUT_BUCKET: {CROMWELL_OUTPUT_BUCKET}')
+if OUTPUT_BUCKET not in [
+    f'gs://cpg-{project}-main-analysis'
+    for project in VALID_PROJECTS
+]:
+    raise ValueError(f'Invalid OUTPUT_BUCKET: {OUTPUT_BUCKET}')
+
 b = get_batch()
 
 process_j = b.new_job('move-chip-output-files')
+process_j.image(image_path('cpg_workflows'))
 
 FILES_TO_MOVE_LIST = []
 
@@ -35,6 +54,13 @@ if _config['analyses'].get('annovar', False):
         f'{CROMWELL_OUTPUT_PATH}/**/*.hg38_multianno.vcf',
         f'{CROMWELL_OUTPUT_PATH}/**/*.hg38_multianno.txt',
     ])
+
+# Check for malformed paths
+for p in FILES_TO_MOVE_LIST:
+    if not re.match(r'^gs://[A-Za-z0-9\-_\/\.]+$', p):
+        raise ValueError(f'Invalid CROMWELL_OUTPUT_PATH: {p}')
+if not re.match(r'^gs://[A-Za-z0-9\-_\/\.]+$', OUTPUT_PATH):
+    raise ValueError(f'Invalid OUTPUT_PATH: {OUTPUT_PATH}')
 
 FILES_TO_MOVE = ' '.join(FILES_TO_MOVE_LIST)
 
