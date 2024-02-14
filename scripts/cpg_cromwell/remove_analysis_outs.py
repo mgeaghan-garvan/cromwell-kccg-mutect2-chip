@@ -3,7 +3,7 @@ Remove the CHIP pipeline outputs from the release bucket once no longer needed
 """
 import hailtop.batch as hb
 from cpg_utils.config import get_config
-from cpg_utils.hail_batch import remote_tmpdir, get_batch
+from cpg_utils.hail_batch import get_batch, image_path
 
 import re
 
@@ -44,7 +44,7 @@ if not re.match(r'^gs://[A-Za-z0-9\-_\/\.]+$', OUTPUT_PATH):
 b = get_batch()
 
 process_j = b.new_job('move-chip-output-files')
-
+process_j.image(image_path('cpg_workflows'))
 process_j.command(f"gcloud -q auth activate-service-account --key-file=/gsa-key/key.json; gsutil rm -r {OUTPUT_PATH}")
 
 b.run(wait=False)
