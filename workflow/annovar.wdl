@@ -26,9 +26,10 @@ workflow Annovar {
         # annovar settings
         Int annovar_mem_mb = 4000
         Int annovar_disk = 100
+        Int annovar_tmp_disk_space = 200
         Int annovar_cpu = 1
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/annovar@sha256:842e9f88dd39999ee2129aeb992e8eced10ac2a33642d4b34d0f0c0254aa5035"  # :5.34.0
-        Array[File] annovar_db_files
+        File annovar_db_archive
         String ref_name = "hg38"
         String annovar_protocols = "refGene"
         String annovar_operations = "g"
@@ -54,9 +55,10 @@ workflow Annovar {
             sample_id = sample_id,
             mem_mb = annovar_mem_mb,
             annovar_disk_space = annovar_disk,
+            annovar_tmp_disk_space = annovar_tmp_disk_space,
             cpu = annovar_cpu,
             annovar_docker = annovar_docker,
-            annovar_db_files = annovar_db_files,
+            annovar_db_archive = annovar_db_archive,
             ref_name = ref_name,
             annovar_protocols = annovar_protocols,
             annovar_operations = annovar_operations,
@@ -76,9 +78,10 @@ task Annovar_task {
 
       Int mem_mb = 4000
       Int annovar_disk_space = 100
+      Int annovar_tmp_disk_space = 200
       Int cpu = 1
       String annovar_docker
-      Array[File] annovar_db_files
+      File annovar_db_archive
 
       String label = "annovar_out"
 
@@ -92,19 +95,24 @@ task Annovar_task {
 
     String file_prefix = sample_id + "." + label
 
+    String tmp_dir = "/tmp"
+
     command {
       set -euo pipefail
 
-      mkdir annovar_db
+      # Extract and flatten the annovar db archive
+      mkdir ~{tmp_dir}/extract
+      mkdir ~{tmp_dir}/annovar_db
 
-      for DB_FILE in ~{sep=" " annovar_db_files}
-      do
-        ln -s $DB_FILE annovar_db/
-      done
+      tar -xzvf ~{annovar_db_archive} -C ~{tmp_dir}/extract
+
+      cd ~{tmp_dir}/annovar_db
+      find ~{tmp_dir}/extract -type f | while read FILE; do ln -s $FILE; done
+      cd -
 
       table_annovar.pl \
         ~{vcf_input} \
-        annovar_db \
+        ~{tmp_dir}/annovar_db \
         -buildver ~{default="hg38" ref_name} \
         -out ~{file_prefix} \
         -protocol ~{annovar_protocols} \
@@ -119,7 +127,7 @@ task Annovar_task {
       docker: annovar_docker
       bootDiskSizeGb: runtime_params.boot_disk_size
       memory: mem_mb + " MB"
-      disks: "local-disk " + annovar_disk_space + " HDD"
+      disks: ["local-disk ~{annovar_disk_space} HDD", "/tmp ~{annovar_tmp_disk_space} HDD"]
       preemptible: runtime_params.preemptible
       maxRetries: runtime_params.max_retries
       cpu: cpu

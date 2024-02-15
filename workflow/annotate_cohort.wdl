@@ -50,7 +50,7 @@ workflow AnnotateCohort {
 
         # Annovar settings
         Boolean annovar = true
-        Array[File]? annovar_db_files
+        File? annovar_db_archive
         String annovar_assembly = "hg38"
         String annovar_protocols = "refGene"
         String annovar_operations = "g"
@@ -172,10 +172,10 @@ workflow AnnotateCohort {
     }
 
     File annovar_input_vcf = select_first([VEP_wf.out_vep_vcf, MergeSitesOnlyVcfs.sites_only_vcf])
-    Array[File] annovar_db_file_list = select_first([annovar_db_files, ["ANNOVAR_ARCHIVE_NOT_SUPPLIED"]])
+    File annovar_db_archive_file = select_first([annovar_db_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
 
     # Optionally run Annovar
-    if (annovar && defined(annovar_db_files)) {
+    if (annovar && defined(annovar_db_archive)) {
         call Annovar.Annovar as Annovar_wf {
             input:
                 input_vcf = annovar_input_vcf,
@@ -183,7 +183,7 @@ workflow AnnotateCohort {
                 annovar_disk = annovar_disk,
                 annovar_cpu = 1,
                 annovar_docker = annovar_docker,
-                annovar_db_files = annovar_db_file_list,
+                annovar_db_archive = annovar_db_archive_file,
                 ref_name = annovar_assembly,
                 annovar_protocols = annovar_protocols,
                 annovar_operations = annovar_operations,

@@ -34,7 +34,7 @@
     "Mutect2CHIP.vep_loftee_conservation_sql": "OPTIONAL_FILE",
     "Mutect2CHIP.loftee_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3",
     "Mutect2CHIP.annovar": false,
-    "Mutect2CHIP.annovar_db_files": ["REQUIRED_FILE_1", "REQUIRED_FILE_2"],
+    "Mutect2CHIP.annovar_db_archive": "REQUIRED_FILE_1",
     "Mutect2CHIP.annovar_assembly": "hg38",
     "Mutect2CHIP.annovar_protocols": "cosmic95_coding,cosmic95_noncoding,dbnsfp42a,clinvar_20221231,gnomad211_exome,refGene",
     "Mutect2CHIP.annovar_operations": "f,f,f,f,f,g",

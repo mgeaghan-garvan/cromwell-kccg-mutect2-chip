@@ -31,7 +31,7 @@ workflow CHIP {
         Int annovar_disk = 100
         Int annovar_cpu = 1
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/annovar@sha256:842e9f88dd39999ee2129aeb992e8eced10ac2a33642d4b34d0f0c0254aa5035"  # :5.34.0
-        Array[File] annovar_db_files
+        File annovar_db_archive
         String ref_name = "hg38"
         # chip annotation settings
         Int chip_mem_mb = 10000
@@ -87,7 +87,7 @@ workflow CHIP {
             annovar_disk_space = annovar_disk,
             cpu = annovar_cpu,
             annovar_docker = annovar_docker,
-            annovar_db_files = annovar_db_files,
+            annovar_db_archive = annovar_db_archive,
             ref_name = ref_name,
             label = "chip_annovar_out",
             annovar_protocols = chip_annovar_protocols,
