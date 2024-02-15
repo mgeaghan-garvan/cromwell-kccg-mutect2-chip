@@ -72,7 +72,7 @@ workflow Mutect2CHIP {
 
         # Annovar settings
         Boolean annovar = true
-        Array[File]? annovar_db_files
+        File? annovar_db_archive
         String annovar_assembly = "hg38"
         String annovar_protocols = "refGene"
         String annovar_operations = "g"
@@ -211,10 +211,10 @@ workflow Mutect2CHIP {
     }
 
     File annovar_input_vcf = select_first([VEP_wf.out_vep_vcf, Mutect2_wf.filtered_vcf])
-    Array[File] annovar_db_file_list = select_first([annovar_db_files, ["ANNOVAR_ARCHIVE_NOT_SUPPLIED"]])
+    File annovar_db_archive_file = select_first([annovar_db_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
 
     # Optionally run Annovar
-    if (annovar && defined(annovar_db_files)) {
+    if (annovar && defined(annovar_db_archive)) {
         call Annovar.Annovar as Annovar_wf {
             input:
                 input_vcf = annovar_input_vcf,
@@ -222,7 +222,7 @@ workflow Mutect2CHIP {
                 annovar_disk = annovar_disk,
                 annovar_cpu = 1,
                 annovar_docker = annovar_docker,
-                annovar_db_files = annovar_db_file_list,
+                annovar_db_archive = annovar_db_archive_file,
                 ref_name = annovar_assembly,
                 annovar_protocols = annovar_protocols,
                 annovar_operations = annovar_operations,
@@ -257,7 +257,7 @@ workflow Mutect2CHIP {
     File chip_detection_input_vcf = select_first([SpliceAI_wf.spliceai_output_vcf, splieai_input_vcf])
     
     # Optionally run CHIP
-    if (run_chip_detection && defined(annovar_db_files)) {
+    if (run_chip_detection && defined(annovar_db_archive)) {
         String tumor_sample_name = Mutect2_wf.tumor_sample
         call CHIP.CHIP as CHIP_wf {
             input:
@@ -267,7 +267,7 @@ workflow Mutect2CHIP {
                 annovar_disk = annovar_disk,
                 annovar_cpu = 1,
                 annovar_docker = annovar_docker,
-                annovar_db_files = annovar_db_file_list,
+                annovar_db_archive = annovar_db_archive_file,
                 ref_name = annovar_assembly,
                 chip_mem_mb = chip_mem_mb,
                 chip_disk = chip_disk,
