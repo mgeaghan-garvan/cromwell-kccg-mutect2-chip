@@ -32,6 +32,7 @@ workflow CHIPCohort {
     input {
         # Inputs
         File vcf_idx_list
+        Float prevalence_threshold = 0.01
         
         # CHIP Annotation settings
         String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
@@ -98,6 +99,7 @@ workflow CHIPCohort {
         input:
             input_vcf = MergeStrippedVcfsAndSplitMultiAllelics.stripped_split_vcf,
             input_vcf_idx = MergeStrippedVcfsAndSplitMultiAllelics.stripped_split_vcf_idx,
+            prevalence_threshold = prevalence_threshold,
             cpu = small_task_cpu,
             mem_mb = small_task_mem,
             disk = small_task_disk,
@@ -214,8 +216,12 @@ task CHIPCohortFilter {
             --input_vcf cohort.vcf \
             --prevalence_threshold ~{prevalence_threshold}
 
-        bgzip -c cohort.annotated.vcf > cohort.annotated.vcf.gz
-        tabix -s1 -b2 -e2 cohort.annotated.vcf.gz
+        bcftools sort cohort.annotated.vcf > cohort.annotated.sorted.vcf
+        bgzip -c cohort.annotated.sorted.vcf > cohort.annotated.sorted.vcf.gz
+        tabix -s1 -b2 -e2 cohort.annotated.sorted.vcf.gz
+
+        bcftools norm -m +any -O z -o cohort.annotated.merged.sorted.vcf.gz cohort.annotated.sorted.vcf.gz
+        tabix -s1 -b2 -e2 cohort.annotated.merged.sorted.vcf.gz
     >>>
 
     runtime {
@@ -229,10 +235,9 @@ task CHIPCohortFilter {
     }
 
     output {
-        File annotation_vcf = "cohort.annotated.vcf.gz"
-        File annotation_vcf_idx = "cohort.annotated.vcf.gz.tbi"
+        File annotation_vcf = "cohort.annotated.merged.sorted.vcf.gz"
+        File annotation_vcf_idx = "cohort.annotated.merged.sorted.vcf.gz.tbi"
     }
-
 }
 
 task AnnotateVcf {

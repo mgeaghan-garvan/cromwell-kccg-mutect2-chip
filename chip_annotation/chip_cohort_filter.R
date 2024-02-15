@@ -93,10 +93,43 @@ vcf_filtered <- vcf %>%
       "."
     ),
     INFO = paste0("CHIP_Cohort_Prevalence=", prevalence)
-  )
+  ) %>%
+  # Annotate multi-allelic variants with a CHIP_Multiallelic_Cohort_Prevalence_Filters INFO field
+  group_by(
+    CHROM,
+    POS,
+    REF
+  ) %>%
+  mutate(
+    INFO_CHIP_Multiallelic_Cohort_Prevalence_Filters = case_when(
+      length(unique(FILTER)) > 1 & FILTER == "chip_cohort_prevalence_filter_fail" ~ "CHIP_Multiallelic_Cohort_Prevalence_Filters=chip_cohort_prevalence_filter_fail",
+      .default = ""
+    )
+  ) %>%
+  mutate(
+    INFO = case_when(
+      INFO_CHIP_Multiallelic_Cohort_Prevalence_Filters != "" ~ paste0(INFO, ";", INFO_CHIP_Multiallelic_Cohort_Prevalence_Filters),
+      .default = INFO
+    )
+  ) %>%
+  ungroup() %>%
+  select(
+    CHROM,
+    POS,
+    ID,
+    REF,
+    ALT,
+    QUAL,
+    FILTER,
+    INFO
+  ) %>%
+  distinct()
 
 filter_header = paste0("##FILTER=<ID=chip_cohort_prevalence_filter_fail,Description=\"Variant fails CHIP cohort prevalence filter with threshold ", prevalence, "\">")
-info_header = "##INFO=<ID=CHIP_Cohort_Prevalence,Number=A,Type=Float,Description=\"Prevalence of variant in the CHIP cohort\">"
+info_header = c(
+  "##INFO=<ID=CHIP_Cohort_Prevalence,Number=A,Type=Float,Description=\"Prevalence of variant in the CHIP cohort\">",
+  "##INFO=<ID=CHIP_Multiallelic_Cohort_Prevalence_Filters,Number=A,Type=String,Description=\"Allele-specific CHIP cohort prevalence filter for multiallelic variants\">"
+)
 
 # Insert new FILTER and INFO fields into header
 vcf_header_no_format <- vcf_header_no_format %>%
