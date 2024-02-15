@@ -37,7 +37,7 @@ fi
 for INPUT_VCF in ${INPUT_VCFS}; do
     INPUT_VCF_BN="$(basename $(basename ${INPUT_VCF} .gz) .vcf)"
     STRIPPED_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.stripped.vcf.gz"
-    bcftools annotate -x FILTER,INFO,FMT ${INPUT_VCF} -O z -o ${STRIPPED_VCF}
+    bcftools annotate -x FILTER,INFO,FMT -O z -o ${STRIPPED_VCF} ${INPUT_VCF} 
     tabix -s 1 -b 2 -e 2 ${STRIPPED_VCF}
 done
 
