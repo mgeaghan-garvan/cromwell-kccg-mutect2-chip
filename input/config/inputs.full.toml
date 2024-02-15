@@ -78,6 +78,7 @@ vep_cpu = 1
 vep_tmp_disk = 100
 annovar_mem_mb = 4000
 annovar_disk = 100
+annovar_tmp_disk = 200
 spliceai_disk = 100
 spliceai_mem_mb = 16000
 spliceai_cpu = 4

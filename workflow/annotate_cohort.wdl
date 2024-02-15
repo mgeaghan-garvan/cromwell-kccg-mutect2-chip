@@ -89,6 +89,7 @@ workflow AnnotateCohort {
         Int vep_tmp_disk = 100
         Int annovar_mem_mb = 4000
         Int annovar_disk = 100
+        Int annovar_tmp_disk = 200
         Int spliceai_disk = 100
         Int spliceai_mem_mb = 16000
         Int spliceai_cpu = 4
@@ -181,6 +182,7 @@ workflow AnnotateCohort {
                 input_vcf = annovar_input_vcf,
                 annovar_mem_mb = annovar_mem_mb,
                 annovar_disk = annovar_disk,
+                annovar_tmp_disk = annovar_tmp_disk,
                 annovar_cpu = 1,
                 annovar_docker = annovar_docker,
                 annovar_db_archive = annovar_db_archive_file,

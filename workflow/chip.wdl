@@ -29,6 +29,7 @@ workflow CHIP {
         # annovar settings
         Int annovar_mem_mb = 4000
         Int annovar_disk = 100
+        Int annovar_tmp_disk = 200
         Int annovar_cpu = 1
         String annovar_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/annovar@sha256:842e9f88dd39999ee2129aeb992e8eced10ac2a33642d4b34d0f0c0254aa5035"  # :5.34.0
         File annovar_db_archive
@@ -85,6 +86,7 @@ workflow CHIP {
             sample_id = sample_id,
             mem_mb = annovar_mem_mb,
             annovar_disk_space = annovar_disk,
+            annovar_tmp_disk = annovar_tmp_disk,
             cpu = annovar_cpu,
             annovar_docker = annovar_docker,
             annovar_db_archive = annovar_db_archive,
