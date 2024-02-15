@@ -377,8 +377,8 @@ task FinaliseCHIPFilter {
         -c "=FILTER,+INFO" \
         -o ~{output_vcf} \
         ~{tmp_vcf}.gz
-      bgzip -c ${output_vcf} > ${output_vcf}.gz
-      tabix -f -s 1 -b 2 -e 2 ${output_vcf}.gz
+      bgzip -c ~{output_vcf} > ~{output_vcf}.gz
+      tabix -f -s 1 -b 2 -e 2 ~{output_vcf}.gz
     >>>
 
     runtime {
