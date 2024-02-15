@@ -183,11 +183,10 @@ task CHIPPreFilter {
       if [ "${VCF_SUFFIX}" != "gz" ]
       then
         bgzip -c ~{input_vcf} > ~{input_vcf_gz}
-        tabix -s 1 -b 2 -e 2 ~{input_vcf_gz}
       else
         cp ~{input_vcf} ~{input_vcf_gz}
-        bcftools index ~{input_vcf_gz}
       fi
+      tabix -s 1 -b 2 -e 2 ~{input_vcf_gz}
 
       # --- Step 1: Turn the CHIP mutations CSV into a BED file of CHIP gene regions ---
       # This uses a quick R heredoc
