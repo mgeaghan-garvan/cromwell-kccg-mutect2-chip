@@ -125,7 +125,7 @@ vcf_filtered <- vcf %>%
   ) %>%
   distinct()
 
-filter_header = paste0("##FILTER=<ID=chip_cohort_prevalence_filter_fail,Description=\"Variant fails CHIP cohort prevalence filter with threshold ", prevalence, "\">")
+filter_header = paste0("##FILTER=<ID=chip_cohort_prevalence_filter_fail,Description=\"Variant fails CHIP cohort prevalence filter with threshold ", args$prevalence_threshold, "\">")
 info_header = c(
   "##INFO=<ID=CHIP_Cohort_Prevalence,Number=A,Type=Float,Description=\"Prevalence of variant in the CHIP cohort\">",
   "##INFO=<ID=CHIP_Multiallelic_Cohort_Prevalence_Filters,Number=A,Type=String,Description=\"Allele-specific CHIP cohort prevalence filter for multiallelic variants\">"
@@ -139,7 +139,7 @@ vcf_header_no_format <- vcf_header_no_format %>%
   )
 
 # Write filtered VCF file
-output_vcf <- gsub("\\.vcf(\\.gz)?$", "annotated.vcf", args$input_vcf)
+output_vcf <- gsub("\\.vcf(\\.gz)?$", ".annotated.vcf", args$input_vcf)
 vcf_header_no_format %>%
   write_lines(output_vcf)
 

@@ -51,7 +51,7 @@ ${CHIP_DOCKER_CMD} annotate_chip_cohort \
     --input_vcf ${MERGED_STRIPPED_SPLIT_VCF} \
     --prevalence_threshold ${PREVALENCE_THRESHOLD}
 
-ANNOTATION_VCF="${TEMP_DIR}/$(basename ${MERGED_STRIPPED_SPLIT_VCF} .vcf).annotated.vcf.gz"
+ANNOTATION_VCF="${TEMP_DIR}/$(basename ${MERGED_STRIPPED_SPLIT_VCF} .vcf).annotated.vcf"
 
 bcftools sort ${ANNOTATION_VCF} > ${TEMP_DIR}/cohort.annotated.sorted.vcf
 bgzip -c ${TEMP_DIR}/cohort.annotated.sorted.vcf > ${TEMP_DIR}/cohort.annotated.sorted.vcf.gz
@@ -69,6 +69,7 @@ for INPUT_VCF in ${INPUT_VCFS}; do
         -a ${ANNOTATION_VCF} \
         -c "=FILTER,+INFO" \
         -O z \
-        -o ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
+        -o ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz \
+        ${INPUT_VCF}
     tabix -s 1 -b 2 -e 2 ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
 done

@@ -15,6 +15,6 @@ RUN apt-get update && apt-get install -y libbz2-dev liblzma-dev git wget bash bz
       r-base=${RVERSION} r-tidyverse r-optparse \
   && conda init
 
-COPY annotate_chip /software/annotate_chip
-RUN chmod +x /software/annotate_chip
+COPY annotate_chip annotate_chip_cohort /software/
+RUN chmod +x /software/annotate_chip /software/annotate_chip_cohort
 COPY *.R /R/scripts/
