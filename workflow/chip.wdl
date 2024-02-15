@@ -86,7 +86,7 @@ workflow CHIP {
             sample_id = sample_id,
             mem_mb = annovar_mem_mb,
             annovar_disk_space = annovar_disk,
-            annovar_tmp_disk = annovar_tmp_disk,
+            annovar_tmp_disk_space = annovar_tmp_disk,
             cpu = annovar_cpu,
             annovar_docker = annovar_docker,
             annovar_db_archive = annovar_db_archive,
@@ -129,7 +129,6 @@ workflow CHIP {
             non_chip_gene_annotations_vcf = CHIPPreFilter.out_non_chip_genes_so_filtered_vcf_gz,
             non_chip_gene_annotations_vf_idx = CHIPPreFilter.out_non_chip_genes_so_filtered_vcf_gz_idx,
             chip_gene_annotations_vcf = CHIPAnnotation.chip_vcf,
-            chip_gene_annotations_vcf_idx = CHIPAnnotation.chip_vcf_idx,
             sample_id = tumor_sample_name,
             mem_mb = chip_mem_mb,
             disk_space = chip_disk,
@@ -141,10 +140,10 @@ workflow CHIP {
     output {
         File out_vcf = FinaliseCHIPFilter.chip_vcf
         File out_vcf_idx = FinaliseCHIPFilter.chip_vcf_idx
-        File chip_vcf = CHIPAnnotation.chip_vcf
-        File chip_vcf_idx = CHIPAnnotation.chip_vcf_idx
-        File chip_split_vcf = CHIPAnnotation.chip_split_vcf
-        File chip_split_vcf_idx = CHIPAnnotation.chip_split_vcf_idx
+        File chip_vcf = FinaliseCHIPFilter.chip_annotation_vcf
+        File chip_vcf_idx = FinaliseCHIPFilter.chip_annotation_vcf_idx
+        File chip_split_vcf = FinaliseCHIPFilter.chip_annotation_split_vcf
+        File chip_split_vcf_idx = FinaliseCHIPFilter.chip_annotation_split_vcf_idx
         File chip_csv = CHIPAnnotation.chip_csv
         File chip_rdata = CHIPAnnotation.chip_rdata
     }
@@ -319,13 +318,6 @@ task CHIPAnnotation {
         ~{missing_af_param} \
         ~{af_param} \
         --output_prefix ~{output_prefix}
-
-      bcftools sort ~{output_prefix}.vcf > ~{output_prefix}.sorted.vcf
-      bgzip -c ~{output_prefix}.sorted.vcf > ~{output_prefix}.sorted.vcf.gz
-      tabix -s 1 -b 2 -e 2 ~{output_prefix}.sorted.vcf.gz
-
-      bcftools norm -m +any -o ~{output_prefix}.merged.sorted.vcf.gz -O z ~{output_prefix}.sorted.vcf.gz
-      tabix -f -s 1 -b 2 -e 2 ~{output_prefix}.merged.sorted.vcf.gz
     >>>
 
     runtime {
@@ -339,10 +331,7 @@ task CHIPAnnotation {
     }
 
     output {
-      File chip_vcf = output_prefix + ".merged.sorted.vcf.gz"
-      File chip_vcf_idx = output_prefix + ".merged.sorted.vcf.gz.tbi"
-      File chip_split_vcf = output_prefix + ".sorted.vcf.gz"
-      File chip_split_vcf_idx = output_prefix + ".sorted.vcf.gz.tbi"
+      File chip_vcf = output_prefix + ".vcf"
       File chip_csv = output_prefix + ".csv"
       File chip_rdata = output_prefix + ".RData"
     }
@@ -355,7 +344,6 @@ task FinaliseCHIPFilter {
       File non_chip_gene_annotations_vcf
       File non_chip_gene_annotations_vf_idx
       File chip_gene_annotations_vcf
-      File chip_gene_annotations_vcf_idx
       String sample_id
       Int mem_mb = 8000
       Int disk_space = 50
@@ -366,8 +354,17 @@ task FinaliseCHIPFilter {
 
     String tmp_vcf = sample_id + ".tmp.vcf"
     String output_vcf = sample_id + ".chip.vcf"
+    String chip_annotation_prefix = sample_id + ".chip_annotations"
 
     command <<<
+      # Sort CHIP annotation VCF, merge multiallelics, bgzip and index
+      bcftools sort ~{chip_gene_annotations_vcf} > ~{chip_annotation_prefix}.sorted.vcf
+      bgzip -c ~{chip_annotation_prefix}.sorted.vcf > ~{chip_annotation_prefix}.sorted.vcf.gz
+      tabix -s 1 -b 2 -e 2 ~{chip_annotation_prefix}.sorted.vcf.gz
+
+      bcftools norm -m +any -o ~{chip_annotation_prefix}.merged.sorted.vcf.gz -O z ~{chip_annotation_prefix}.sorted.vcf.gz
+      tabix -f -s 1 -b 2 -e 2 ~{chip_annotation_prefix}.merged.sorted.vcf.gz
+
       bcftools annotate \
         -a ~{non_chip_gene_annotations_vcf} \
         -c "=FILTER" \
@@ -376,7 +373,7 @@ task FinaliseCHIPFilter {
       bgzip -c ~{tmp_vcf} > ~{tmp_vcf}.gz
       tabix -f -s 1 -b 2 -e 2 ~{tmp_vcf}.gz
       bcftools annotate \
-        -a ~{chip_gene_annotations_vcf} \
+        -a ~{chip_annotation_prefix}.merged.sorted.vcf.gz \
         -c "=FILTER,+INFO" \
         -o ~{output_vcf} \
         ~{tmp_vcf}.gz
@@ -395,6 +392,10 @@ task FinaliseCHIPFilter {
     }
 
     output {
+      File chip_annotation_vcf = chip_annotation_prefix + ".merged.sorted.vcf.gz"
+      File chip_annotation_vcf_idx = chip_annotation_prefix + ".merged.sorted.vcf.gz.tbi"
+      File chip_annotation_split_vcf = chip_annotation_prefix + ".sorted.vcf.gz"
+      File chip_annotation_split_vcf_idx = chip_annotation_prefix + ".sorted.vcf.gz.tbi"
       File chip_vcf = output_vcf + ".gz"
       File chip_vcf_idx = output_vcf + ".gz.tbi"
     }
