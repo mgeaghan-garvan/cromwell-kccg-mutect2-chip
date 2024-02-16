@@ -76,13 +76,12 @@ workflow AnnotateCohort {
         String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
 
         # Runtime options
-        String bcftools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3"  # same as loftee_docker
+        String bcftools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
         Int? preemptible
         Int? max_retries
         Int small_task_cpu = 4
         Int small_task_mem = 4000
         Int small_task_disk = 100
-        Int command_mem_padding = 1000
         Int boot_disk_size = 12
         Int vep_mem = 32000
         Int vep_cpu = 1
@@ -93,17 +92,9 @@ workflow AnnotateCohort {
         Int spliceai_disk = 100
         Int spliceai_mem_mb = 16000
         Int spliceai_cpu = 4
-        Int chip_mem_mb = 10000
-        Int chip_disk = 300
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int? emergency_extra_disk
-
-        # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
-        # Large is for Bams/WGS vcfs
-        # Small is for metrics/other vcfs
-        Float large_input_to_output_multiplier = 2.25
-        Float small_input_to_output_multiplier = 2.0
     }
 
     Int preemptible_or_default = select_first([preemptible, 2])
