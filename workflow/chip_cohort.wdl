@@ -161,7 +161,7 @@ task MergeStrippedVcfsAndSplitMultiAllelics {
         AnnotationRuntime runtime_params
     }
 
-    Array[String] input_vcfs = transpose(input_vcf_idx_pairs)[0]
+    Array[File] input_vcfs = transpose(input_vcf_idx_pairs)[0]
 
     command <<<
         # Use bcftools to merge the input VCF files
