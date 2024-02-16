@@ -31,8 +31,7 @@ workflow AnnotateCohort {
     input {
         # Inputs
         File vcf_idx_list
-        File ref_fasta
-        File ref_fai
+        File? ref_fasta
         String cohort_name = "cohort"
         
         # VEP settings
@@ -63,17 +62,6 @@ workflow AnnotateCohort {
         Int spliceai_max_dist = 50
         Boolean spliceai_mask = false
         String spliceai_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530"  # :v1.3.1
-
-        # CHIP Annotation settings
-        File chip_mutations_csv
-        File somaticism_filter_transcripts
-        Boolean run_chip_detection = true
-        Boolean treat_missing_as_rare = true
-        Boolean use_gnomad_genome = true
-        Boolean use_ensembl_annotation = false
-        String gnomad_pop = "AF"
-        String chip_pre_post_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
-        String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
 
         # Runtime options
         String bcftools_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
@@ -137,6 +125,7 @@ workflow AnnotateCohort {
     # Optionally run VEP
     if (vep && defined(vep_cache_archive)) {
         File vep_cache_archive_file = select_first([vep_cache_archive, "CACHE_FILE_NOT_SUPPLIED"])
+        File ref_fasta_vep_file = select_first([ref_fasta, "REF_FASTA_NOT_SUPPLIED"])
         call VEP.VEP as VEP_wf {
             input:
                 input_vcf = MergeSitesOnlyVcfs.sites_only_vcf,
@@ -144,7 +133,7 @@ workflow AnnotateCohort {
                 vep_species = vep_species,
                 vep_assembly = vep_assembly,
                 vep_cache_archive = vep_cache_archive_file,
-                ref_fasta = ref_fasta,
+                ref_fasta = ref_fasta_vep_file,
                 vep_docker = vep_docker,
                 loftee = loftee,
                 vep_loftee_ancestor_fa = vep_loftee_ancestor_fa,
@@ -190,10 +179,11 @@ workflow AnnotateCohort {
 
     # Optionally run SpliceAI
     if (spliceai) {
+        File ref_fasta_spliceai_file = select_first([ref_fasta, "REF_FASTA_NOT_SUPPLIED"])
         call SpliceAI.SpliceAI as SpliceAI_wf {
             input:
                 input_vcf = splieai_input_vcf,
-                ref_fasta = ref_fasta,
+                ref_fasta = ref_fasta_spliceai_file,
                 spliceai_annotation_file = spliceai_annotation_file,
                 spliceai_annotation_string = spliceai_annotation_string,
                 spliceai_max_dist = spliceai_max_dist,
