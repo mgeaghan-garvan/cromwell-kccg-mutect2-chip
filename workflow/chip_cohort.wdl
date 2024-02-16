@@ -133,7 +133,7 @@ task StripFilterInfo {
     command <<<
         # Use bcftools to convert the input VCF to a sites-only VCF
         bcftools annotate -x FMT,INFO,FILTER ~{input_vcf} | bgzip -c > ~{vcf_basename}.stripped.vcf.gz
-        tabix -s1 -b2 -e2 ~{vcf_basename}.sites_only.vcf.gz
+        tabix -s1 -b2 -e2 ~{vcf_basename}.stripped.vcf.gz
     >>>
 
     runtime {
