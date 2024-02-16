@@ -90,7 +90,7 @@ vcf_filtered <- vcf %>%
     FILTER = if_else(
       prevalence >= args$prevalence_threshold,
       "chip_cohort_prevalence_filter_fail",
-      "."
+      "PASS"
     ),
     INFO = paste0("CHIP_Cohort_Prevalence=", prevalence)
   ) %>%
@@ -102,7 +102,7 @@ vcf_filtered <- vcf %>%
   ) %>%
   mutate(
     INFO_CHIP_Multiallelic_Cohort_Prevalence_Filters = case_when(
-      length(unique(FILTER)) > 1 & FILTER == "chip_cohort_prevalence_filter_fail" ~ "CHIP_Multiallelic_Cohort_Prevalence_Filters=chip_cohort_prevalence_filter_fail",
+      length(unique(FILTER)) > 1 ~ paste0("CHIP_Multiallelic_Cohort_Prevalence_Filters=", FILTER),
       .default = ""
     )
   ) %>%
@@ -110,6 +110,14 @@ vcf_filtered <- vcf %>%
     INFO = case_when(
       INFO_CHIP_Multiallelic_Cohort_Prevalence_Filters != "" ~ paste0(INFO, ";", INFO_CHIP_Multiallelic_Cohort_Prevalence_Filters),
       .default = INFO
+    )
+  ) %>%
+  # Add a 'multiallelic_across_cohort' FILTER
+  mutate(
+    FILTER = case_when(
+      length(FILTER) > 1 & FILTER == "PASS" ~ "multiallelic_across_cohort",
+      length(FILTER) > 1 & FILTER != "PASS" ~ paste0(FILTER, ";multiallelic_across_cohort"),
+      .default = FILTER
     )
   ) %>%
   ungroup() %>%
@@ -125,7 +133,10 @@ vcf_filtered <- vcf %>%
   ) %>%
   distinct()
 
-filter_header = paste0("##FILTER=<ID=chip_cohort_prevalence_filter_fail,Description=\"Variant fails CHIP cohort prevalence filter with threshold ", args$prevalence_threshold, "\">")
+filter_header = c(
+  paste0("##FILTER=<ID=chip_cohort_prevalence_filter_fail,Description=\"Variant fails CHIP cohort prevalence filter with threshold ", args$prevalence_threshold, "\">"),
+  "##FILTER=<ID=multiallelic_across_cohort,Description=\"Variant is multiallelic across the cohort\">"
+)
 info_header = c(
   "##INFO=<ID=CHIP_Cohort_Prevalence,Number=A,Type=Float,Description=\"Prevalence of variant in the CHIP cohort\">",
   "##INFO=<ID=CHIP_Multiallelic_Cohort_Prevalence_Filters,Number=A,Type=String,Description=\"Allele-specific CHIP cohort prevalence filter for multiallelic variants\">"

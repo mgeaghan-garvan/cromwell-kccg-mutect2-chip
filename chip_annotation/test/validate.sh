@@ -6,6 +6,8 @@ POS_VCF="${OUTDIR}/positive_sites.chip.vcf.gz"
 NEG_VCF="${OUTDIR}/negative_sites.chip.vcf.gz"
 ALL_VCF="${OUTDIR}/all_sites.chip.vcf.gz"
 
+set -euo pipefail
+
 # === Positive tests ===
 # Test that all FILTER values are PASS
 if [ "$(zgrep -v '^#' ${POS_VCF} | awk '$7 != "PASS"' | wc -l)" -ne 0 ]; then
