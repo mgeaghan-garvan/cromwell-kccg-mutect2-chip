@@ -20,7 +20,9 @@ CROMWELL_OUTPUT_BUCKET = _config['storage'][DATASET]['default']
 # OUTPUT_BUCKET = _config['storage'][DATASET]['release']  # Currently no 'release' key in config TOML
 OUTPUT_BUCKET = re.sub(r'\-main$', '-release', CROMWELL_OUTPUT_BUCKET)
 
-# Check for valid buckets
+# Check for valid project and buckets
+if DATASET not in VALID_PROJECTS:
+    raise ValueError(f'Invalid DATASET: {DATASET}')
 if CROMWELL_OUTPUT_BUCKET not in [
     f'gs://cpg-{project}-main'
     for project in VALID_PROJECTS
@@ -45,6 +47,6 @@ b = get_batch()
 
 process_j = b.new_job('move-chip-output-files')
 process_j.image(image_path('cpg_workflows'))
-process_j.command(f"gcloud -q auth activate-service-account --key-file=/gsa-key/key.json; gsutil rm -r {OUTPUT_PATH}")
+process_j.command(f"gcloud -q auth activate-service-account --key-file=/gsa-key/key.json; gsutil -u {DATASET} rm -r {OUTPUT_PATH}")
 
 b.run(wait=False)
