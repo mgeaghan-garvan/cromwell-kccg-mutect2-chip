@@ -200,7 +200,7 @@ workflow AnnotateCohort {
 
     File annotation_vcf = select_first([SpliceAI_wf.spliceai_output_vcf, splieai_input_vcf])
 
-    call IndexVcf {
+    call BgzipAndIndexVcf {
         input:
             input_vcf = annotation_vcf,
             cpu = small_task_cpu,
@@ -210,8 +210,6 @@ workflow AnnotateCohort {
             runtime_params = standard_runtime
     }
 
-    File annotation_vcf_idx = IndexVcf.output_vcf_idx
-
     scatter(row in vcf_idx_pairs) {
         File in_vcf = row[0]
         File in_vcf_idx = row[1]
@@ -219,8 +217,8 @@ workflow AnnotateCohort {
             input:
                 input_vcf = in_vcf,
                 input_vcf_idx = in_vcf_idx,
-                annotation_vcf = annotation_vcf,
-                annotation_vcf_idx = annotation_vcf_idx,
+                annotation_vcf = BgzipAndIndexVcf.output_vcf,
+                annotation_vcf_idx = BgzipAndIndexVcf.output_vcf_idx,
                 cpu = small_task_cpu,
                 mem_mb = small_task_mem,
                 disk = small_task_disk,
@@ -303,7 +301,7 @@ task MergeSitesOnlyVcfs {
     }
 }
 
-task IndexVcf {
+task BgzipAndIndexVcf {
     input {
         File input_vcf
         Int cpu
@@ -313,8 +311,16 @@ task IndexVcf {
         AnnotationRuntime runtime_params
     }
 
+    String input_vcf_basename = basename(basename(input_vcf, ".gz"), ".vcf")
+
     command <<<
-        tabix -s1 -b2 -e2 ~{input_vcf}
+        # If the input VCF is not already bgzipped, bgzip it
+        if [[ ~{input_vcf} != *.gz ]]; then
+            bgzip -c ~{input_vcf} > ~{input_vcf_basename}.gz
+        else
+            ln -s ~{input_vcf} ~{input_vcf_basename}.gz
+        fi
+        tabix -s1 -b2 -e2 ~{input_vcf_basename}.gz
     >>>
 
     runtime {
@@ -328,7 +334,8 @@ task IndexVcf {
     }
 
     output {
-        File output_vcf_idx = input_vcf + ".tbi"
+        File output_vcf = input_vcf_basename + ".gz"
+        File output_vcf_idx = input_vcf_basename + ".gz.tbi"
     }
 
 }

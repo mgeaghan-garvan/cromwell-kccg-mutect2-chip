@@ -103,7 +103,6 @@ workflow CHIPCohort {
                 input_vcf = in_vcf,
                 input_vcf_idx = in_vcf_idx,
                 annotation_vcf = CHIPCohortFilter.annotation_vcf,
-                annotation_vcf_idx = CHIPCohortFilter.annotation_vcf_idx,
                 cpu = small_task_cpu,
                 mem_mb = small_task_mem,
                 disk = small_task_disk,
@@ -203,13 +202,6 @@ task CHIPCohortFilter {
         annotate_chip_cohort \
             --input_vcf cohort.vcf \
             --prevalence_threshold ~{prevalence_threshold}
-
-        bcftools sort cohort.annotated.vcf > cohort.annotated.sorted.vcf
-        bgzip -c cohort.annotated.sorted.vcf > cohort.annotated.sorted.vcf.gz
-        tabix -s1 -b2 -e2 cohort.annotated.sorted.vcf.gz
-
-        bcftools norm -m +any -O z -o cohort.annotated.merged.sorted.vcf.gz cohort.annotated.sorted.vcf.gz
-        tabix -s1 -b2 -e2 cohort.annotated.merged.sorted.vcf.gz
     >>>
 
     runtime {
@@ -223,8 +215,7 @@ task CHIPCohortFilter {
     }
 
     output {
-        File annotation_vcf = "cohort.annotated.merged.sorted.vcf.gz"
-        File annotation_vcf_idx = "cohort.annotated.merged.sorted.vcf.gz.tbi"
+        File annotation_vcf = "cohort.annotated.vcf"
     }
 }
 
@@ -233,7 +224,6 @@ task AnnotateVcf {
         File input_vcf
         File input_vcf_idx
         File annotation_vcf
-        File annotation_vcf_idx
         Int cpu
         Int mem_mb
         Int disk
@@ -244,9 +234,17 @@ task AnnotateVcf {
     String vcf_basename = basename(basename(input_vcf, ".gz"), ".vcf")
 
     command <<<
+        # Sort, index, and normalize the annotation VCF (split multi-allelic sites)
+        bcftools sort ~{annotation_vcf} > cohort.annotated.sorted.vcf
+        bgzip -c cohort.annotated.sorted.vcf > cohort.annotated.sorted.vcf.gz
+        tabix -s1 -b2 -e2 cohort.annotated.sorted.vcf.gz
+
+        bcftools norm -m +any -O z -o cohort.annotated.merged.sorted.vcf.gz cohort.annotated.sorted.vcf.gz
+        tabix -s1 -b2 -e2 cohort.annotated.merged.sorted.vcf.gz
+
         # Use bcftools to annotate the input VCF with the annotation VCF
         bcftools annotate \
-            -a ~{annotation_vcf} \
+            -a cohort.annotated.merged.sorted.vcf.gz \
             -c "=FILTER,+INFO" \
             -o ~{vcf_basename}.chip.cohort_filter.vcf.gz \
             ~{input_vcf}
