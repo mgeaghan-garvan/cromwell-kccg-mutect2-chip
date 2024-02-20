@@ -5,16 +5,22 @@ Run the KCCG GATK4 Mutect2 somatic variant calling pipeline using the Cromwell w
 ## Usage:
 
 This pipeline can be run in several different modes:
-* Full pipeline: In this mode the entire pipeline will be run, starting with input BAM/CRAM files and performing somatic variant calling. Optionally, the VCF output can be further annotated with either Annovar or VEP. Additionally, CHIP variant detection can be run as a final stage of the pipeline, or can be run separately at a later time.
+* Full pipeline: In this mode the entire pipeline will be run, starting with input BAM/CRAM files and performing somatic variant calling with GATK Mutect2. Optionally, the VCF output can be further annotated with Annovar, VEP, and/or SpliceAI. Finally, CHIP variant annotation can be run as a final stage of the pipeline.
 * Panel of Normals creation: This mode generates the Panel of Normals (PoN) from a set of input files. Input can either be BAM/CRAM alignment files, or pre-called VCF files.
-* Annotation-only: The pipeline can be run in annotation-only mode to annotate pre-called VCF files. Both Annovar and VEP are available.
+* Annotation-only: The pipeline can be run in annotation-only mode to annotate pre-called VCF files. Annovar, VEP, and SpliceAI are available.
 * CHIP-only: CHIP variant detection can be run stand-alone on pre-called VCF files.
+
+A cohort-wide CHIP filter workflow is also available, which is recommended to be run following CHIP annotation. This cohort-wide stage detects and filters out mutations that appear above a specified threshold in the cohort, as well as mutations that are multiallelic across the cohort.
+
+This repository also includes a cohort annotation workflow, which can significantly reduce the costs of annotating large cohorts by assembling a single sites-only VCF that can be annotated with Annovar, VEP, or SpliceAI; these annotations are then added to the original VCFs using bcftools, thus reducing the potential overhead of annotating the same variant multiple times in different samples.
 
 The pipeline can also be run on several platforms:
 * Local HPC cluster: Currently this supports the Sun Grid Engine (SGE) HPC cluster at the Garvan using the Cromwell workflow manager.
 * Google Cloud Platform (GCP): This also uses the Cromwell workflow manager to manage running the pipeline remotely on GCP.
+  * The pipeline can also be run on on the Cromwell server hosted by the Centre for Population Genomics (CPG). This involves submitting the workflow to the CPG's hail batch server via their [analysis-runner](https://github.com/populationgenomics/analysis-runner) tool.
 * Terra: Terra is a GCP-based front-end that uses Cromwell in the background to run workflows. This pipeline can be run natively on Terra.
 * DNAnexus: DNAnexus is an Amazon Web Serivces (AWS)-based cloud platform. While it doesn't support WDL workflows natively, the dxCompiler software provided by DNAnexus can compile this script into a DNAnexus-ready workflow.
+  * A single-job version of the Mutect2 workflow (no annotation or CHIP detection) has been created specifically for running on DNAnexus, as it runs more efficiently on that platform compared to multiple smaller jobs.
 
 ### Running on the Garvan HPC and Google Cloud Platform
 
@@ -26,52 +32,82 @@ Cromwell is not required for running the pipeline on DNAnexus or Terra. For inst
 
 We currently have a production Cromwell server in development, the repository for which can be found [here](https://git.gimr.garvan.org.au/CCG/kccg-cromwell/-/tree/dev). Follow the steps in the README for that repository to set up a Cromwell server for running this pipeline.
 
-#### Configuring workflow
+#### Configuring a workflow
 
 Inside the input directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
 
 | Filename | Description |
 | -------- | ----------- |
 | inputs.pon.json | Panel of normals creation |
-| inputs.json | Full pipeline, single input mode |
-| inputs.multi.json | Full pipeline, batch mode |
-| inputs.chip.json | CHIP detection only, single input mode |
-| inputs.chip.multi.json | CHIP detection only, batch mode |
-| inputs.annovar.json | Annovar annotation only, single input mode |
-| inputs.annovar.multi.json | Annovar annotation only, batch mode |
-| inputs.vep.json | VEP annotation only, single input mode |
-| inputs.vep.multi.json | VEP annotation only, batch mode |
+| inputs.m2.json | Mutect2-only pipeline |
+| inputs.m2.sj.json | Mutect2-only pipeline, single-job version (for running on DNAnexus) |
+| inputs.chip.json | CHIP detection only |
+| inputs.chip_cohort.json | CHIP cohort-wide filter |
+| inputs.annovar.json | Annovar annotation only |
+| inputs.vep.json | VEP annotation only |
+| inputs.spliceai.json | SpliceAI annotation only |
+| inputs.full.json | Full pipeline, including Mutect2 and optionally one or more of Annovar, VEP, SpliceAI, and CHIP annotation |
+| inputs.annotate_cohort.json | Annovar/VEP/SpliceAI annotation of an entire cohort |
 
 Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
 
-Now configure the run by running configure_run.sh.
+See the tables in the [Input parameters](#input-parameters) section below for details on the parameters for each pipeline mode.
+
+##### Workflow options
+
+A second JSON file is required to instruct Cromwell how to run the pipeline, e.g. where to store the outputs, and whether to keep intermediate files after the run has finished. Two example JSON files have been provided which can be used with [the local SGE cluster](workflow_options/options.sge.json) and [Google Cloud](workflow_options/options.gcp.json). Placeholder values have been provided in these files in uppercase.
+
+For further details on the parameters to this file, see [the Cromwell documentation](https://cromwell.readthedocs.io).
+
+#### Running a workflow
+
+A handy run script called [run.sh](run.sh) has been written to simplify submitting and monitoring the workflow when submitted directly to a Cromwell server. It can also be used to submit jobs to DNAnexus, which is described further down. The list of parameters to this script can be seen by running `./run.sh -h`:
 
 ```bash
-# Run configuration script
+./run.sh -h
 
-# To see the available options and the defaults:
-./configure_run.sh -h
+Usage: ./manage.sh [MODE] [--id WORKFLOW_ID] [--host CROMWELL_HOST] [--port CROMWELL_PORT] [--wdl WDL_PATH] [--input INPUT_JSON] [--batch BATCH_INPUT_TSV] [--options OPTIONS_JSON] [--dxworkflow DX_WORKFLOW] [--dxoutput DX_OUTPUT] [--dxpriority DX_PRIORITY]
+Display this help message: ./run.sh -h
 
-# To perform a dry-run and only print the configuration settings without modifying any files:
-./configure_run.sh -d [OPTIONS]
-
-# When ready, run the configuration script with desired settings:
-RUN_NAME="example_run"  # Use only a-z, A-Z, and '_'. DO NOT use hyphen '-' character
-CROMWELL_PORT=8007
-PLATFORM=GCP
-
-./configure_run.sh \
-    -n ${RUN_NAME} \
-    -p ${CROMWELL_PORT} \
-    -f ${PLATFORM} \
-    -m  # Optional: set the run to batch/multi-sample mode. This requries a TSV file describing all the input files.
+        MODE:                       Either 'submit', 'dxsubmit', 'status', or 'abort'.           REQUIRED
+        --id WORKFLOW_ID:           Workflow ID for which to get status or abort.                REQUIRED for 'status' and 'abort' modes.
+        --host CROMWELL_HOST:       Host on which Cromwell web service is running.               Default: 'localhost'
+        --port CROMWELL_PORT:       Port on which Cromwell web service is running.               Default: '8007'
+        --wdl WDL_PATH:             Path to WDL file describing workflow to run.                 REQUIRED for 'submit' mode
+        --input INPUT_JSON:         Path to JSON file describing workflow inputs.                REQUIRED for 'submit' and 'dxsubmit' mode
+        --batch BATCH_INPUT_TSV:    Path to TSV file describing inputs for batch runs.           REQUIRED for 'dxsubmit' mode; OPTIONAL for 'submit' mode; if supplied, a batch job will be submitted
+        --options OPTIONS_JSON:     Path to JSON file describing workflow options.               REQUIRED for 'submit' mode
+        --dxworkflow DX_WORKFLOW:   DNAnexus path to workflow.                                   REQUIRED for 'dxsubmit' mode
+        --dxoutput DX_OUTPUT:       DNAnexus path to place output.                               REQUIRED for 'dxsubmit' mode
+        --dxpriority DX_PRIORITY:   DNAnexus run priority; either 'low', 'normal', or 'high'.    Default: 'low'
 ```
 
-##### Input parameters
+To submit a job to a Cromwell server, you need the host address and the port on which the server is running, and the paths to the WDL workflow, input JSON file, and workflow options JSON file. Submission can be performed with:
+
+```bash
+# For example, to run the full pipeline
+./run.sh submit --host <CROMWELL_HOST> --port <CROMWELL_PORT> --wdl workflow/full.wdl --input input/config/inputs.full.json --options workflow_options/options.sge.json
+```
+
+A successful workflow submission will return a workflow ID which can be used to monitor and terminate a running workflow:
+
+```bash
+# Check up on a run
+./run.sh status --host <CROMWELL_HOST> --port <CROMWELL_PORT> --id <WORKFLOW_ID>
+
+# Terminate a run
+./run.sh abort --host <CROMWELL_HOST> --port <CROMWELL_PORT> --id <WORKFLOW_ID>
+```
+
+#### Running a batch of samples
+
+
+
+#### Input parameters
 
 The following tables describe the main parameters for each of the pipeline modes.
 
-###### PoN creation
+##### PoN creation
 
 | Parameter(s) | Type | Description | Optional/Required | Default | Example |
 | ------------ | ---- | ----------- | ----------------- | ------- | ------- |
@@ -102,7 +138,7 @@ The following tables describe the main parameters for each of the pipeline modes
 | min_contig_size | Integer | Specify the minimum contig size when splitting genomic intervals | Optional | 1000000 |  |
 | create_panel_scatter_count | Integer | The number of parallel shards to split the CreateSomaticPanelOfNormals somatic variant calling job into | Optional | 24 |  |
 
-###### Full pipeline
+##### Full pipeline
 
 | Parameter(s) | Type | Description | Optional/Required | Default | Example |
 | ------------ | ---- | ----------- | ----------------- | ------- | ------- |
@@ -166,7 +202,7 @@ The following tables describe the main parameters for each of the pipeline modes
 | large_input_to_output_multiplier | Float | Disk space multiplier for large jobs (currently only MergeBamOuts); used to account for output size being larger than input size | Optional | 2.25 |  |
 | cram_to_bam_multiplier | Float | Disk space multiplier for CramToBam | Optional | N/A |  |
 
-###### Annovar only
+##### Annovar only
 
 | Parameter(s) | Type | Description | Optional/Required | Default | Example |
 | ------------ | ---- | ----------- | ----------------- | ------- | ------- |
@@ -184,7 +220,7 @@ The following tables describe the main parameters for each of the pipeline modes
 | annovar_cpu, annovar_mem_mb, annovar_disk, annovar_tmp_disk | Integer | Number of CPUs, amount of memory (MB), disk space (GB), and temporary disk space (GB) to give to annovar | Optional | 1, 4000, 100, 200 |  |
 | emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
 
-###### VEP only
+##### VEP only
 
 | Parameter(s) | Type | Description | Optional/Required | Default | Example |
 | ------------ | ---- | ----------- | ----------------- | ------- | ------- |
@@ -207,7 +243,7 @@ The following tables describe the main parameters for each of the pipeline modes
 | vep_mem, vep_cpu, vep_tmp_disk | Integer | Amount of memory (MB), number of CPUs, and amount of temporary disk space (GB) to give to VEP | Optional | 32000, 1, 100 |  |
 | emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
 
-###### CHIP only
+##### CHIP only
 
 | Parameter(s) | Type | Description | Optional/Required | Default | Example |
 | ------------ | ---- | ----------- | ----------------- | ------- | ------- |
@@ -233,65 +269,13 @@ The following tables describe the main parameters for each of the pipeline modes
 | whitelist_cpu, whitelist_mem_mb, whitelist_disk | Integer | Number of CPUs, amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | Optional | 1, 10000, 300 |  |
 | emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
 
-##### Batch/multi-sample mode
-
-If running the pipeline in batch/multi-sample mode, you will need to supply a file to the pipeline describing each sample. A template is provided in inputFile.tsv
-
-For the full pipeline, the input file is a tab-separated values (TSV) file. Each line describes the files required to run one sample. The file must contain either TWO or FOUR tab-delimited columns. The columns describe the tumor BAM, tumor BAI, normal BAM (optional), and normal BAI (optional) files, respectively.
-
-For the CHIP-only pipeline, the input file should contain two columns: the first containing the sample name (which must match the tumor sample name in the VCF header), and the file path to the filtered (and possibly annotated) VCF file to be used as input to the CHIP detection pipeline.
-
-For annotating VCF files with VEP, a two-column input file is required: the file path to the VCF file, and the path to the VCF index.
-
-For annotating with Annovar, only a single column is required: the file path to the VCF file.
-
-#### Create a panel of normals (optional)
+#### Creating a panel of normals (optional)
 
 While it is possible to run the pipeline without a panel of normals (PoN), it is not recommended to do so. A generic PoN can be used; for example, the GATK best practices PoN generated from the 1000 genomes dataset: gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz. However, it is advisable to generate a PoN from a similar source to the samples being analysed, as this will help identify sequencing artefacts that may be called as false positive somatic variants. See https://gatk.broadinstitute.org/hc/en-us/articles/360035890631-Panel-of-Normals-PON- for further details on the best practices for generating a PoN. To generate a PoN, use the create_pon.sh script.
 
-Similar to the batch/multi-sample mode, the panel of normals pipeline requires a two-column input TSV file describing the BAM and BAI file pairs for each sample. For reference, the panel of normals pipeline in effect runs the Mutect2 pipeline in tumor-only mode for each sample, hence the need for a two-column TSV file.
+The panel of normals pipeline requires a two-column input TSV file describing the BAM and BAI file pairs for each sample. It is also possible to supply a list of gzipped VCFs and their TBI index files, to run the PoN creation directly from VCFs. At least one of these files is necessary, and both can be provided in the case where some PoN-ready VCFs have already been generated.
 
-```bash
-# Create an inputFile.tsv file. It should be in the following format:
-cat inputFile.tsv
-
-    /path/to/first/pon/sample.bam   /path/to/first/pon/sample.bai
-    /path/to/second/pon/sample.bam   /path/to/secon/pon/sample.bai
-
-# Ensure inputFile.tsv is specified in input/inputs.pon.json
-cat input/inputs.pon.json
-
-    {
-        ...
-        "Mutect2CHIP_Panel.bam_bai_list": "./inputFiles.tsv",
-        ...
-    }
-
-# Create the PoN
-./run.sh -m pon
-```
-
-#### Running the workflow
-
-Once everything is set up and configured, run the workflow as follows:
-
-```bash
-# Submit the workflow to Cromwell
-# Run the pipeline in one of the following modes:
-
-# Option 1: run the full pipeline (BAM --> somatic variant calling --> CHIP detection)
-RUNMODE=full
-
-# Option 2: only run the CHIP detection stage
-RUNMODE=chip
-
-# Option 3: only run VEP or Annovar annotation
-RUNMODE=annovar
-# RUNMODE=vep
-
-# Then execute the run script in the appropriate mode
-./run.sh -m ${RUNMODE}
-```
+Example TSV files are provided at [input/inputFiles/pon/inputFiles.pon.bams.tsv](input/inputFiles/pon/inputFiles.pon.bams.tsv) and [input/inputFiles/pon/inputFiles.pon.vcfs.tsv](input/inputFiles/pon/inputFiles.pon.vcfs.tsv). If a BAM TSV file is being provided, it needs to be passed to the `Mutect2_Panel.bam_bai_list` parameter in the input JSON file; if a VCF TSV file is being provided, it needs to be passed to `Mutect2_Panel.vcf_idx_list`.
 
 #### Workflow status and termination
 
