@@ -332,22 +332,24 @@ These parameters are shared by two or more workflows.
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| intervals | File | A Picard-formatted intervals list file | WORKFLOWS | Optional, but recommended to reduce computation time and cost. | https://storage.googleapis.com/kccg-somvar-data/exome_evaluation_regions.v1.interval_list |
-| ref_fasta, ref_fai, ref_dict | File | Reference genome FASTA, index, and dictionary | WORKFLOWS | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
-| vcf_idx_list | File | Input TSV file containing the locations of input VCFs and their index files; the file should have two columns, the first listing the VCF files and the second listing the indexes; one line per sample | WORKFLOWS | Required for cohort annotation and cohort-wide CHIP filter workflows. Optional for PoN generation unless `bam_bai_list` is not supplied. | N/A |  |
-| input_vcf | File | A path to a VCF for annotation | WORKFLOWS | Required |  |
-| samtools_docker | String | URI for a Docker image for running samtools commands | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
-| bcftools_docker | String | URI for Docker image for running `bcftools` | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
-| gatk_docker | String | URI for a Docker image for running GATK commands | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
-| gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | WORKFLOWS | Optional |  |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | WORKFLOWS | Default = 2 |  |
-| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | WORKFLOWS | Optional = 2 |  |
-| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | WORKFLOWS | Defaults = 4, 4000, 100 |  |
-| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | WORKFLOWS | Default = 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | WORKFLOWS | Default = 12 |  |
-| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | WORKFLOWS | Default = 0 |  |
-| small_input_to_output_multiplier | Float | Disk space multiplier for small jobs; used to account for output size being larger than input size | WORKFLOWS | Default = 2.0 |  |
-| large_input_to_output_multiplier | Float | Disk space multiplier for large jobs (currently only MergeBamOuts); used to account for output size being larger than input size | WORKFLOWS | Default = 2.25 |  |
+| intervals | File | A Picard-formatted intervals list file | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl) | Optional, but recommended to reduce computation time and cost. | https://storage.googleapis.com/kccg-somvar-data/exome_evaluation_regions.v1.interval_list |
+| ref_fasta | File | Reference genome FASTA | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta |
+| ref_fai | File | Reference genome FASTA index | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai |
+| ref_dict | File | Reference genome dictionary | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
+| vcf_idx_list | File | Input TSV file containing the locations of input VCFs and their index files; the file should have two columns, the first listing the VCF files and the second listing the indexes; one line per sample | [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Required for cohort annotation and cohort-wide CHIP filter workflows. Optional for PoN generation unless `bam_bai_list` is not supplied. | N/A |  |
+| input_vcf | File | A path to a VCF for annotation | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required |  |
+| samtools_docker | String | URI for a Docker image for running samtools commands | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
+| bcftools_docker | String | URI for Docker image for running `bcftools` | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
+| gatk_docker | String | URI for a Docker image for running GATK commands | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
+| gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 2 |  |
+| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional = 2 |  |
+| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = 4, 4000, 100 |  |
+| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 1000 |  |
+| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 12 |  |
+| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 0 |  |
+| small_input_to_output_multiplier | Float | Disk space multiplier for small jobs; used to account for output size being larger than input size | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 2.0 |  |
+| large_input_to_output_multiplier | Float | Disk space multiplier for large jobs (currently only MergeBamOuts); used to account for output size being larger than input size | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 2.25 |  |
 
 #### Mutect2 parameters
 
@@ -355,24 +357,24 @@ These parameters are specific to running Mutect2 and the Mutect2 stage of the pa
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| tumor_reads, tumor_reads_index | File | BAM alignments and BAI index for tumor sample | WORKFLOWS | Required |  |
-| normal_reads, normal_reads_index | File | BAM alignments and BAI index for matched normal sample | WORKFLOWS | Optional |  |
-| tumor_bam, tumor_bai | File | **Single-job version of Mutect2 only** - same as tumor_reads and tumor_reads_index | WORKFLOWS | Required |  |
-| normal_bam, normal_bai | File | **Single-job version of Mutect2 only** - same as normal_reads and normal_reads_index | WORKFLOWS | Optional |  |
-| pon, pon_idx | File | Panel of normals VCF and VCF index files | WORKFLOWS | Optional, but recommended | https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz, https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz.tbi |
-| scatter_count | Integer | The number of parallel shards to split the Mutect2 somatic variant calling job into | WORKFLOWS | Default = 10 |  |
-| gnomad, gnomad_idx | File | Germline reference VCF and index containing common and rare variant population allele frequencies | WORKFLOWS | Required | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
-| variants_for_contamination, variants_for_contamination_idx | File | VCF and index containing common variants and allele frequencies for calculating contamination | WORKFLOWS | Optional | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
-| run_orientation_bias_mixture_model_filter | Boolean | Specify whether to run LearnReadOrientationModel | WORKFLOWS | Default = false | true/false |
-| m2_extra_args | String | Extra arguments to pass to Mutect2 | WORKFLOWS | Optional | "--pcr-indel-model NONE --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6" |
-| m2_extra_filtering_args | String | Extra arguments to pass to FilterMutectCalls | WORKFLOWS | Optional |  |
-| split_intervals_extra_args | String | Extra arguments to pass to SplitIntervals | WORKFLOWS | Optional |  |
-| make_bamout | Boolean | Specify whether to gather and merge the Mutect2 output BAM files | WORKFLOWS | Default = false | true/false |
-| compress, compress_vcfs | Boolean | Specify whether to compress Mutect2's output VCF files | WORKFLOWS | Default = false | true/false |
-| gga_vcf, gga_vcf_idx | File | Specify a set of alleles to force-call, regardless of evidence | WORKFLOWS | Optional |  |
-| m2_mem, m2_cpu | Integer | Amount of memory (MB) and number of CPUs to use when running Mutect2 | WORKFLOWS | Defaults = 5000, 4 |  |
-| learn_read_orientation_mem | Integer | Amount of memory (MB) to give to LearnReadOrientationModel | WORKFLOWS | Default = 5000 |  |
-| mem_mb, cpu, disk_space | Integer | **Single-job version of Mutect2 only** - Amount of memory (MB), number of CPUs, and amount of disk space required (GB) use when running Mutect2 | WORKFLOWS | Defaults = 5000, 4, 100 |  |
+| tumor_reads, tumor_reads_index | File | BAM alignments and BAI index for tumor sample | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required |  |
+| normal_reads, normal_reads_index | File | BAM alignments and BAI index for matched normal sample | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| tumor_bam, tumor_bai | File | **Single-job version of Mutect2 only** - same as tumor_reads and tumor_reads_index | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required |  |
+| normal_bam, normal_bai | File | **Single-job version of Mutect2 only** - same as normal_reads and normal_reads_index | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| pon, pon_idx | File | Panel of normals VCF and VCF index files | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional, but recommended | https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz, https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz.tbi |
+| scatter_count | Integer | The number of parallel shards to split the Mutect2 somatic variant calling job into | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 10 |  |
+| gnomad, gnomad_idx | File | Germline reference VCF and index containing common and rare variant population allele frequencies | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
+| variants_for_contamination, variants_for_contamination_idx | File | VCF and index containing common variants and allele frequencies for calculating contamination | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
+| run_orientation_bias_mixture_model_filter | Boolean | Specify whether to run LearnReadOrientationModel | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| m2_extra_args | String | Extra arguments to pass to Mutect2 | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional | "--pcr-indel-model NONE --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6" |
+| m2_extra_filtering_args | String | Extra arguments to pass to FilterMutectCalls | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| split_intervals_extra_args | String | Extra arguments to pass to SplitIntervals | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| make_bamout | Boolean | Specify whether to gather and merge the Mutect2 output BAM files | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| compress, compress_vcfs | Boolean | Specify whether to compress Mutect2's output VCF files | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| gga_vcf, gga_vcf_idx | File | Specify a set of alleles to force-call, regardless of evidence | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| m2_mem, m2_cpu | Integer | Amount of memory (MB) and number of CPUs to use when running Mutect2 | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = 5000, 4 |  |
+| learn_read_orientation_mem | Integer | Amount of memory (MB) to give to LearnReadOrientationModel | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 5000 |  |
+| mem_mb, cpu, disk_space | Integer | **Single-job version of Mutect2 only** - Amount of memory (MB), number of CPUs, and amount of disk space required (GB) use when running Mutect2 | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = 5000, 4, 100 |  |
 
 #### PoN parameters
 
@@ -380,28 +382,28 @@ These parameters are specific to the panel of normals generation workflow
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| bam_bai_list | File | Input TSV file containing the locations of the input BAMs and their index files; the file should have two columns, the first listing the BAM files and the second listing the indexes; one line per sample | WORKFLOWS | Optional, unless `vcf_idx_list` is not supplied. |  |
-| m2_only | Boolean | Only run Mutect2, don't create the PoN | WORKFLOWS | Default = false | true/false |
-| create_pon_extra_args | String | Additional arguments to pass to CreateSomaticPanelOfNormals | WORKFLOWS | Optional |  |
-| pon_name | String | Output name of the PoN VCF | WORKFLOWS | Required | N/A |  |
-| min_contig_size | Integer | Specify the minimum contig size when splitting genomic intervals | WORKFLOWS | Default = 1000000 |  |
-| create_panel_scatter_count | Integer | The number of parallel shards to split the CreateSomaticPanelOfNormals somatic variant calling job into | WORKFLOWS | Default = 24 |  |
-| pon_mem | Integer | Amount of memory (MB) to use when generating the PoN | WORKFLOWS | Default = 5000 |  |
+| bam_bai_list | File | Input TSV file containing the locations of the input BAMs and their index files; the file should have two columns, the first listing the BAM files and the second listing the indexes; one line per sample | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional, unless `vcf_idx_list` is not supplied. |  |
+| m2_only | Boolean | Only run Mutect2, don't create the PoN | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| create_pon_extra_args | String | Additional arguments to pass to CreateSomaticPanelOfNormals | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional |  |
+| pon_name | String | Output name of the PoN VCF | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | N/A |  |
+| min_contig_size | Integer | Specify the minimum contig size when splitting genomic intervals | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 1000000 |  |
+| create_panel_scatter_count | Integer | The number of parallel shards to split the CreateSomaticPanelOfNormals somatic variant calling job into | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 24 |  |
+| pon_mem | Integer | Amount of memory (MB) to use when generating the PoN | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 5000 |  |
 
 #### VEP parameters
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| vep | Boolean | Specifies whether or not to run VEP annotation | WORKFLOWS | Default = false | true/false |
-| loftee | Boolean | Specifies whether or not to use LOFTEE annotations when running VEP | WORKFLOWS | Default = false | true/false |
-| vep_docker | String | URI for a Docker image for running VEP | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221" |  |
-| loftee_docker | String | URI for a Docker image for running LOFTEE | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
-| vep_species | String | Species name to supply to the VEP `--species` parameter | WORKFLOWS | Default = "homo_sapiens" |  |
-| vep_assembly | String | Assembly name to supply to the VEP `--assembly` parameter | WORKFLOWS | Default = "GRCh38" |  |
-| vep_cache_archive | File | TAR.GZ archive file containing a VEP cache for annotating variants offline | WORKFLOWS | Required | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
-| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | File | FASTA file and index for running VEP + LOFTEE | WORKFLOWS | Required | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
-| vep_loftee_conservation_sql | File | PhyloCSF database for conservation filters in VEP + LOFTEE | WORKFLOWS | Required | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
-| vep_mem, vep_cpu, vep_disk, vep_tmp_disk | Integer | Amount of memory (MB), number of CPUs, amount of disk space (GB), and amount of temporary disk space (GB) to give to VEP | WORKFLOWS | Defaults = 32000, 1, 100, 100 |  |
+| vep | Boolean | Specifies whether or not to run VEP annotation | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| loftee | Boolean | Specifies whether or not to use LOFTEE annotations when running VEP | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| vep_docker | String | URI for a Docker image for running VEP | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221" |  |
+| loftee_docker | String | URI for a Docker image for running LOFTEE | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
+| vep_species | String | Species name to supply to the VEP `--species` parameter | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "homo_sapiens" |  |
+| vep_assembly | String | Assembly name to supply to the VEP `--assembly` parameter | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "GRCh38" |  |
+| vep_cache_archive | File | TAR.GZ archive file containing a VEP cache for annotating variants offline | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
+| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | File | FASTA file and index for running VEP + LOFTEE | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
+| vep_loftee_conservation_sql | File | PhyloCSF database for conservation filters in VEP + LOFTEE | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
+| vep_mem, vep_cpu, vep_disk, vep_tmp_disk | Integer | Amount of memory (MB), number of CPUs, amount of disk space (GB), and amount of temporary disk space (GB) to give to VEP | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = 32000, 1, 100, 100 |  |
 
 #### Annovar parameters
 
@@ -413,44 +415,44 @@ These parameters are specific to the panel of normals generation workflow
 | annovar_protocols, annovar_operations | List of annovar protocols and their respective operation codes to supply to the annovar parameters `-protocol` and `-operation`, respectively; must be comma-delimited and of the same length | Required when `annovar` is `true` | `annovar_protocols`: "cosmic70"; `annovar_operations`: "f" |  |  |
 | annovar_db_archive | File | TAR.GZ archive file containing the necessary files to run ANNOVAR | Required when either `annovar` or `run_chip_detection` are `true` | N/A | https://storage.cloud.google.com/kccg-somvar-data/annovar_db.full.tar.gz |
 | annovar_mem_mb, annovar_disk, annovar_tmp_disk | Integer | Amount of memory (MB), disk space (GB), and temporary disk space (GB) to give to annovar | Required when `annovar` is `true` | 4000, 100, 200 |  |
-| annovar_cpu | Integer | Number of CPUs to use for annovar | WORKFLOWS | Default = 1 |  |
+| annovar_cpu | Integer | Number of CPUs to use for annovar | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 1 |  |
 
 #### CHIP detection parameters
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| run_chip_detection | Boolean | Specifies whether or not to run the CHIP detection script | WORKFLOWS | Default = true | true/false |
-| tumor_sample_name | String | Name of tumor sample | WORKFLOWS | Required |  |
-| treat_missing_as_rare | Boolean | (CHIP detection stage) When gathering allele frequencies from gnomAD, interpret missing variants as having an AF=0 | WORKFLOWS | Default = true | true/false |
-| use_gnomad_genome | Boolean | (CHIP detection stage) Use gnomAD genome annotations as well as exome annotations | WORKFLOWS | Default = true | true/false |
-| use_ensembl_annotation | Boolean | (CHIP detection stage) Use Ensembl variant annotations rather than the default RefSeq annotations | WORKFLOWS | Default = false | true/false |
-| gnomad_pop | String | The gnomAD population code to use for gathering allele frequencies | WORKFLOWS | Default = "AF" (total AF, not sub-population-specific) |  |
-| chip_pre_post_docker, chip_docker | String | URIs for Docker images for running the CHIP pre- and post-filter stages (`chip_pre_post_docker`), and the main CHIP detection stage (`chip_docker`) | WORKFLOWS | Defaults = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest", "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
-| chip_mutations_csv | File | A CSV file listing all mutations that could be considered CHIP | WORKFLOWS | Required | chip_annotation/chip_mutations/chip_mutations.chr.csv |
-| somaticism_filter_transcripts | File | A text file containing transcript IDs for which mutations should undergo a further filtering step; one transcript per line | WORKFLOWS | Required | chip_annotation/chip_mutations/somaticism_filter_transcripts.txt |
-| chip_mem_mb, chip_disk | Integer | Amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | WORKFLOWS | Defaults = 10000, 300 |  |
-| chip_cpu | Integer | Number of CPUs to use for CHIP annotation | WORKFLOWS | Default = 1 |  |
+| run_chip_detection | Boolean | Specifies whether or not to run the CHIP detection script | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = true | true/false |
+| tumor_sample_name | String | Name of tumor sample | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required |  |
+| treat_missing_as_rare | Boolean | (CHIP detection stage) When gathering allele frequencies from gnomAD, interpret missing variants as having an AF=0 | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = true | true/false |
+| use_gnomad_genome | Boolean | (CHIP detection stage) Use gnomAD genome annotations as well as exome annotations | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = true | true/false |
+| use_ensembl_annotation | Boolean | (CHIP detection stage) Use Ensembl variant annotations rather than the default RefSeq annotations | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| gnomad_pop | String | The gnomAD population code to use for gathering allele frequencies | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "AF" (total AF, not sub-population-specific) |  |
+| chip_pre_post_docker, chip_docker | String | URIs for Docker images for running the CHIP pre- and post-filter stages (`chip_pre_post_docker`), and the main CHIP detection stage (`chip_docker`) | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest", "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
+| chip_mutations_csv | File | A CSV file listing all mutations that could be considered CHIP | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | chip_annotation/chip_mutations/chip_mutations.chr.csv |
+| somaticism_filter_transcripts | File | A text file containing transcript IDs for which mutations should undergo a further filtering step; one transcript per line | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required | chip_annotation/chip_mutations/somaticism_filter_transcripts.txt |
+| chip_mem_mb, chip_disk | Integer | Amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = 10000, 300 |  |
+| chip_cpu | Integer | Number of CPUs to use for CHIP annotation | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 1 |  |
 
 #### SpliceAI parameters
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| spliceai | Boolean | Specifies whether to run SpliceAI annotation | WORKFLOWS | Default = false | true/false |
-| spliceai_annotation_file | File | Annotation file for running SpliceAI | WORKFLOWS | Optional; if not present, `spliceai_annotation_string` will be used (defaults to "grch38") |  |
-| spliceai_annotation_string | String | Species identifier to use instead of `spliceai_annotation_file` | WORKFLOWS | Default = "grch38"; only used when `spliceai_annotation_file` is not set |  |
-| spliceai_max_dist | Int | Maximum distance between the variant and gained/lost splice site | WORKFLOWS | Default = 50 |  |
-| spliceai_mask | Boolean | Determines whether to mask scores representing annotated acceptor/donor gain and unannotated acceptor/donor loss | WORKFLOWS | Default = false |  |
-| spliceai_docker | String | URI for a Docker image for running SpliceAI | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530" |  |
-| spliceai_mem_mb, spliceai_cpu, spliceai_disk | Integer | Amount of memory (MB), number of CPUs, and amount of disk space (GB) to give to SpliceAI | WORKFLOWS | Defaults = 16000, 4, 100 |  |
+| spliceai | Boolean | Specifies whether to run SpliceAI annotation | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false | true/false |
+| spliceai_annotation_file | File | Annotation file for running SpliceAI | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Optional; if not present, `spliceai_annotation_string` will be used (defaults to "grch38") |  |
+| spliceai_annotation_string | String | Species identifier to use instead of `spliceai_annotation_file` | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "grch38"; only used when `spliceai_annotation_file` is not set |  |
+| spliceai_max_dist | Int | Maximum distance between the variant and gained/lost splice site | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 50 |  |
+| spliceai_mask | Boolean | Determines whether to mask scores representing annotated acceptor/donor gain and unannotated acceptor/donor loss | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = false |  |
+| spliceai_docker | String | URI for a Docker image for running SpliceAI | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530" |  |
+| spliceai_mem_mb, spliceai_cpu, spliceai_disk | Integer | Amount of memory (MB), number of CPUs, and amount of disk space (GB) to give to SpliceAI | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Defaults = 16000, 4, 100 |  |
 
 #### Cohort-wide CHIP filter parameters
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| prevalence_threshold | Float | Prevalence cutoff for mutations in cohort; mutations with a higher prevalence with fail. | WORKFLOWS | Default = 0.1 |  |
+| prevalence_threshold | Float | Prevalence cutoff for mutations in cohort; mutations with a higher prevalence with fail. | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Default = 0.1 |  |
 
 #### Cohort annotation parameters
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| cohort_name | String | Name of cohort | WORKFLOWS | Required |  |
+| cohort_name | String | Name of cohort | [workflow/WORKFLOW.wdl](workflow/WORKFLOW.wdl),  | Required |  |
