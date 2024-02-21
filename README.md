@@ -5,14 +5,21 @@ Run the KCCG GATK4 Mutect2 somatic variant calling pipeline using the Cromwell w
 ## Usage:
 
 This pipeline can be run in several different modes:
-* Full pipeline: In this mode the entire pipeline will be run, starting with input BAM/CRAM files and performing somatic variant calling with GATK Mutect2. Optionally, the VCF output can be further annotated with Annovar, VEP, and/or SpliceAI. Finally, CHIP variant annotation can be run as a final stage of the pipeline.
-* Panel of Normals creation: This mode generates the Panel of Normals (PoN) from a set of input files. Input can either be BAM/CRAM alignment files, or pre-called VCF files.
-* Annotation-only: The pipeline can be run in annotation-only mode to annotate pre-called VCF files. Annovar, VEP, and SpliceAI are available.
-* CHIP-only: CHIP variant detection can be run stand-alone on pre-called VCF files.
 
-A cohort-wide CHIP filter workflow is also available, which is recommended to be run following CHIP annotation. This cohort-wide stage detects and filters out mutations that appear above a specified threshold in the cohort, as well as mutations that are multiallelic across the cohort.
+| Workflow Path | Description |
+| ------------- | ----------- |
+| [workflow/pon.wdl](workflow/pon.wdl) | Panel of Normals creation. This mode generates the Panel of Normals (PoN) from a set of input files. Input can either be BAM/CRAM alignment files, or pre-called VCF files. |
+| [workflow/full.wdl](workflow/full.wdl) | Full pipeline. In this mode the entire pipeline will be run, starting with input BAM/CRAM files and performing somatic variant calling with GATK Mutect2. Optionally, the VCF output can be further annotated with Annovar, VEP, and/or SpliceAI. Finally, CHIP variant annotation can be run as a final stage of the pipeline. |
+| [workflow/annovar.wdl](workflow/annovar.wdl) | Annovar annotation-only using a pre-called VCF file. |
+| [workflow/vep.wdl](workflow/vep.wdl) | VEP annotation-only using a pre-called VCF file. |
+| [workflow/spliceai.wdl](workflow/spliceai.wdl) | SpliceAI annotation-only using a pre-called VCF file. |
+| [workflow/chip.wdl](workflow/chip.wdl) | Stand-alone CHIP variant detection using a pre-called VCF file. |
+| [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl) | Cohort-wide CHIP variant filtration using a set of VCFs already run through CHIP detection. |
+| [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Cohort-wide annotation with one or more of Annovar, VEP, and SpliceAI. |
 
-This repository also includes a cohort annotation workflow, which can significantly reduce the costs of annotating large cohorts by assembling a single sites-only VCF that can be annotated with Annovar, VEP, or SpliceAI; these annotations are then added to the original VCFs using bcftools, thus reducing the potential overhead of annotating the same variant multiple times in different samples.
+The cohort-wide CHIP filter workflow is recommended to be run following CHIP annotation. This cohort-wide stage detects and filters out mutations that appear above a specified threshold in the cohort, as well as mutations that are multiallelic across the cohort.
+
+The cohort annotation workflow can significantly reduce the costs of annotating large cohorts by assembling a single sites-only VCF that can be annotated with Annovar, VEP, or SpliceAI; these annotations are then added to the original VCFs using bcftools, thus reducing the potential overhead of annotating the same variant multiple times in different samples.
 
 The pipeline can also be run on several platforms:
 * Local HPC cluster: Currently this supports the Sun Grid Engine (SGE) HPC cluster at the Garvan using the Cromwell workflow manager.
@@ -34,20 +41,20 @@ We currently have a production Cromwell server in development, the repository fo
 
 #### Configuring a workflow
 
-Inside the input directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
+Inside the `input/config` directory are several JSON files that describe the input files to the pipeline. One of these will be used for a given run, depending on which pipeline is being run:
 
-| Filename | Description |
-| -------- | ----------- |
-| inputs.pon.json | Panel of normals creation |
-| inputs.m2.json | Mutect2-only pipeline |
-| inputs.m2.sj.json | Mutect2-only pipeline, single-job version (for running on DNAnexus) |
-| inputs.chip.json | CHIP detection only |
-| inputs.chip_cohort.json | CHIP cohort-wide filter |
-| inputs.annovar.json | Annovar annotation only |
-| inputs.vep.json | VEP annotation only |
-| inputs.spliceai.json | SpliceAI annotation only |
-| inputs.full.json | Full pipeline, including Mutect2 and optionally one or more of Annovar, VEP, SpliceAI, and CHIP annotation |
-| inputs.annotate_cohort.json | Annovar/VEP/SpliceAI annotation of an entire cohort |
+| JSON Filename | Associated WDL workflow | Description |
+| ------------- | ----------------------- | ----------- |
+| [input/config/inputs.pon.json](input/config/inputs.pon.json) | [workflow/pon.wdl](workflow/pon.wdl) | Panel of normals creation |
+| [input/config/inputs.m2.json](input/config/inputs.m2.json) | [workflow/m2.wdl](workflow/m2.wdl) | Mutect2-only pipeline |
+| [input/config/inputs.m2.sj.json](input/config/inputs.m2.sj.json) | [workflow/m2.sj.wdl](workflow/m2.sj.wdl) | Mutect2-only pipeline, single-job version (for running on DNAnexus) |
+| [input/config/inputs.chip.json](input/config/inputs.chip.json) | [workflow/chip.wdl](workflow/chip.wdl) | CHIP detection only |
+| [input/config/inputs.chip_cohort.json](input/config/inputs.chip_cohort.json) | [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl) | CHIP cohort-wide filter |
+| [input/config/inputs.annovar.json](input/config/inputs.annovar.json) | [workflow/annovar.wdl](workflow/annovar.wdl) | Annovar annotation only |
+| [input/config/inputs.vep.json](input/config/inputs.vep.json) | [workflow/vep.wdl](workflow/vep.wdl) | VEP annotation only |
+| [input/config/inputs.spliceai.json](input/config/inputs.spliceai.json) | [workflow/spliceai.wdl](workflow/spliceai.wdl) | SpliceAI annotation only |
+| [input/config/inputs.full.json](input/config/inputs.full.json) | [workflow/full.wdl](workflow/full.wdl) | Full pipeline, including Mutect2 and optionally one or more of Annovar, VEP, SpliceAI, and CHIP annotation |
+| [input/config/inputs.annotate_cohort.json](input/config/inputs.annotate_cohort.json) | [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Annovar/VEP/SpliceAI annotation of an entire cohort |
 
 Edit the appropriate JSON file in your favourite text editor. The input file is a series of key: value pairs. The templates provided have values of "REQUIRED_*" and "OPTIONAL_*" for required and optional fields, respectively, with with '*' indicating the type of input required (e.g. OPTIONAL_FILE or REQUIRED_STRING). If not using an optional parameter, simply delete the entire line. Some defaults are also provided and can be left as-is or changed if desired.
 
@@ -317,167 +324,133 @@ Similar to Cromwell runs, DNAnexus runs can be run either as a single job or in 
 
 ### Input parameters
 
-The following tables describe the main parameters for each of the pipeline modes.
+The full list of parameters required to run each pipeline are provided in the template config JSON files within `input/config`. Some of these parameters are common to multiple workflows, while others are specific to one workflow. These parameters are described in the following tables.
 
-##### PoN creation
+#### Common parameters
 
-| Parameter(s) | Type | Description | Optional/Required | Default | Example |
-| ------------ | ---- | ----------- | ----------------- | ------- | ------- |
-| intervals | File | A Picard-formatted intervals list file | Optional, but recommended to reduce computation time and cost. | N/A | https://storage.googleapis.com/kccg-somvar-data/exome_evaluation_regions.v1.interval_list |
-| ref_fasta, ref_fai, ref_dict | File | Reference genome FASTA, index, and dictionary | Required | N/A | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
-| bam_bai_list | File | Input TSV file containing the locations of the input BAMs and their index files; the file should have two columns, the first listing the BAM files and the second listing the indexes; one line per sample | Optional; if not supplied, `vcf_idx_list` must be supplied; both `bam_bai_list` and `vcf_idx_list` can be specified at the same time | N/A |  |
-| vcf_idx_list | File | Input TSV file containing the locations of the pre-called input VCFs and their index files; the file should have two columns, the first listing the VCF files and the second listing the indexes; one line per sample | Optional; if not supplied, `bam_bai_list` must be supplied; both `bam_bai_list` and `vcf_idx_list` can be specified at the same time | N/A |  |
-| scatter_count | Integer | The number of parallel shards to split the Mutect2 somatic variant calling job into | Optional | 10 |  |
-| gnomad, gnomad_idx | File | Germline reference VCF and index containing common and rare variant population allele frequencies | Optional, but recommended | N/A | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
-| m2_extra_args | String | Extra arguments to pass to Mutect2 | Optional | N/A | "--pcr-indel-model NONE --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6" |
-| compress | Boolean | Specify whether to compress output VCF files | Optional | false | true/false |
-| samtools_docker | String | URI for a Docker image for running samtools commands | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
-| gatk_docker | String | URI for a Docker image for running GATK commands | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
-| gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | Optional | N/A |  |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | Optional | 2 |  |
-| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | Optional | 2 |  |
-| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | Optional | 4, 4000, 100 |  |
-| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | Optional | 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | Optional | 12 |  |
-| c2b_mem | Integer | Amount of memory (MB) to give to CramToBam | Optional | N/A |  |
-| m2_mem, m2_cpu | Integer | Amount of memory (MB) and number of CPUs to use when running Mutect2 | Optional | 5000, 4 |  |
-| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | N/A |  |
-| small_input_to_output_multiplier | Float | Disk space multiplier for small jobs; used to account for output size being larger than input size | Optional | 2.0 |  |
-| cram_to_bam_multiplier | Float | Disk space multiplier for CramToBam; used to account for output size being larger than input size | Optional | N/A |  |
-| m2_only | Boolean | Only run Mutect2, don't create the PoN | Optional | false | true/false |
-| create_pon_extra_args | String | Additional arguments to pass to CreateSomaticPanelOfNormals | Optional | N/A |  |
-| pon_name | String | Output name of the PoN VCF | Required | N/A |  |
-| min_contig_size | Integer | Specify the minimum contig size when splitting genomic intervals | Optional | 1000000 |  |
-| create_panel_scatter_count | Integer | The number of parallel shards to split the CreateSomaticPanelOfNormals somatic variant calling job into | Optional | 24 |  |
+These parameters are shared by two or more workflows.
 
-##### Full pipeline
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| intervals | File | A Picard-formatted intervals list file | WORKFLOWS | Optional, but recommended to reduce computation time and cost. | https://storage.googleapis.com/kccg-somvar-data/exome_evaluation_regions.v1.interval_list |
+| ref_fasta, ref_fai, ref_dict | File | Reference genome FASTA, index, and dictionary | WORKFLOWS | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
+| vcf_idx_list | File | Input TSV file containing the locations of input VCFs and their index files; the file should have two columns, the first listing the VCF files and the second listing the indexes; one line per sample | WORKFLOWS | Required for cohort annotation and cohort-wide CHIP filter workflows. Optional for PoN generation unless `bam_bai_list` is not supplied. | N/A |  |
+| input_vcf | File | A path to a VCF for annotation | WORKFLOWS | Required |  |
+| samtools_docker | String | URI for a Docker image for running samtools commands | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
+| bcftools_docker | String | URI for Docker image for running `bcftools` | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
+| gatk_docker | String | URI for a Docker image for running GATK commands | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
+| gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | WORKFLOWS | Optional |  |
+| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | WORKFLOWS | Default = 2 |  |
+| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | WORKFLOWS | Optional = 2 |  |
+| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | WORKFLOWS | Defaults = 4, 4000, 100 |  |
+| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | WORKFLOWS | Default = 1000 |  |
+| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | WORKFLOWS | Default = 12 |  |
+| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | WORKFLOWS | Default = 0 |  |
+| small_input_to_output_multiplier | Float | Disk space multiplier for small jobs; used to account for output size being larger than input size | WORKFLOWS | Default = 2.0 |  |
+| large_input_to_output_multiplier | Float | Disk space multiplier for large jobs (currently only MergeBamOuts); used to account for output size being larger than input size | WORKFLOWS | Default = 2.25 |  |
 
-| Parameter(s) | Type | Description | Optional/Required | Default | Example |
-| ------------ | ---- | ----------- | ----------------- | ------- | ------- |
-| intervals | File | A Picard-formatted intervals list file | Optional, but recommended to reduce computation time and cost. | N/A | https://storage.googleapis.com/kccg-somvar-data/exome_evaluation_regions.v1.interval_list |
-| ref_fasta, ref_fai, ref_dict | File | Reference genome FASTA, index, and dictionary | Required | N/A | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
-| tumor_reads, tumor_reads_index | File | **(Single-sample mode only)** BAM alignments and BAI index for tumor sample | Required for single sample mode | N/A |  |
-| normal_reads, normal_reads_index | File | **(Single-sample mode only)** BAM alignments and BAI index for matched normal sample | Optional; single sample mode only | N/A |  |
-| pair_list | File | **(Batch mode only)** TSV file listing all tumor (and optional matched normal) sample BAM and BAI files | Required for batch mode | N/A |  |
-| pon, pon_idx | File | Panel of normals VCF and VCF index files | Optional, but recommended | N/A | https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz, https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz.tbi |
-| scatter_count | Integer | The number of parallel shards to split the Mutect2 somatic variant calling job into | Optional | 10 |  |
-| gnomad, gnomad_idx | File | Germline reference VCF and index containing common and rare variant population allele frequencies | Optional, but recommended | N/A | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
-| variants_for_contamination, variants_for_contamination_idx | File | VCF and index containing common variants and allele frequencies for calculating contamination | Optional | N/A | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
-| realignment_index_bundle | File | BWA-mem index image to pass to FilterAlignmentArtifacts; causes FilterAlignmentArtifacts to run (experimental and not recommended) | Optional (not recommended) | N/A |  |
-| realignment_extra_args | String | Extra arguments to pass to FilterAlignmentArtifacts | Optional | N/A |  |
-| run_orientation_bias_mixture_model_filter | Boolean | Specify whether to run LearnReadOrientationModel | Optional | false | true/false |
-| m2_extra_args | String | Extra arguments to pass to Mutect2 | Optional | N/A | "--pcr-indel-model NONE --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6" |
-| m2_extra_filtering_args | String | Extra arguments to pass to FilterMutectCalls | Optional | N/A |  |
-| split_intervals_extra_args | String | Extra arguments to pass to SplitIntervals | Optional | N/A |  |
-| make_bamout | Boolean | Specify whether to gather and merge the Mutect2 output BAM files | Optional | false | true/false |
-| compress_vcfs | Boolean | Specify whether to compress output VCF files | Optional | false | true/false |
-| gga_vcf, gga_vcf_idx | File | Specify a set of alleles to force-call, regardless of evidence | Optional | N/A |  |
-| vep | Boolean | Specifies whether or not to run VEP annotation | Optional | true | true/false |
-| loftee | Boolean | Specifies whether or not to use LOFTEE annotations when running VEP; requires `vep` to be `true` | Optional | true | true/false |
-| vep_docker | String | URI for a Docker image for running VEP | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221" |  |
-| loftee_docker | String | URI for a Docker image for running LOFTEE | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
-| vep_species | String | Species name to supply to the VEP `--species` parameter | Optional | "homo_sapiens" |  |
-| vep_assembly | String | Assembly name to supply to the VEP `--assembly` parameter | Optional | "GRCh38" |  |
-| vep_cache_archive | File | TAR.GZ archive file containing a VEP cache for annotating variants offline | Required for running vep (`vep` is set to `true`) | N/A | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
-| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | File | FASTA file and index for running VEP + LOFTEE | Required for running VEP + Loftee (`vep` and `loftee` are set to `true`) | N/A | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
-| vep_loftee_conservation_sql | File | PhyloCSF database for conservation filters in VEP + LOFTEE | Required for running VEP + Loftee (`vep` and `loftee` are set to `true`) | N/A | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
-| annovar | Boolean | Specifies whether or not to run annovar annotation | Optional | false | true/false |
-| annovar_docker | String | URI for a Docker image for running annovar | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261" |  |
-| annovar_assembly | String | Assembly name to supply to the annovar `-buildver` parameter | Optional | "hg38" |  |
-| annovar_protocols, annovar_operations | List of annovar protocols and their respective operation codes to supply to the annovar parameters `-protocol` and `-operation`, respectively; must be comma-delimited and of the same length | Optional | `annovar_protocols`: "cosmic70"; `annovar_operations`: "f" |  |  |
-| annovar_archive | File | TAR.GZ archive file containing the necessary files to run ANNOVAR | Required for running Annovar or CHIP detection (`annovar` is set to `true` OR `run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/annovar_files.tar.gz |
-| run_chip_detection | Boolean | Specifies whether or not to run the CHIP detection script | Optional | true | true/false |
-| treat_missing_as_rare | Boolean | (CHIP detection stage) When gathering allele frequencies from gnomAD, interpret missing variants as having an AF=0 | Optional | true | true/false |
-| whitelist_genome | Boolean | (CHIP detection stage) Use gnomAD genome annotations as well as exome annotations | Optional | true | true/false |
-| whitelist_use_ensembl_annotation | Boolean | (CHIP detection stage) Use Ensembl variant annotations rather than the default RefSeq annotations | Optional | false | true/false |
-| run_chip_on_unannotated_vcf | Boolean | (CHIP detection stage) Don't use the annovar/VEP annotated VCF as input to CHIP; this won't change the CHIP detection algorithm, but will reduce the input file size to CHIP; annotated VCFs will still be generated | Optional | false | true/false |
-| gnomad_pop | String | The gnomAD population code to use for gathering allele frequencies | Optional | "AF" (total AF, not sub-population-specific) |  |
-| whitelist_docker | String | URI for a Docker image for running the CHIP detection script | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d" |  |
-| whitelist_filter_archive | File | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | Required for running CHIP detection (`run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
-| samtools_docker | String | URI for a Docker image for running samtools commands | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
-| gatk_docker | String | URI for a Docker image for running GATK commands | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
-| gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | Optional | N/A |  |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | Optional | 2 |  |
-| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | Optional | 2 |  |
-| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | Optional | 4, 4000, 100 |  |
-| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | Optional | 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | Optional | 12 |  |
-| c2b_mem | Integer | Amount of memory (MB) to give to CramToBam | Optional | N/A |  |
-| m2_mem, m2_cpu | Integer | Amount of memory (MB) and number of CPUs to use when running Mutect2 | Optional | 5000, 4 |  |
-| learn_read_orientation_mem | Integer | Amount of memory (MB) to give to LearnReadOrientationModel | Optional | 5000 |  |
-| filter_alignment_artifacts_mem | Integer | Amount of memory (MB) to give to FilterAlignmentArtifacts | Optional | 5000 |  |
-| vep_mem, vep_cpu, vep_tmp_disk | Integer | Amount of memory (MB), number of CPUs, and amount of temporary disk space (GB) to give to VEP | Optional | 32000, 1, 100 |  |
-| annovar_mem_mb, annovar_disk, annovar_tmp_disk | Integer | Amount of memory (MB), disk space (GB), and temporary disk space (GB) to give to annovar | Optional | 4000, 100, 200 |  |
-| whitelist_mem_mb, whitelist_disk | Integer | Amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | Optional | 10000, 300 |  |
-| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
-| small_input_to_output_multiplier | Float | Disk space multiplier for small jobs; used to account for output size being larger than input size | Optional | 2.0 |  |
-| large_input_to_output_multiplier | Float | Disk space multiplier for large jobs (currently only MergeBamOuts); used to account for output size being larger than input size | Optional | 2.25 |  |
-| cram_to_bam_multiplier | Float | Disk space multiplier for CramToBam | Optional | N/A |  |
+#### Mutect2 parameters
 
-##### Annovar only
+These parameters are specific to running Mutect2 and the Mutect2 stage of the panel of normals generation
 
-| Parameter(s) | Type | Description | Optional/Required | Default | Example |
-| ------------ | ---- | ----------- | ----------------- | ------- | ------- |
-| input_vcf | File | **(Single-sample mode only)** VCF file for annotation | Required for single sample mode | N/A |  |
-| input_vcf_list | File | **(Batch mode only)** TSV file containing list of VCFs to annotate (one per line) | Required for batch mode | N/A |  |
-| annovar_docker | String | URI for a Docker image for running annovar | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261" |  |
-| ref_name | String | Assembly name to supply to the annovar `-buildver` parameter | Optional | "hg38" |  |
-| annovar_protocols, annovar_operations | List of annovar protocols and their respective operation codes to supply to the annovar parameters `-protocol` and `-operation`, respectively; must be comma-delimited and of the same length | Optional | `annovar_protocols`: "cosmic70"; `annovar_operations`: "f" |  |  |
-| annovar_archive | File | TAR.GZ archive file containing the necessary files to run ANNOVAR | Required for running Annovar or CHIP detection (`annovar` is set to `true` OR `run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/annovar_files.tar.gz |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | Optional | 2 |  |
-| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | Optional | 2 |  |
-| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | Optional | 4, 4000, 100 |  |
-| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | Optional | 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | Optional | 12 |  |
-| annovar_cpu, annovar_mem_mb, annovar_disk, annovar_tmp_disk | Integer | Number of CPUs, amount of memory (MB), disk space (GB), and temporary disk space (GB) to give to annovar | Optional | 1, 4000, 100, 200 |  |
-| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| tumor_reads, tumor_reads_index | File | BAM alignments and BAI index for tumor sample | WORKFLOWS | Required |  |
+| normal_reads, normal_reads_index | File | BAM alignments and BAI index for matched normal sample | WORKFLOWS | Optional |  |
+| tumor_bam, tumor_bai | File | **Single-job version of Mutect2 only** - same as tumor_reads and tumor_reads_index | WORKFLOWS | Required |  |
+| normal_bam, normal_bai | File | **Single-job version of Mutect2 only** - same as normal_reads and normal_reads_index | WORKFLOWS | Optional |  |
+| pon, pon_idx | File | Panel of normals VCF and VCF index files | WORKFLOWS | Optional, but recommended | https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz, https://storage.googleapis.com/kccg-somvar-data/1000g_pon.hg38.vcf.gz.tbi |
+| scatter_count | Integer | The number of parallel shards to split the Mutect2 somatic variant calling job into | WORKFLOWS | Default = 10 |  |
+| gnomad, gnomad_idx | File | Germline reference VCF and index containing common and rare variant population allele frequencies | WORKFLOWS | Required | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi |
+| variants_for_contamination, variants_for_contamination_idx | File | VCF and index containing common variants and allele frequencies for calculating contamination | WORKFLOWS | Optional | https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz, https://storage.googleapis.com/gatk-best-practices/somatic-hg38/small_exac_common_3.hg38.vcf.gz.tbi |
+| run_orientation_bias_mixture_model_filter | Boolean | Specify whether to run LearnReadOrientationModel | WORKFLOWS | Default = false | true/false |
+| m2_extra_args | String | Extra arguments to pass to Mutect2 | WORKFLOWS | Optional | "--pcr-indel-model NONE --downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6" |
+| m2_extra_filtering_args | String | Extra arguments to pass to FilterMutectCalls | WORKFLOWS | Optional |  |
+| split_intervals_extra_args | String | Extra arguments to pass to SplitIntervals | WORKFLOWS | Optional |  |
+| make_bamout | Boolean | Specify whether to gather and merge the Mutect2 output BAM files | WORKFLOWS | Default = false | true/false |
+| compress, compress_vcfs | Boolean | Specify whether to compress Mutect2's output VCF files | WORKFLOWS | Default = false | true/false |
+| gga_vcf, gga_vcf_idx | File | Specify a set of alleles to force-call, regardless of evidence | WORKFLOWS | Optional |  |
+| m2_mem, m2_cpu | Integer | Amount of memory (MB) and number of CPUs to use when running Mutect2 | WORKFLOWS | Defaults = 5000, 4 |  |
+| learn_read_orientation_mem | Integer | Amount of memory (MB) to give to LearnReadOrientationModel | WORKFLOWS | Default = 5000 |  |
+| mem_mb, cpu, disk_space | Integer | **Single-job version of Mutect2 only** - Amount of memory (MB), number of CPUs, and amount of disk space required (GB) use when running Mutect2 | WORKFLOWS | Defaults = 5000, 4, 100 |  |
 
-##### VEP only
+#### PoN parameters
 
-| Parameter(s) | Type | Description | Optional/Required | Default | Example |
-| ------------ | ---- | ----------- | ----------------- | ------- | ------- |
-| input_vcf, input_vcf_idx | File | **(Single-sample mode only)** VCF file and its index for annotation | Required for single sample mode | N/A |  |
-| input_vcf_list | File | **(Batch mode only)** TSV file containing list of VCFs and their index files to annotate (one per line; first column for VCF files, second column for index files) | Required for batch mode | N/A |  |
-| ref_fasta | File | Reference genome FASTA | Required | N/A | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
-| loftee | Boolean | Specifies whether or not to use LOFTEE annotations | Optional | true | true/false |
-| vep_docker | String | URI for a Docker image for running VEP | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221" |  |
-| loftee_docker | String | URI for a Docker image for running LOFTEE | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
-| vep_species | String | Species name to supply to the VEP `--species` parameter | Optional | "homo_sapiens" |  |
-| vep_assembly | String | Assembly name to supply to the VEP `--assembly` parameter | Optional | "GRCh38" |  |
-| vep_cache_archive | File | TAR.GZ archive file containing a VEP cache for annotating variants offline | Required for running vep (`vep` is set to `true`) | N/A | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
-| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | File | FASTA file and index for running VEP + LOFTEE | Required for running VEP + Loftee (`vep` and `loftee` are set to `true`) | N/A | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
-| vep_loftee_conservation_sql | File | PhyloCSF database for conservation filters in VEP + LOFTEE | Required for running VEP + Loftee (`vep` and `loftee` are set to `true`) | N/A | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | Optional | 2 |  |
-| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | Optional | 2 |  |
-| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | Optional | 4, 4000, 100 |  |
-| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | Optional | 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | Optional | 12 |  |
-| vep_mem, vep_cpu, vep_tmp_disk | Integer | Amount of memory (MB), number of CPUs, and amount of temporary disk space (GB) to give to VEP | Optional | 32000, 1, 100 |  |
-| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
+These parameters are specific to the panel of normals generation workflow
 
-##### CHIP only
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| bam_bai_list | File | Input TSV file containing the locations of the input BAMs and their index files; the file should have two columns, the first listing the BAM files and the second listing the indexes; one line per sample | WORKFLOWS | Optional, unless `vcf_idx_list` is not supplied. |  |
+| m2_only | Boolean | Only run Mutect2, don't create the PoN | WORKFLOWS | Default = false | true/false |
+| create_pon_extra_args | String | Additional arguments to pass to CreateSomaticPanelOfNormals | WORKFLOWS | Optional |  |
+| pon_name | String | Output name of the PoN VCF | WORKFLOWS | Required | N/A |  |
+| min_contig_size | Integer | Specify the minimum contig size when splitting genomic intervals | WORKFLOWS | Default = 1000000 |  |
+| create_panel_scatter_count | Integer | The number of parallel shards to split the CreateSomaticPanelOfNormals somatic variant calling job into | WORKFLOWS | Default = 24 |  |
+| pon_mem | Integer | Amount of memory (MB) to use when generating the PoN | WORKFLOWS | Default = 5000 |  |
 
-| Parameter(s) | Type | Description | Optional/Required | Default | Example |
-| ------------ | ---- | ----------- | ----------------- | ------- | ------- |
-| input_vcf | File | **(Single-sample mode only)** VCF file for input into CHIP detection | Required for single sample mode | N/A |  |
-| tumor_sample_name | String | **(Single-sample mode only)** Name of tumor sample as recorded in the VCF header | Required for single sample mode | N/A |  |
-| input_vcf_list | File | **(Batch mode only)** TSV file containing list of VCFs and the matched tumor sample name (as recorded in the VCF header) for input into CHIP detection (one per line; first column for sample names, second column for VCF files) | Required for batch mode | N/A |  |
-| ref_fasta | File | Reference genome FASTA | Required | N/A | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai, https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
-| annovar_docker | String | URI for a Docker image for running annovar (part of the CHIP detection pipeline) | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261" |  |
-| ref_name | String | Reference assembly name to supply to the annovar `-buildver` parameter and to the CHIP detection script | Optional | "hg38" |  |
-| annovar_archive | File | TAR.GZ archive file containing the necessary files to run ANNOVAR | Required for running Annovar or CHIP detection (`annovar` is set to `true` OR `run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/annovar_files.tar.gz |
-| treat_missing_as_rare | Boolean | (CHIP detection stage) When gathering allele frequencies from gnomAD, interpret missing variants as having an AF=0 | Optional | true | true/false |
-| whitelist_genome | Boolean | (CHIP detection stage) Use gnomAD genome annotations as well as exome annotations | Optional | true | true/false |
-| whitelist_use_ensembl_annotation | Boolean | (CHIP detection stage) Use Ensembl variant annotations rather than the default RefSeq annotations | Optional | false | true/false |
-| gnomad_pop | String | The gnomAD population code to use for gathering allele frequencies | Optional | "AF" (total AF, not sub-population-specific) |  |
-| whitelist_docker | String | URI for a Docker image for running the CHIP detection script | Optional | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/whitelist_filter@sha256:9cd77186c23a0b256a0928c5a4087b8378c234cb0754f35557cf9ec6d4aa544d" |  |
-| whitelist_archive, whitelist_archive | File | TAR.GZ archive file containing the necessary files to run the CHIP detection and variant whitelisting | Required for running CHIP detection (`run_chip_detection` is set to `true`) | N/A | https://storage.cloud.google.com/kccg-somvar-data/whitelist_filter_files.tar.gz |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | Optional | 2 |  |
-| max_retires | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | Optional | 2 |  |
-| small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | Optional | 4, 4000, 100 |  |
-| command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | Optional | 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | Optional | 12 |  |
-| annovar_cpu, annovar_mem_mb, annovar_disk, annovar_tmp_disk | Integer | Number of CPUs, amount of memory (MB), disk space (GB), and temporary disk space (GB) to give to annovar | Optional | 1, 4000, 100, 200 |  |
-| whitelist_cpu, whitelist_mem_mb, whitelist_disk | Integer | Number of CPUs, amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | Optional | 1, 10000, 300 |  |
-| emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
+#### VEP parameters
 
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| vep | Boolean | Specifies whether or not to run VEP annotation | WORKFLOWS | Default = false | true/false |
+| loftee | Boolean | Specifies whether or not to use LOFTEE annotations when running VEP | WORKFLOWS | Default = false | true/false |
+| vep_docker | String | URI for a Docker image for running VEP | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep@sha256:bc6a74bf271adb1484ea769660c7b69f5eea033d3ba2e2947988e6c5f034f221" |  |
+| loftee_docker | String | URI for a Docker image for running LOFTEE | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/vep-loftee@sha256:c95b78bacef4c8d3770642138e6f28998a5034cfad3fbef5451d2303c8c795d3" |  |
+| vep_species | String | Species name to supply to the VEP `--species` parameter | WORKFLOWS | Default = "homo_sapiens" |  |
+| vep_assembly | String | Assembly name to supply to the VEP `--assembly` parameter | WORKFLOWS | Default = "GRCh38" |  |
+| vep_cache_archive | File | TAR.GZ archive file containing a VEP cache for annotating variants offline | WORKFLOWS | Required | http://ftp.ensembl.org/pub/release-103/variation/vep/homo_sapiens_vep_103_GRCh38.tar.gz |
+| vep_loftee_ancestor_fa, vep_loftee_ancestor_fai, vep_loftee_ancestor_gzi | File | FASTA file and index for running VEP + LOFTEE | WORKFLOWS | Required | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.fai, https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/human_ancestor.fa.gz.gzi |
+| vep_loftee_conservation_sql | File | PhyloCSF database for conservation filters in VEP + LOFTEE | WORKFLOWS | Required | https://personal.broadinstitute.org/konradk/loftee_data/GRCh38/loftee.sql.gz |
+| vep_mem, vep_cpu, vep_disk, vep_tmp_disk | Integer | Amount of memory (MB), number of CPUs, amount of disk space (GB), and amount of temporary disk space (GB) to give to VEP | WORKFLOWS | Defaults = 32000, 1, 100, 100 |  |
+
+#### Annovar parameters
+
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| annovar | Boolean | Specifies whether or not to run annovar annotation | Required | false | true/false |
+| annovar_docker | String | URI for a Docker image for running annovar | Required when `annovar` is `true` | "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/perl@sha256:1f35086e2ff48dace3b3edeaa2ad1faf1e44c0612e00f00ea0fc1830b576a261" |  |
+| annovar_assembly | String | Assembly name to supply to the annovar `-buildver` parameter | Required when `annovar` is `true` | "hg38" |  |
+| annovar_protocols, annovar_operations | List of annovar protocols and their respective operation codes to supply to the annovar parameters `-protocol` and `-operation`, respectively; must be comma-delimited and of the same length | Required when `annovar` is `true` | `annovar_protocols`: "cosmic70"; `annovar_operations`: "f" |  |  |
+| annovar_db_archive | File | TAR.GZ archive file containing the necessary files to run ANNOVAR | Required when either `annovar` or `run_chip_detection` are `true` | N/A | https://storage.cloud.google.com/kccg-somvar-data/annovar_db.full.tar.gz |
+| annovar_mem_mb, annovar_disk, annovar_tmp_disk | Integer | Amount of memory (MB), disk space (GB), and temporary disk space (GB) to give to annovar | Required when `annovar` is `true` | 4000, 100, 200 |  |
+| annovar_cpu | Integer | Number of CPUs to use for annovar | WORKFLOWS | Default = 1 |  |
+
+#### CHIP detection parameters
+
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| run_chip_detection | Boolean | Specifies whether or not to run the CHIP detection script | WORKFLOWS | Default = true | true/false |
+| tumor_sample_name | String | Name of tumor sample | WORKFLOWS | Required |  |
+| treat_missing_as_rare | Boolean | (CHIP detection stage) When gathering allele frequencies from gnomAD, interpret missing variants as having an AF=0 | WORKFLOWS | Default = true | true/false |
+| use_gnomad_genome | Boolean | (CHIP detection stage) Use gnomAD genome annotations as well as exome annotations | WORKFLOWS | Default = true | true/false |
+| use_ensembl_annotation | Boolean | (CHIP detection stage) Use Ensembl variant annotations rather than the default RefSeq annotations | WORKFLOWS | Default = false | true/false |
+| gnomad_pop | String | The gnomAD population code to use for gathering allele frequencies | WORKFLOWS | Default = "AF" (total AF, not sub-population-specific) |  |
+| chip_pre_post_docker, chip_docker | String | URIs for Docker images for running the CHIP pre- and post-filter stages (`chip_pre_post_docker`), and the main CHIP detection stage (`chip_docker`) | WORKFLOWS | Defaults = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest", "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
+| chip_mutations_csv | File | A CSV file listing all mutations that could be considered CHIP | WORKFLOWS | Required | chip_annotation/chip_mutations/chip_mutations.chr.csv |
+| somaticism_filter_transcripts | File | A text file containing transcript IDs for which mutations should undergo a further filtering step; one transcript per line | WORKFLOWS | Required | chip_annotation/chip_mutations/somaticism_filter_transcripts.txt |
+| chip_mem_mb, chip_disk | Integer | Amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | WORKFLOWS | Defaults = 10000, 300 |  |
+| chip_cpu | Integer | Number of CPUs to use for CHIP annotation | WORKFLOWS | Default = 1 |  |
+
+#### SpliceAI parameters
+
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| spliceai | Boolean | Specifies whether to run SpliceAI annotation | WORKFLOWS | Default = false | true/false |
+| spliceai_annotation_file | File | Annotation file for running SpliceAI | WORKFLOWS | Optional; if not present, `spliceai_annotation_string` will be used (defaults to "grch38") |  |
+| spliceai_annotation_string | String | Species identifier to use instead of `spliceai_annotation_file` | WORKFLOWS | Default = "grch38"; only used when `spliceai_annotation_file` is not set |  |
+| spliceai_max_dist | Int | Maximum distance between the variant and gained/lost splice site | WORKFLOWS | Default = 50 |  |
+| spliceai_mask | Boolean | Determines whether to mask scores representing annotated acceptor/donor gain and unannotated acceptor/donor loss | WORKFLOWS | Default = false |  |
+| spliceai_docker | String | URI for a Docker image for running SpliceAI | WORKFLOWS | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530" |  |
+| spliceai_mem_mb, spliceai_cpu, spliceai_disk | Integer | Amount of memory (MB), number of CPUs, and amount of disk space (GB) to give to SpliceAI | WORKFLOWS | Defaults = 16000, 4, 100 |  |
+
+#### Cohort-wide CHIP filter parameters
+
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| prevalence_threshold | Float | Prevalence cutoff for mutations in cohort; mutations with a higher prevalence with fail. | WORKFLOWS | Default = 0.1 |  |
+
+#### Cohort annotation parameters
+
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| cohort_name | String | Name of cohort | WORKFLOWS | Required |  |
