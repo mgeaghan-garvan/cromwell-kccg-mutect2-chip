@@ -101,9 +101,221 @@ A successful workflow submission will return a workflow ID which can be used to 
 
 #### Running a batch of samples
 
+A batch of jobs can be submitted all at once to a Cromwell server by supplying a TSV file to the `--batch` parameter of `run.sh`. The structure of the TSV file differs slightly between the different workflows, as different workflows have different input file requirements. The workflows that support a batch mode are:
 
+- The full pipeline: [full.wdl](workflow/full.wdl)
+- Mutect2: [m2.wdl](workflow/m2.wdl)
+- All annotation-only pipelines: [annovar.wdl](workflow/annovar.wdl), [vep.wdl](workflow/vep.wdl) and [spliceai.wdl](workflow/spliceai.wdl)
+- The CHIP-only pipeline: [chip.wdl](workflow/chip.wdl)
 
-#### Input parameters
+Template TSV files are supplied in `input/inputFiles/batch`:
+
+- Full pipeline and Mutect2 template: [inputFiles.tsv](input/inputFiles/batch/inputFiles.tsv)
+- Annovar and SpliceAI workflow template: [inputFiles.annotate.tsv](input/inputFiles/batch/inputFiles.annotate.tsv)
+- VEP workflow template: [inputFiles.vep.tsv](input/inputFiles/batch/inputFiles.vep.tsv)
+- CHIP-only workflow template: [inputFiles.chip.tsv](input/inputFiles/batch/inputFiles.chip.tsv)
+
+For example, to run a batch of samples through the full pipeline, you would first create an input TSV file like so:
+
+```bash
+cat input/inputFiles/inputFiles.tsv
+
+    sample_id   tumor_reads   tumor_reads_index   normal_reads  normal_reads_index
+    SAMPLE_1    TUMOR_SAMPLE_1.bam    TUMOR_SAMPLE_1.bam.bai    NORMAL_SAMPLE_1.bam    NORMAL_SAMPLE_1.bam.bai
+    SAMPLE_2    TUMOR_SAMPLE_2.bam    TUMOR_SAMPLE_2.bam.bai    NORMAL_SAMPLE_2.bam    NORMAL_SAMPLE_2.bam.bai
+    TUMOR_ONLY_SAMPLE    TUMOR_ONLY_SAMPLE.bam TUMOR_ONLY_SAMPLE.bam.bai
+```
+
+Note that the header line contains the exact names of the workflow parameters. It also includes an additional first column for the sample ID. Also, for the full pipeline and Mutect2-only pipelines, the final two columns for normal reads are optional, as these parameters are optional in the pipeline.
+
+Next, you would then submit the batch job like so:
+
+```bash
+./run.sh submit --host <CROMWELL_HOST> --port <CROMWELL_PORT> --wdl workflow/full.wdl --input input/config/inputs.full.json --batch input/inputFiles/inputFiles.tsv --options workflow_options/options.sge.json
+```
+
+The run script will create a copy of the input JSON file for each sample and automatically replace each sample-specific parameter with the corresponding value from the matching column.
+
+The PoN generation workflow, cohort annotation workflow, and cohort-wide CHIP filter workflow are already native batch workflows that take a TSV file as an argument to one of their input parameters. As such, these do not work with the `--batch` mode of `run.sh`; instead, these TSV files should be passed to the corresponding parameter in their respective JSON configuration files. Template input TSV files for these workflows are also provided:
+
+- Cohort annotation workflow: [inputFiles.annotate_cohort.tsv](input/inputFiles/batch/inputFiles.annotate_cohort.tsv)
+- Cohort-wide CHIP filter workflow: [inputFiles.chip_cohort.tsv](input/inputFiles/batch/inputFiles.chip_cohort.tsv)
+- PoN generation workflow - see [Creating a panel of normals (optional)](#creating-a-panel-of-normals-optional) below
+
+#### Creating a panel of normals (optional)
+
+While it is possible to run the pipeline without a panel of normals (PoN), it is not recommended to do so. A generic PoN can be used; for example, the GATK best practices PoN generated from the 1000 genomes dataset: gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz. However, it is advisable to generate a PoN from a similar source to the samples being analysed, as this will help identify sequencing artefacts that may be called as false positive somatic variants. See https://gatk.broadinstitute.org/hc/en-us/articles/360035890631-Panel-of-Normals-PON- for further details on the best practices for generating a PoN. To generate a PoN, use the create_pon.sh script.
+
+The panel of normals pipeline requires a two-column input TSV file describing the BAM and BAI file pairs for each sample. It is also possible to supply a list of gzipped VCFs and their TBI index files, to run the PoN creation directly from VCFs. At least one of these files is necessary, and both can be provided in the case where some PoN-ready VCFs have already been generated.
+
+Example TSV files are provided at [input/inputFiles/pon/inputFiles.pon.bams.tsv](input/inputFiles/pon/inputFiles.pon.bams.tsv) and [input/inputFiles/pon/inputFiles.pon.vcfs.tsv](input/inputFiles/pon/inputFiles.pon.vcfs.tsv). If a BAM TSV file is being provided, it needs to be passed to the `Mutect2_Panel.bam_bai_list` parameter in the input JSON file; if a VCF TSV file is being provided, it needs to be passed to `Mutect2_Panel.vcf_idx_list`.
+
+### Running on the Centre for Population Genomics (CPG) Cromwell server
+
+These workflows can also be run through the Cromwell server hosted by the CPG. This is required for processing datasets under their control. This will require the following:
+
+- Installing the CPG's analysis-runner tool: [https://github.com/populationgenomics/analysis-runner](https://github.com/populationgenomics/analysis-runner)
+- Cloning the CPG's fork of this pipeline: [https://github.com/populationgenomics/cromwell-kccg-mutect2-chip](https://github.com/populationgenomics/cromwell-kccg-mutect2-chip)
+
+It is important to use `main` branch of the CPG's fork of this repository, as their Google Cloud infrastructure is set up to only run code that has been reviewed, approved, and merged into a main branch of a repository under their control.
+
+The `analysis-runner` tool submits jobs to the CPG Hail Batch server. A Hail Batch job can be created to in turn submit a WDL pipeline to their Cromwell server. Currently, we have Hail Batch scripts set up under `scripts/cpg_cromwell` to submit the following workflows:
+
+- Full analysis pipeline: [full.submit.py](scripts/cpg_cromwell/full.submit.py)
+- Mutect2-only pipeline: [m2.submit.py](scripts/cpg_cromwell/m2.submit.py)
+- PoN generation: [pon.submit.py](scripts/cpg_cromwell/pon.submit.py)
+
+Since these workflows need to be submitted through Hail Batch, the configuration is slightly different, requiring a TOML file, rather than a JSON file. Additionally, batch submissions are not yet supported by these Hail Batch scripts. Template TOML files for the supported workflows are provided in the `input/config` directory. Each TOML file must start with a `workflow` section, describing the dataset, access level, and name of the workflow. More information about the workflow access levels can be found in the [CPG's documentation](https://github.com/populationgenomics/team-docs/tree/main/storage_policies#analysis-runner). The parameters to be passed to the WDL pipeline need to be defined in a separate `mutect2_chip` section. For example, the TOML file for a full workflow run will look something like the following:
+
+```toml
+[workflow]
+dataset = 'kccg-genomics-med'
+access_level = 'full'
+name = 'workflow_name'
+
+[mutect2_chip]
+intervals = 'gs://path/to/intervals.interval_list'
+ref_fasta = 'gs://path/to/hg38.fasta'
+ref_fai = 'gs://path/to/hg38.fasta.fai'
+ref_dict = 'gs://path/to/hg38.dict'
+tumor_reads = 'gs://path/to/sample.cram'
+tumor_reads_index = 'gs://path/to/sample.cram.crai'
+normal_reads = 'gs://path/to/normal.cram'
+normal_reads_index = 'gs://path/to/normal.cram.crai'
+pon = 'gs://path/to/pon.vcf.gz'
+pon_idx = 'gs://path/to/pon.vcf.gz.tbi'
+...
+```
+
+To submit a workflow, run `analysis-runner` like so:
+
+```bash
+analysis-runner \
+  --dataset kccg-genomics-med \
+  --description "Example workflow" \
+  --output-dir "relative/path/for/outputs" \
+  --access-level full \
+  --config input/config/inputs.full.toml \
+  --image australia-southeast1-docker.pkg.dev/cpg-common/images/cpg_workflows:latest \
+  python3 scripts/cpg_cromwell/full.submit.py
+```
+
+The Cromwell server will write all final outputs to `gs://cpg-<DATASET>-main/mutect2-chip/<WORKFLOW_NAME>/`, where `<DATASET>` and `<WORKFLOW_NAME>` correspond to the strings given to the `dataset` and `name` parameters in the `workflow` section of the TOML file.
+
+### Running on Terra
+
+Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. All that is required is to:
+
+1. Create a workspace on Terra
+2. Add the workflow(s) to the Terra workspace.
+3. Upload all requisite files to a GCP bucket.
+    1. If running in batch mode, ensure the inputFiles.tsv files is uploaded to GCP as well.
+    2. Ensure all input files are recorded in the input JSON file with their gs:// URLs.
+4. Upload the input JSON file to the Terra workspace.
+5. Run the workflow on Terra.
+
+#### Terra workspace
+
+This workflow is already hosted on Terra in a [private workspace](https://app.terra.bio/#workspaces/terra-kccg-production/terra-kccg-somvar-pipeline). If you have access to this workspace, you can clone it and start running the pipeline (see below).
+
+For setting up your own workspace, see [this Google Docs document](https://docs.google.com/document/d/1pZVTxjRJfAyWYiFWmmF_o31lORQ8a-xmqdK1zE3RDyk) for detailed instructions on setting up a Terra workspace. In short, a billing account on GCP is required to be linked with a billing account on Terra, to which the new workspace can be added. A Terra group must also be created, containing any Terra users that wish to run the pipeline, and the group's firecloud email added as a "Storage Object Creator" and "Storage Object Viewer" on any GCP buckets used to host data as part of the workflow.
+
+Once set up, the workflows can be added to Terra via Dockstore. Dockstore monitors a public git repository containing the workflows and supplies these workflows for Terra to use. The public repository of this pipeline is available [here](https://github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip), and is already hosted on Dockstore for use with Terra. Note that this repository will typically only be updated with the main, production-ready branch, and may not contain updates in the development branch. To add the workflow to Terra:
+
+1. Go to the Terra workspace.
+2. Go to the "Workflows" tab.
+3. Click on "Find a Workflow".
+4. Click on "Dockstore" under "Find Additional Workflows".
+5. Search for the workflows with "github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip". Click on the link to the desired workflow.
+6. Click on "Terra" under the "Launch with" section.
+7. Set the workflow name and pick a destination workspace, then click "Import".
+
+#### Setting up and running a workflow
+
+As mentioned above, first ensure that all requisite files, including the inputFiles.tsv containing paths to all BAMs/CRAMs/VCFs for batch runs (e.g. PoN generation, cohort-wide CHIP filter, cohort annotation) are present in a GCP bucket to which the Terra workspace has access. Once data has been uploaded to GCP:
+
+1. Go to the Terra workspace.
+2. Go to the "Workflows" tab.
+3. Click on the relevant workflow.
+4. Under the "Inputs" tab, drag and drop the input JSON file, or search for it by clicking on "upload json". Alternatively, the input fields can be filled out manually.
+5. Click on "Run Analysis".
+
+### Running on DNAnexus
+
+Running the pipeline on DNAnexus (and DNAnexus-based platforms such as the UK Biobank Reasearch Analysis Platform (RAP)) consists of four steps: compiling the pipeline up to DNAnexus, uploading data to a project, configuring the pipeline, and running the pipeline.
+
+Ensure that you have installed [dx-toolkit](https://documentation.dnanexus.com/downloads) and that the ```dx``` command is available in your path.
+
+#### Compiling the pipeline
+
+Compilation of the workflow requires the dxCompiler tool provided by DNAnexus: [dxCompiler](https://github.com/dnanexus/dxCompiler). The latest version ([v2.8.3](https://github.com/dnanexus/dxCompiler/releases/tag/2.8.3)) requires Java v11 to be installed.
+
+Prior to compilation, ensure that you are logged in to your DNAnexus account, have created a project for the analysis, and have selected that project with ```dx```.
+
+```bash
+# If you already have a project ready to go, dx login will let you interactively select it from a list
+dx login
+
+# If you first need to create a project, run these commands instead
+dx login --noprojects
+dx new project --name <PROJECT NAME> --region <REGION> --bill-to <BILLING ACCOUNT>
+dx select --name <PROJECT NAME>
+```
+
+Once ready, change into the ```workflow/``` directory and compile the workflow as follows:
+```bash
+cd workflow/
+java -jar /PATH/TO/dxCompiler-2.11.0.jar compile cromwell-kccg-mutect2.wdl -destination <PROJECT NAME>:/PATH/TO/PLACE/WORKFLOW/ -f -reorg
+# The -f option will force dxCompiler to overwrite the workflow and/or applets if they are already present in the workflow directory on DNAnexus.
+# The -reorg option will separate the intermediate files away from the main workflow outputs
+```
+
+If this completes successfully, the workflow will be ready to run, and located in the selected project at the location defined with the ```-destination``` parameter.
+
+#### Uploading data to DNAnexus
+
+Upload all necessary data to the DNAnexus project using dx-toolkit:
+
+```bash
+dx upload --path <PROJECT NAME>:/PATH/TO/UPLOAD/DATA [-r] filename [filename ...]
+
+# -r means upload a directory recursively, similar to cp -r
+```
+
+For example, to upload a single file named ```test.txt``` to ```test_project``` at the location ```/data/```:
+
+```bash
+dx upload --path test_project:/data/ test.txt
+```
+
+Or to upload an entire directory called ```test_dir/```:
+
+```bash
+dx upload --path -r test_project:/data/ test_dir
+```
+
+#### Submitting the pipeline to DNAnexus
+
+Use the input JSON templates in the `input/config` directory to configure the pipeline, similar to what is described above for Cromwell workflows. The only difference is to provide the DNAnexus paths for files. For example:
+
+```json
+{
+    "Mutect2CHIP.intervals": "project-G7Q2GLb5FXyKGpYj4SpgKfk3:/data/exome_evaluation_regions.v1.interval_list"
+    ...
+}
+```
+
+Similar to Cromwell runs, DNAnexus runs can be run either as a single job or in batch mode with the `--batch` parameter and an input TSV file. To run a workflow on DNAnexus, first ensure you have Python 3 installed and available on your PATH. Then, run the run script like so:
+
+```bash
+# Run a single sample
+./run.sh dxsubmit --input input/config/inputs.full.json --dxworkflow <DNAnexus workflow path> --dxoutput <DNAnexus output path> --dxpriority [low,normal,high]
+
+# Run a batch of samples
+./run.sh dxsubmit --input input/config/inputs.full.json --batch input/inputFiles/inputFiles.tsv --dxworkflow <DNAnexus workflow path> --dxoutput <DNAnexus output path> --dxpriority [low,normal,high]
+```
+
+### Input parameters
 
 The following tables describe the main parameters for each of the pipeline modes.
 
@@ -269,165 +481,3 @@ The following tables describe the main parameters for each of the pipeline modes
 | whitelist_cpu, whitelist_mem_mb, whitelist_disk | Integer | Number of CPUs, amount of memory (MB) and disk space (GB) to give to the CHIP detection stage | Optional | 1, 10000, 300 |  |
 | emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | Optional | 0 |  |
 
-#### Creating a panel of normals (optional)
-
-While it is possible to run the pipeline without a panel of normals (PoN), it is not recommended to do so. A generic PoN can be used; for example, the GATK best practices PoN generated from the 1000 genomes dataset: gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz. However, it is advisable to generate a PoN from a similar source to the samples being analysed, as this will help identify sequencing artefacts that may be called as false positive somatic variants. See https://gatk.broadinstitute.org/hc/en-us/articles/360035890631-Panel-of-Normals-PON- for further details on the best practices for generating a PoN. To generate a PoN, use the create_pon.sh script.
-
-The panel of normals pipeline requires a two-column input TSV file describing the BAM and BAI file pairs for each sample. It is also possible to supply a list of gzipped VCFs and their TBI index files, to run the PoN creation directly from VCFs. At least one of these files is necessary, and both can be provided in the case where some PoN-ready VCFs have already been generated.
-
-Example TSV files are provided at [input/inputFiles/pon/inputFiles.pon.bams.tsv](input/inputFiles/pon/inputFiles.pon.bams.tsv) and [input/inputFiles/pon/inputFiles.pon.vcfs.tsv](input/inputFiles/pon/inputFiles.pon.vcfs.tsv). If a BAM TSV file is being provided, it needs to be passed to the `Mutect2_Panel.bam_bai_list` parameter in the input JSON file; if a VCF TSV file is being provided, it needs to be passed to `Mutect2_Panel.vcf_idx_list`.
-
-#### Workflow status and termination
-
-To check on the workflow's status, run the script `status.sh`. Similarly, to terminate the workflow, run `abort.sh`. These scripts both pull the run ID out of run_id.txt, which is generated upon job submission with run.sh. Alternatively, these scripts can be provided the run ID directly as the first argument.
-
-```bash
-# Check the run ID
-cat run_id.txt
-
-    {"id":"3deb2054-445f-400a-afcd-465a50fc44ba","status":"Submitted"}
-
-# Get workflow status
-./status.sh  # Alternatively, ./status.sh 3deb2054-445f-400a-afcd-465a50fc44ba
-
-    {"status":"Running","id":"3deb2054-445f-400a-afcd-465a50fc44ba"}
-
-# Terminate the workflow
-./abort.sh  # Alternatively, ./abort.sh 3deb2054-445f-400a-afcd-465a50fc44ba
-
-    {"id":"3deb2054-445f-400a-afcd-465a50fc44ba","status":"Aborting"}
-```
-
-### Running on Terra
-
-Running the pipeline on Terra is similar to running on GCP, except that a Cromwell server is not required. All that is required is to:
-
-1. Create a workspace on Terra
-2. Add the workflow(s) to the Terra workspace.
-3. Upload all requisite files to a GCP bucket.
-    1. If running in batch mode, ensure the inputFiles.tsv files is uploaded to GCP as well.
-    2. Ensure all input files are recorded in the input JSON file with their gs:// URLs.
-4. Upload the input JSON file to the Terra workspace.
-5. Run the workflow on Terra.
-
-#### Terra workspace
-
-This workflow is already hosted on Terra in a [private workspace](https://app.terra.bio/#workspaces/terra-kccg-production/terra-kccg-somvar-pipeline). If you have access to this workspace, you can clone it and start running the pipeline (see below).
-
-For setting up your own workspace, see [this Google Docs document](https://docs.google.com/document/d/1pZVTxjRJfAyWYiFWmmF_o31lORQ8a-xmqdK1zE3RDyk) for detailed instructions on setting up a Terra workspace. In short, a billing account on GCP is required to be linked with a billing account on Terra, to which the new workspace can be added. A Terra group must also be created, containing any Terra users that wish to run the pipeline, and the group's firecloud email added as a "Storage Object Creator" and "Storage Object Viewer" on any GCP buckets used to host data as part of the workflow.
-
-Once set up, the workflows can be added to Terra via Dockstore. Dockstore monitors a public git repository containing the workflows and supplies these workflows for Terra to use. The public repository of this pipeline is available [here](https://github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip), and is already hosted on Dockstore for use with Terra. Note that this repository will typically only be updated with the main, production-ready branch, and may not contain updates in the development branch. To add the workflow to Terra:
-
-1. Go to the Terra workspace.
-2. Go to the "Workflows" tab.
-3. Click on "Find a Workflow".
-4. Click on "Dockstore" under "Find Additional Workflows".
-5. Search for the workflows with "github.com/mgeaghan-garvan/cromwell-kccg-mutect2-chip". Click on the link to the desired workflow.
-6. Click on "Terra" under the "Launch with" section.
-7. Set the workflow name and pick a destination workspace, then click "Import".
-
-#### Setting up and running a workflow
-
-As mentioned above, first ensure that all requisite files, including the inputFiles.tsv containing paths to all BAMs/CRAMs/VCFs for batch runs are present in a GCP bucket to which the Terra workspace has access. Once data has been uploaded to GCP:
-
-1. Go to the Terra workspace.
-2. Go to the "Workflows" tab.
-3. Click on the relevant workflow.
-4. Under the "Inputs" tab, drag and drop the input JSON file, or search for it by clicking on "upload json". Alternatively, the input fields can be filled out manually.
-5. Click on "Run Analysis".
-
-### Running on DNAnexus
-
-Running the pipeline on DNAnexus (and DNAnexus-based platforms such as the UK Biobank Reasearch Analysis Platform (RAP)) consists of four steps: compiling the pipeline up to DNAnexus, uploading data to a project, configuring the pipeline, and running the pipeline.
-
-Ensure that you have installed [dx-toolkit](https://documentation.dnanexus.com/downloads) and that the ```dx``` command is available in your path.
-
-#### Compiling the pipeline
-
-Compilation of the workflow requires the dxCompiler tool provided by DNAnexus: [dxCompiler](https://github.com/dnanexus/dxCompiler). The latest version ([v2.8.3](https://github.com/dnanexus/dxCompiler/releases/tag/2.8.3)) requires Java v11 to be installed.
-
-Prior to compilation, ensure that you are logged in to your DNAnexus account, have created a project for the analysis, and have selected that project with ```dx```.
-
-```bash
-# If you already have a project ready to go, dx login will let you interactively select it from a list
-dx login
-
-# If you first need to create a project, run these commands instead
-dx login --noprojects
-dx new project --name <PROJECT NAME> --region <REGION> --bill-to <BILLING ACCOUNT>
-dx select --name <PROJECT NAME>
-```
-
-Once ready, change into the ```workflow/``` directory and compile the workflow as follows:
-```bash
-cd workflow/
-java -jar /PATH/TO/dxCompiler-2.8.3.jar compile cromwell-kccg-mutect2.wdl -destination <PROJECT NAME>:/PATH/TO/PLACE/WORKFLOW/ -f -reorg
-# The -f option will force dxCompiler to overwrite the workflow and/or applets if they are already present in the workflow directory on DNAnexus.
-# The -reorg option will separate the intermediate files away from the main workflow outputs
-```
-
-If this completes successfully, the workflow will be ready to run, and located in the selected project at the location defined with the ```-destination``` parameter.
-
-#### Uploading data to DNAnexus
-
-Upload all necessary data to the DNAnexus project using dx-toolkit:
-
-```bash
-dx upload --path <PROJECT NAME>:/PATH/TO/UPLOAD/DATA [-r] filename [filename ...]
-
-# -r means upload a directory recursively, similar to cp -r
-```
-
-For example, to upload a single file named ```test.txt``` to ```test_project``` at the location ```/data/```:
-
-```bash
-dx upload --path test_project:/data/ test.txt
-```
-
-Or to upload an entire directory called ```test_dir/```:
-
-```bash
-dx upload --path -r test_project:/data/ test_dir
-```
-
-#### Configuring the pipeline for DNAnexus
-
-Use the input templates in the ```input/``` directory to configure the pipeline, similar to what is described above for Cromwell workflows. The only difference is to provide the DNAnexus paths for files. For example:
-
-```json
-{
-    "Mutect2CHIP.intervals": "project-G7Q2GLb5FXyKGpYj4SpgKfk3:/data/exome_evaluation_regions.v1.interval_list"
-    ...
-}
-```
-
-Ensure you have Python 3 installed and available on your PATH. Then, run the configuration script to create the DNAnexus submission script(s).
-
-```bash
-./configure_run.sh \
-    -f DX \
-    -w <DNAnexus workflow path> \
-    -i <Input JSON file> \
-    -o <DNAnexus output path> \
-    -b <Local input TSV file>  # This is optional (see below)
-```
-
-##### Submitting multiple samples to DNAnexus
-You can use the ```-b``` flag for configure_run.sh to configure the run to submit each sample in a batch as a separate job to DNAnexus. In this way, if a sample fails, the other samples won't be affected. The argument to the -b flag is the same inputFiles.tsv file you would supply for a batch run on Cromwell. NOTE: when running the pipeline in this way, you need to supply the corresponding single sample JSON file and DNAnexus workflow to the ```-i``` flag, since the pipeline is actually running multiple single-sample mode runs in parallel. For example:
-
-```bash
-./configure_run.sh \
-    -f DX \
-    -w project-X7Gjf3BJbVIJABcd1234KI95:/workflow/Mutect2CHIP \
-    -i ./input/inputs.json \
-    -o project-X7Gjf3BJbVIJABcd1234KI95:/output \
-    -b ./input/inputFiles.tsv
-```
-
-#### Running the pipeline on DNAnexus
-
-Finally, to run the pipeline, run the following:
-
-```bash
-./run.sh -m dx
-```
