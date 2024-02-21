@@ -25,7 +25,6 @@ version 1.0
 import "vep.wdl" as VEP
 import "annovar.wdl" as Annovar
 import "spliceai.wdl" as SpliceAI
-import "chip.wdl" as CHIP
 
 workflow AnnotateCohort {
     input {
