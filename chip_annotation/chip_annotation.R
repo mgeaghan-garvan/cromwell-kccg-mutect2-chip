@@ -861,6 +861,11 @@ df <- df %>%
   ) %>%
   # Create CHIP_INFO column
   mutate(
+    # Ensure lineage and putative columns are not NA - replace with '.'
+    lineage = if_else(is.na(lineage), ".", as.character(lineage)),
+    putative = if_else(is.na(putative), ".", as.character(putative)),
+  ) %>%
+  mutate(
     CHIP_INFO = case_when(
       CHIP_MUTATION_FILTER == "" ~ paste0(
         "CHIP_Transcript=", Transcript, ";",
@@ -868,6 +873,8 @@ df <- df %>%
         "GeneDetail=", GeneDetail, ";",
         "CHIP_Mutation_Class=", mutation_class, ";",
         "CHIP_Mutation_Definition=", mutation_definition, ";",
+        "CHIP_Lineage=", lineage, ";",
+        "CHIP_Putative=", putative, ";",
         "CHIP_Publication_Source=", gsub(";", "/", publication_source_concat, fixed = TRUE)
       ),
       .default = ""
@@ -1124,6 +1131,20 @@ df_final <- df %>%
           paste(collapse = "|")
       )
     ),
+    INFO_CHIP_Lineage = map_chr(
+      INFO_LIST, ~ (
+        grep("^CHIP_Lineage=", .x, value = TRUE) %>%
+          gsub("^CHIP_Lineage=", "", .) %>%
+          paste(collapse = "|")
+      )
+    ),
+    INFO_CHIP_Putative = map_chr(
+      INFO_LIST, ~ (
+        grep("^CHIP_Putative=", .x, value = TRUE) %>%
+          gsub("^CHIP_Putative=", "", .) %>%
+          paste(collapse = "|")
+      )
+    ),
     INFO_CHIP_Publication_Source = map_chr(
       INFO_LIST, ~ (
         grep("^CHIP_Publication_Source=", .x, value = TRUE) %>%
@@ -1134,13 +1155,15 @@ df_final <- df %>%
   ) %>%
   mutate(
     INFO = case_when(
-      INFO_CHIP_Transcript == "" ~ "CHIP_Transcript=.;AAChange=.;GeneDetail=.;CHIP_Mutation_Class=.;CHIP_Mutation_Definition=.;CHIP_Publication_Source=.",
+      INFO_CHIP_Transcript == "" ~ "CHIP_Transcript=.;AAChange=.;GeneDetail=.;CHIP_Mutation_Class=.;CHIP_Mutation_Definition=.;CHIP_Lineage=.;CHIP_Putative.;CHIP_Publication_Source=.",
       .default = paste0(
         "CHIP_Transcript=", INFO_CHIP_Transcript, ";",
         "AAChange=", INFO_AAChange, ";",
         "GeneDetail=", INFO_GeneDetail, ";",
         "CHIP_Mutation_Class=", INFO_CHIP_Mutation_Class, ";",
         "CHIP_Mutation_Definition=", INFO_CHIP_Mutation_Definition, ";",
+        "CHIP_Lineage=", INFO_CHIP_Lineage, ";",
+        "CHIP_Putative=", INFO_CHIP_Putative, ";",
         "CHIP_Publication_Source=", INFO_CHIP_Publication_Source
       )
     )
@@ -1153,6 +1176,8 @@ df_final <- df %>%
     -INFO_GeneDetail,
     -INFO_CHIP_Mutation_Class,
     -INFO_CHIP_Mutation_Definition,
+    -INFO_CHIP_Lineage,
+    -INFO_CHIP_Putative,
     -INFO_CHIP_Publication_Source
   ) %>%
   distinct()
@@ -1238,6 +1263,8 @@ info_fields <- list(
   CHIP_Mutation_Class = "Mutation class of the variant",
   CHIP_Mutation_Definition = "Mutation definition of the variant",
   CHIP_Publication_Source = "Publication source of the mutation definition",
+  CHIP_Lineage = "Lineage of the variant, e.g. myeloid (M-CHIP), lymphoid (L-CHIP)",
+  CHIP_Putative = "Putative status of the variant",
   CHIP_Multiallelic_Filters = "Allele-specific filters for multiallelic variants"
 )
 
