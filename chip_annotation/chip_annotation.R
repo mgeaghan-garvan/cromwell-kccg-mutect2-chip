@@ -1155,7 +1155,7 @@ df_final <- df %>%
   ) %>%
   mutate(
     INFO = case_when(
-      INFO_CHIP_Transcript == "" ~ "CHIP_Transcript=.;AAChange=.;GeneDetail=.;CHIP_Mutation_Class=.;CHIP_Mutation_Definition=.;CHIP_Lineage=.;CHIP_Putative.;CHIP_Publication_Source=.",
+      INFO_CHIP_Transcript == "" ~ "CHIP_Transcript=.;AAChange=.;GeneDetail=.;CHIP_Mutation_Class=.;CHIP_Mutation_Definition=.;CHIP_Lineage=.;CHIP_Putative=.;CHIP_Publication_Source=.",
       .default = paste0(
         "CHIP_Transcript=", INFO_CHIP_Transcript, ";",
         "AAChange=", INFO_AAChange, ";",
