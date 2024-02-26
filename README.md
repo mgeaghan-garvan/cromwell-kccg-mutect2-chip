@@ -17,7 +17,7 @@ This pipeline can be run in several different modes:
 | [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl) | Cohort-wide CHIP variant filtration using a set of VCFs already run through CHIP detection. |
 | [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Cohort-wide annotation with one or more of Annovar, VEP, and SpliceAI. |
 
-The cohort-wide CHIP filter workflow is recommended to be run following CHIP annotation. This cohort-wide stage detects and filters out mutations that appear above a specified threshold in the cohort, as well as mutations that are multiallelic across the cohort.
+The cohort-wide CHIP filter workflow is recommended to be run following CHIP annotation. This cohort-wide stage detects and filters out mutations that appear above a specified threshold in the cohort.
 
 The cohort annotation workflow can significantly reduce the costs of annotating large cohorts by assembling a single sites-only VCF that can be annotated with Annovar, VEP, or SpliceAI; these annotations are then added to the original VCFs using bcftools, thus reducing the potential overhead of annotating the same variant multiple times in different samples.
 
