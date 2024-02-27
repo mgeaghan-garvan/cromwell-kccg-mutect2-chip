@@ -98,7 +98,7 @@ workflow AnnotateCohort {
     scatter(row in vcf_idx_pairs) {
         File vcf = row[0]
         File vcf_idx = row[1]
-        call VcfToSitesOnlyVcf {
+        call SplitMultiallelicsAndVcfToSitesOnlyVcf {
             input:
                 input_vcf = vcf,
                 input_vcf_idx = vcf_idx,
@@ -112,7 +112,7 @@ workflow AnnotateCohort {
 
     call MergeSitesOnlyVcfs {
         input:
-            input_vcf_idx_pairs = VcfToSitesOnlyVcf.sites_only_vcf_idx_pairs,
+            input_vcf_idx_pairs = SplitMultiallelicsAndVcfToSitesOnlyVcf.sites_only_vcf_idx_pairs,
             cohort_name = cohort_name,
             cpu = small_task_cpu,
             mem_mb = small_task_mem,
@@ -209,7 +209,7 @@ workflow AnnotateCohort {
             runtime_params = standard_runtime
     }
 
-    scatter(row in vcf_idx_pairs) {
+    scatter(row in SplitMultiallelicsAndVcfToSitesOnlyVcf.split_multi_vcf_idx_pairs) {
         File in_vcf = row[0]
         File in_vcf_idx = row[1]
         call AnnotateVcf {
@@ -231,7 +231,7 @@ workflow AnnotateCohort {
     }
 }
 
-task VcfToSitesOnlyVcf {
+task SplitMultiallelicsAndVcfToSitesOnlyVcf {
     input {
         File input_vcf
         File input_vcf_idx
@@ -246,7 +246,9 @@ task VcfToSitesOnlyVcf {
 
     command <<<
         # Use bcftools to convert the input VCF to a sites-only VCF
-        bcftools annotate -x FMT,INFO,FILTER ~{input_vcf} | cut -f 1-8 | bgzip -c > ~{vcf_basename}.sites_only.vcf.gz
+        bcftools norm -m -any -O z -o ~{vcf_basename}.split_multi.vcf.gz ~{input_vcf}
+        tabix -s1 -b2 -e2 ~{vcf_basename}.split_multi.vcf.gz
+        bcftools annotate -x FMT,INFO,FILTER ~{vcf_basename}.split_multi.vcf.gz | cut -f 1-8 | bgzip -c > ~{vcf_basename}.sites_only.vcf.gz
         tabix -s1 -b2 -e2 ~{vcf_basename}.sites_only.vcf.gz
     >>>
 
@@ -261,6 +263,7 @@ task VcfToSitesOnlyVcf {
     }
 
     output {
+        Array[File] split_multi_vcf_idx_pairs = ["~{vcf_basename}.split_multi.vcf.gz", "~{vcf_basename}.split_multi.vcf.gz.tbi"]
         Array[File] sites_only_vcf_idx_pairs = ["~{vcf_basename}.sites_only.vcf.gz", "~{vcf_basename}.sites_only.vcf.gz.tbi"]
     }
 }

@@ -243,11 +243,19 @@ task AnnotateVcf {
         tabix -s1 -b2 -e2 cohort.annotated.merged.sorted.vcf.gz
 
         # Use bcftools to annotate the input VCF with the annotation VCF
+        # Take the INFO field from the merged multi-allelic sites,
+        # but the FILTER field from the split multi-allelic sites.
+        # This means that a site in a given individual will be filtered
+        # based on the specific allele, but we won't lose information from
+        # the INFO field when annotating multi-allelic sites.
         bcftools annotate \
             -a cohort.annotated.merged.sorted.vcf.gz \
-            -c "=FILTER,+INFO" \
-            -o ~{vcf_basename}.chip.cohort_filter.vcf.gz \
-            ~{input_vcf}
+            -c "+INFO" \
+            ~{input_vcf} | \
+        bcftools annotate \
+            -a cohort.annotated.sorted.vcf.gz \
+            -c "=FILTER" \
+            -o ~{vcf_basename}.chip.cohort_filter.vcf.gz
         tabix -s1 -b2 -e2 ~{vcf_basename}.chip.cohort_filter.vcf.gz
     >>>
 

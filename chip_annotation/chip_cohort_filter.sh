@@ -60,16 +60,26 @@ tabix -s 1 -b 2 -e 2 ${TEMP_DIR}/cohort.annotated.sorted.vcf.gz
 bcftools norm -m +any -O z -o ${TEMP_DIR}/cohort.annotated.merged.sorted.vcf.gz ${TEMP_DIR}/cohort.annotated.sorted.vcf.gz
 tabix -s 1 -b 2 -e 2 ${TEMP_DIR}/cohort.annotated.merged.sorted.vcf.gz
 
-ANNOTATION_VCF="${TEMP_DIR}/cohort.annotated.merged.sorted.vcf.gz"
+SPLIT_ANNOTATION_VCF="${TEMP_DIR}/cohort.annotated.sorted.vcf.gz"
+MERGED_ANNOTATION_VCF="${TEMP_DIR}/cohort.annotated.merged.sorted.vcf.gz"
 
 # === STEP 4: Annotate input VCFs ===
+# Use bcftools to annotate the input VCF with the annotation VCF
+# Take the INFO field from the merged multi-allelic sites,
+# but the FILTER field from the split multi-allelic sites.
+# This means that a site in a given individual will be filtered
+# based on the specific allele, but we won't lose information from
+# the INFO field when annotating multi-allelic sites.
 for INPUT_VCF in ${INPUT_VCFS}; do
     INPUT_VCF_BN="$(basename $(basename ${INPUT_VCF} .gz) .vcf)"
     bcftools annotate \
-        -a ${ANNOTATION_VCF} \
-        -c "=FILTER,+INFO" \
+        -a ${MERGED_ANNOTATION_VCF} \
+        -c "+INFO" \
+        ${INPUT_VCF} | \
+    bcftools annotate \
+        -a ${SPLIT_ANNOTATION_VCF} \
+        -c "=FILTER" \
         -O z \
-        -o ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz \
-        ${INPUT_VCF}
+        -o ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
     tabix -s 1 -b 2 -e 2 ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
 done
