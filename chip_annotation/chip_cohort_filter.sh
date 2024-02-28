@@ -75,11 +75,15 @@ for INPUT_VCF in ${INPUT_VCFS}; do
     bcftools annotate \
         -a ${MERGED_ANNOTATION_VCF} \
         -c "+INFO" \
-        ${INPUT_VCF} | \
+        -O z \
+        -o ${TEMP_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz \
+        ${INPUT_VCF}
+    tabix -s 1 -b 2 -e 2 ${TEMP_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
     bcftools annotate \
         -a ${SPLIT_ANNOTATION_VCF} \
         -c "=FILTER" \
         -O z \
-        -o ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
+        -o ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz \
+        ${TEMP_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz 
     tabix -s 1 -b 2 -e 2 ${OUT_DIR}/${INPUT_VCF_BN}.chip.cohort_filter.vcf.gz
 done

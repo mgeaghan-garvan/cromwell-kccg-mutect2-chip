@@ -251,11 +251,15 @@ task AnnotateVcf {
         bcftools annotate \
             -a cohort.annotated.merged.sorted.vcf.gz \
             -c "+INFO" \
-            ~{input_vcf} | \
+            -O z \
+            -o ~{vcf_basename}.chip.cohort_info.tmp.vcf.gz \
+            ~{input_vcf}
+        tabix -s1 -b2 -e2 ~{vcf_basename}.chip.cohort_info.tmp.vcf.gz
         bcftools annotate \
             -a cohort.annotated.sorted.vcf.gz \
             -c "=FILTER" \
-            -o ~{vcf_basename}.chip.cohort_filter.vcf.gz
+            -o ~{vcf_basename}.chip.cohort_filter.vcf.gz \
+            ~{vcf_basename}.chip.cohort_info.tmp.vcf.gz
         tabix -s1 -b2 -e2 ~{vcf_basename}.chip.cohort_filter.vcf.gz
     >>>
 
