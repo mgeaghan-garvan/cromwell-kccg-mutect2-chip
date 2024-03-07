@@ -27,8 +27,7 @@ version 1.0
 # =================================================================================== #
 
 
-struct Runtime {
-    String docker
+struct U2AF1Runtime {
     Int max_retries
     Int preemptible
     Int cpu
@@ -50,7 +49,8 @@ workflow CallU2AF1 {
         Boolean compress_vcfs = false
         
         # Runtime options
-        String docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
+        String pileup_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest"
+        String merge_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
         Int preemptible = 2
         Int max_retries = 2
         Int cpu = 4
@@ -64,11 +64,10 @@ workflow CallU2AF1 {
     Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
     Int mutect2_output_vcf_size = ceil(size(mutect2_output_vcf, "GB") + size(mutect2_output_vcf_index, "GB"))
     Int output_size = mutect2_output_vcf_size * 2
-    Int total_size = (ref_size + tumor_reads_size + mutect2_output_vcf_size + output_size) * 1.5
+    Int total_size = ceil((ref_size + tumor_reads_size + mutect2_output_vcf_size + output_size) * 1.5)
     Int disk_size = if (total_size > disk) then total_size else disk
 
-    Runtime standard_runtime = {
-        "docker": docker,
+    U2AF1Runtime standard_runtime = {
         "max_retries": max_retries,
         "preemptible": preemptible,
         "cpu": cpu,
@@ -77,12 +76,28 @@ workflow CallU2AF1 {
         "boot_disk_size": boot_disk_size
     }
 
+    call U2AF1Pileup {
+        input:
+            tumor_reads = tumor_reads,
+            tumor_reads_index = tumor_reads_index,
+            u2af1_regions_file = u2af1_regions_file,
+            ref_fasta = ref_fasta,
+            ref_fai = ref_fai,
+            docker = pileup_docker,
+            runtime_params = standard_runtime
+    }
 
-    
+    call MergeU2AF1Vcf {
+        input:
+            u2af1_vcf = U2AF1Pileup.pileup_vcf,
+            mutect2_vcf = mutect2_output_vcf,
+            mutect2_vcf_index = mutect2_output_vcf_index,
+            docker = merge_docker,
+            runtime_params = standard_runtime
+    }
 
     output {
-        File u2af1_vcf = FilterU2AF1Vcf.filtered_vcf
-        File u2af1_vcf_idx = FilterU2AF1Vcf.filtered_vcf_idx
+        File u2af1_vcf = U2AF1Pileup.pileup_vcf
         File merged_vcf = MergeU2AF1Vcf.merged_vcf
         File merged_vcf_idx = MergeU2AF1Vcf.merged_vcf_idx
     }
@@ -99,36 +114,52 @@ task U2AF1Pileup {
       File u2af1_regions_file
       File ref_fasta
       File ref_fai
+      String docker
 
       # runtime
-      Runtime runtime_params
+      U2AF1Runtime runtime_params
     }
 
     String sample_basename = basename(basename(tumor_reads, ".bam"),".cram")
-
-    # The U2AF1 regions file is expected to be a TSV file with the following columns:
-    # Chromosome, Start (1-based), End (1-based), Duplication start (1-based), Duplication end (1-based)
+    Int u2af1_start = 43092956
+    Int u2af1_end = 43107570
 
     command <<<
-        # Generate a BED file from the U2AF1 regions file
-        U2AF1_BED="$(basename ~{u2af1_regions_file}).bed"
-        awk -v FS="\t" -v OFS="\t" '{
-            print $1, $2 - 1, $3;
-            print $1, $4 - 1, $5;
-        }' ~{u2af1_regions_file} | bedtools sort > $U2AF1_BED
-
-        # Run bcftools mpileup and call on the U2AF1 regions
-        bcftools mpileup \
-            -R $U2AF1_BED \
-            -a "FORMAT/AD,FORMAT/DP" \
-            -d 8000 \
-            -f ~{ref_fasta} \
-            ~{tumor_reads} | \
-        bcftools call -mv -Ov -o ~{sample_basename}.u2af1.pileup.vcf
+        # Run pileup_regions
+        pileup_regions ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | \
+        awk \
+            -v FS="\t" \
+            -v OFS="\t" \
+            -v u2af1_start="~{u2af1_start}" \
+            -v u2af1_end="~{u2af1_end}" '
+                { dp[$5]+=$6; ad[$5]+=$7 }
+                $2 >= u2af1_start && $2 <= u2af1_end { pos[$5]=$2 }
+                END {
+                    print "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", "SAMPLE"
+                    for (i in dp) {
+                        chr = "chr21"
+                        p = pos[i]
+                        id = "."
+                        ref = $3
+                        alt = $4
+                        qual = "."
+                        filter = "."
+                        info = "."
+                        format = "GT:DP:AD"
+                        if (ad[i] == 0) {
+                            gt = "0/0"
+                        } else {
+                            gt = "0/1"
+                        }
+                        sample = gt ":" dp[i] ":" ad[i]
+                        print chr, p, id, ref, alt, qual, filter, info, format, sample
+                    }
+                }
+            ' > ~{sample_basename}.u2af1.pileup.vcf
     >>>
 
     runtime {
-        docker: runtime_params.docker
+        docker: docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.mem_mb + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
@@ -142,56 +173,50 @@ task U2AF1Pileup {
     }
 }
 
-task FilterU2AF1Vcf {
-    input {
-      File pileup_vcf
-      File u2af1_regions_file
-
-      # runtime
-      Runtime runtime_params
-    }
-
-    command <<<
-        R --vanilla <<EOF
-            library(tidyverse)
-            regions <- read_tsv("~{u2af1_regions_file}", col_names = c("chrom", "start", "end", "dup_start", "dup_end"))
-            vcf <- read_tsv("~{pileup_vcf}", comment = "#", col_names = c("chrom", "pos", "id", "ref", "alt", "qual", "filter", "info", "format", "sample"), guess_max = Inf)
-        EOF
-    >>>
-
-    runtime {
-        docker: runtime_params.docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.mem_mb + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
-        maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
-    }
-
-    output {
-        File filtered_vcf = ".u2af1.pileup.filtered.vcf.gz"
-        File filtered_vcf_idx = ".u2af1.pileup.filtered.vcf.gz.tbi"
-    }
-}
-
 task MergeU2AF1Vcf {
     input {
       File u2af1_vcf
-      File u2af1_vcf_index
       File mutect2_vcf
       File mutect2_vcf_index
+      String docker
 
       # runtime
-      Runtime runtime_params
+      U2AF1Runtime runtime_params
     }
 
-    command <<<
+    Int u2af1_start = 43092956
+    Int u2af1_end = 43107570
+    Int u2af1_dup_start = 6484623
+    Int u2af1_dup_end = 6499248
+    String mutect2_vcf_basename = basename(mutect2_vcf, ".vcf.gz")
 
+    command <<<
+        # Grab the Mutect2 VCF header
+        bcftools view -h ~{mutect2_vcf} > u2af1.vcf
+        # Add the body of the U2AF1 VCF
+        grep -v "^#" ~{u2af1_vcf} >> u2af1.vcf
+        # Sort the VCF
+        bcftools sort -o u2af1.sorted.vcf u2af1.vcf
+        # BGZIP the VCF
+        bgzip -c u2af1.sorted.vcf > u2af1.sorted.vcf.gz
+        # Index the VCF
+        tabix -s 1 -b 2 -e 2 u2af1.sorted.vcf.gz
+        # Create BED file of U2AF1 loci
+        echo -e "chr21\t~{u2af1_start}\t~{u2af1_end}\nchr21\t~{u2af1_dup_start}\t~{u2af1_dup_end}" > u2af1.bed
+        # Mask out the U2AF1 loci in the Mutect2 VCF
+        bedtools intersect -v -a ~{mutect2_vcf} -b u2af1.bed > ~{mutect2_vcf_basename}.masked.vcf
+        # BGZIP the masked VCF
+        bgzip -c ~{mutect2_vcf_basename}.masked.vcf > ~{mutect2_vcf_basename}.masked.vcf.gz
+        # Index the masked VCF
+        tabix -s 1 -b 2 -e 2 ~{mutect2_vcf_basename}.masked.vcf.gz
+        # Concatenate the VCFs
+        bcftools concat -a -d all -O z -o ~{mutect2_vcf_basename}.u2af1.vcf.gz ~{mutect2_vcf_basename}.masked.vcf.gz u2af1.sorted.vcf.gz
+        # Index the concatenated VCF
+        tabix -s 1 -b 2 -e 2 ~{mutect2_vcf_basename}.u2af1.vcf.gz
     >>>
 
     runtime {
-        docker: runtime_params.docker
+        docker: docker
         bootDiskSizeGb: runtime_params.boot_disk_size
         memory: runtime_params.mem_mb + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
@@ -201,7 +226,7 @@ task MergeU2AF1Vcf {
     }
 
     output {
-        File merged_vcf = ".u2af1.vcf.gz"
-        File merged_vcf_idx = ".u2af1.vcf.gz.tbi"
+        File merged_vcf = "~{mutect2_vcf_basename}.u2af1.vcf.gz"
+        File merged_vcf_idx = "~{mutect2_vcf_basename}.u2af1.vcf.gz.tbi"
     }
 }
