@@ -148,6 +148,8 @@ task U2AF1Pileup {
                         format = "GT:DP:AD"
                         if (ad[i] == 0) {
                             gt = "0/0"
+                        } else if (ad[i] == dp[i]) {
+                            gt = "1/1"
                         } else {
                             gt = "0/1"
                         }
