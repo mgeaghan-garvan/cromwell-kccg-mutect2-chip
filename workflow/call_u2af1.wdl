@@ -206,7 +206,7 @@ task MergeU2AF1Vcf {
         # Create BED file of U2AF1 loci
         echo -e "chr21\t~{u2af1_start}\t~{u2af1_end}\nchr21\t~{u2af1_dup_start}\t~{u2af1_dup_end}" > u2af1.bed
         # Mask out the U2AF1 loci in the Mutect2 VCF
-        bedtools intersect -v -a ~{mutect2_vcf} -b u2af1.bed > ~{mutect2_vcf_basename}.masked.vcf
+        bedtools intersect -header -v -a ~{mutect2_vcf} -b u2af1.bed > ~{mutect2_vcf_basename}.masked.vcf
         # BGZIP the masked VCF
         bgzip -c ~{mutect2_vcf_basename}.masked.vcf > ~{mutect2_vcf_basename}.masked.vcf.gz
         # Index the masked VCF
