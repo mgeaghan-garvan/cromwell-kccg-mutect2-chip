@@ -125,8 +125,9 @@ task U2AF1Pileup {
     Int u2af1_end = 43107570
 
     command <<<
+        set -euo pipefail
         # Run pileup_regions
-        pileup_regions ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | \
+        pileup_region ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | \
         awk \
             -v FS="\t" \
             -v OFS="\t" \
