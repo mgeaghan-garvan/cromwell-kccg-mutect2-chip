@@ -1,0 +1,21 @@
+[workflow]
+dataset = ''
+access_level = 'test'
+name = 'TEST_RUN'
+
+[mutect2_chip]
+ref_fasta = 'REQUIRED_FILE'
+ref_fai = 'REQUIRED_FILE'
+tumor_reads = 'REQUIRED_FILE'
+tumor_reads_index = 'REQUIRED_FILE'
+u2af1_regions_file = 'REQUIRED_FILE'
+mutect2_output_vcf = 'REQUIRED_FILE'
+mutect2_output_vcf_index = 'REQUIRED_FILE'
+pileup_docker = 'australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest'
+merge_docker = 'australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest'
+preemptible = 2
+max_retries = 2
+cpu = 4
+mem_mb = 4000
+disk = 100
+boot_disk_size = 12

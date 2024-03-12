@@ -37,6 +37,12 @@ VALID_KEYS = {
         "normal_reads",
         "normal_reads_index",
     ],
+    "CallU2AF1": [
+        "tumor_reads",
+        "tumor_reads_index",
+        "mutect2_output_vcf",
+        "mutect2_output_vcf_index",
+    ],
     "CHIP": [
         "tumor_sample_name",
         "input_vcf",

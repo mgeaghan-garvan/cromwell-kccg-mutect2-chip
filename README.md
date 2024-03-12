@@ -10,6 +10,9 @@ This pipeline can be run in several different modes:
 | ------------- | ----------- |
 | [workflow/pon.wdl](workflow/pon.wdl) | Panel of Normals creation. This mode generates the Panel of Normals (PoN) from a set of input files. Input can either be BAM/CRAM alignment files, or pre-called VCF files. |
 | [workflow/full.wdl](workflow/full.wdl) | Full pipeline. In this mode the entire pipeline will be run, starting with input BAM/CRAM files and performing somatic variant calling with GATK Mutect2. Optionally, the VCF output can be further annotated with Annovar, VEP, and/or SpliceAI. Finally, CHIP variant annotation can be run as a final stage of the pipeline. |
+| [workflow/m2.wdl](workflow/m2.wdl) | Mutect2 only pipeline. Just run Mutect2 somatic variant calling using input BAM/CRAM files. |
+| [workflow/m2.sj.wdl](workflow/m2.sj.wdl) | Mutect2 only pipeline, single-job mode. Same as [workflow/m2.wdl](workflow/m2.wdl), but runs everything in a single task. Optimised for DNAnexus runs, not intended for use otherwise. |
+| [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Call U2AF1 mutations. The U2AF1 locus is duplicated on chromosome 21, and so somatic variant calling is affected. This stage corrects for this by running a separate tool to call these mutations and merging them with the mutations output by Mutect2. |
 | [workflow/annovar.wdl](workflow/annovar.wdl) | Annovar annotation-only using a pre-called VCF file. |
 | [workflow/vep.wdl](workflow/vep.wdl) | VEP annotation-only using a pre-called VCF file. |
 | [workflow/spliceai.wdl](workflow/spliceai.wdl) | SpliceAI annotation-only using a pre-called VCF file. |
@@ -48,6 +51,7 @@ Inside the `input/config` directory are several JSON files that describe the inp
 | [input/config/inputs.pon.json](input/config/inputs.pon.json) | [workflow/pon.wdl](workflow/pon.wdl) | Panel of normals creation |
 | [input/config/inputs.m2.json](input/config/inputs.m2.json) | [workflow/m2.wdl](workflow/m2.wdl) | Mutect2-only pipeline |
 | [input/config/inputs.m2.sj.json](input/config/inputs.m2.sj.json) | [workflow/m2.sj.wdl](workflow/m2.sj.wdl) | Mutect2-only pipeline, single-job version (for running on DNAnexus) |
+| [input/config/inputs.call_u2af1.json](input/config/inputs.call_u2af1.json) | [workflow/m2.wdl](workflow/call_u2af1.wdl) | U2AF1 calling pipeline |
 | [input/config/inputs.chip.json](input/config/inputs.chip.json) | [workflow/chip.wdl](workflow/chip.wdl) | CHIP detection only |
 | [input/config/inputs.chip_cohort.json](input/config/inputs.chip_cohort.json) | [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl) | CHIP cohort-wide filter |
 | [input/config/inputs.annovar.json](input/config/inputs.annovar.json) | [workflow/annovar.wdl](workflow/annovar.wdl) | Annovar annotation only |
@@ -112,12 +116,14 @@ A batch of jobs can be submitted all at once to a Cromwell server by supplying a
 
 - The full pipeline: [full.wdl](workflow/full.wdl)
 - Mutect2: [m2.wdl](workflow/m2.wdl)
+- U2AF1 Calling: [call_u2af1.wdl](workflow/call_u2af1.wdl)
 - All annotation-only pipelines: [annovar.wdl](workflow/annovar.wdl), [vep.wdl](workflow/vep.wdl) and [spliceai.wdl](workflow/spliceai.wdl)
 - The CHIP-only pipeline: [chip.wdl](workflow/chip.wdl)
 
 Template TSV files are supplied in `input/inputFiles/batch`:
 
 - Full pipeline and Mutect2 template: [inputFiles.tsv](input/inputFiles/batch/inputFiles.tsv)
+- U2AF1 workflow template: [inputFiles.u2af1.tsv](input/inputFiles/batch/inputFiles.u2af1.tsv)
 - Annovar and SpliceAI workflow template: [inputFiles.annotate.tsv](input/inputFiles/batch/inputFiles.annotate.tsv)
 - VEP workflow template: [inputFiles.vep.tsv](input/inputFiles/batch/inputFiles.vep.tsv)
 - CHIP-only workflow template: [inputFiles.chip.tsv](input/inputFiles/batch/inputFiles.chip.tsv)
@@ -170,6 +176,7 @@ The `analysis-runner` tool submits jobs to the CPG Hail Batch server. A Hail Bat
 
 - Full analysis pipeline: [full.submit.py](scripts/cpg_cromwell/full.submit.py)
 - Mutect2-only pipeline: [m2.submit.py](scripts/cpg_cromwell/m2.submit.py)
+- U2AF1 calling pipeline: [call_u2af1.submit.py](scripts/cpg_cromwell/call_u2af1.submit.py)
 - PoN generation: [pon.submit.py](scripts/cpg_cromwell/pon.submit.py)
 
 Since these workflows need to be submitted through Hail Batch, the configuration is slightly different, requiring a TOML file, rather than a JSON file. Additionally, batch submissions are not yet supported by these Hail Batch scripts. Template TOML files for the supported workflows are provided in the `input/config` directory. Each TOML file must start with a `workflow` section, describing the dataset, access level, and name of the workflow. More information about the workflow access levels can be found in the [CPG's documentation](https://github.com/populationgenomics/team-docs/tree/main/storage_policies#analysis-runner). The parameters to be passed to the WDL pipeline need to be defined in a separate `mutect2_chip` section. For example, the TOML file for a full workflow run will look something like the following:
@@ -332,9 +339,10 @@ These parameters are shared by two or more workflows.
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| tumor_reads, tumor_reads_index | File | BAM alignments and BAI index for tumor sample | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Required |  |
 | intervals | File | A Picard-formatted intervals list file | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl) | Optional, but recommended to reduce computation time and cost. | https://storage.googleapis.com/kccg-somvar-data/exome_evaluation_regions.v1.interval_list |
-| ref_fasta | File | Reference genome FASTA | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta |
-| ref_fai | File | Reference genome FASTA index | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai |
+| ref_fasta | File | Reference genome FASTA | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta |
+| ref_fai | File | Reference genome FASTA index | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.fasta.fai |
 | ref_dict | File | Reference genome dictionary | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl) | Required | https://storage.googleapis.com/kccg-somvar-data/Homo_sapiens_assembly38.dict |
 | vcf_idx_list | File | Input TSV file containing the locations of input VCFs and their index files; the file should have two columns, the first listing the VCF files and the second listing the indexes; one line per sample | [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Required for cohort annotation and cohort-wide CHIP filter workflows. Optional for PoN generation unless `bam_bai_list` is not supplied. | N/A |  |
 | input_vcf | File | A path to a VCF for annotation | [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl) | Required |  |
@@ -342,11 +350,11 @@ These parameters are shared by two or more workflows.
 | bcftools_docker | String | URI for Docker image for running `bcftools` | [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl) | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
 | gatk_docker | String | URI for a Docker image for running GATK commands | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b" |  |
 | gatk_override | File | Path to an optional GATK .jar file to override the default container GATK version | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Optional |  |
-| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Default = 2 |  |
-| max_retries | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Optional = 2 |  |
+| preemptible | Integer | Number of times to allow a Google Cloud job to be pre-empted before running on a non-pre-embitble machine | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Default = 2 |  |
+| max_retries | Integer | Number of times to allow a Google Cloud jobs to fail (not due to pre-empting) before giving up | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Optional = 2 |  |
 | small_task_cpu, small_task_mem, small_task_disk | Integer | Number of CPUs, amount of memory (MB), and amount of disk space (GB) to give most tasks | [workflow/m2.wdl](workflow/m2.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Defaults = 4, 4000, 100 |  |
 | command_mem_padding | Integer | Amount of memory (MB) to reserve for the Java runtime; the amount of memory given to run the command will be the total task memory minus the command_mem_padding value | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Default = 1000 |  |
-| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Default = 12 |  |
+| boot_disk_size | Integer | Amount of boot disk space to request when starting a job on Google Cloud | [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/pon.wdl](workflow/pon.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/spliceai.wdl](workflow/spliceai.wdl), [workflow/chip.wdl](workflow/chip.wdl), [workflow/chip_cohort.wdl](workflow/chip_cohort.wdl), [workflow/full.wdl](workflow/full.wdl), [workflow/annovar.wdl](workflow/annovar.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl), [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Default = 12 |  |
 | emergency_extra_disk | Integer | Extra disk space to give to jobs in case jobs are failing due to running out of disk space | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/m2.sj.wdl](workflow/m2.sj.wdl), [workflow/vep.wdl](workflow/vep.wdl), [workflow/annotate_cohort.wdl](workflow/annotate_cohort.wdl) | Default = 0 |  |
 | small_input_to_output_multiplier | Float | Disk space multiplier for small jobs; used to account for output size being larger than input size | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Default = 2.0 |  |
 | large_input_to_output_multiplier | Float | Disk space multiplier for large jobs (currently only MergeBamOuts); used to account for output size being larger than input size | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl) | Default = 2.25 |  |
@@ -357,7 +365,6 @@ These parameters are specific to running Mutect2 and the Mutect2 stage of the pa
 
 | Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
 | ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
-| tumor_reads, tumor_reads_index | File | BAM alignments and BAI index for tumor sample | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl) | Required |  |
 | normal_reads, normal_reads_index | File | BAM alignments and BAI index for matched normal sample | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl) | Optional |  |
 | tumor_bam, tumor_bai | File | **Single-job version of Mutect2 only** - same as tumor_reads and tumor_reads_index | [workflow/m2.sj.wdl](workflow/m2.sj.wdl) | Required |  |
 | normal_bam, normal_bai | File | **Single-job version of Mutect2 only** - same as normal_reads and normal_reads_index | [workflow/m2.sj.wdl](workflow/m2.sj.wdl) | Optional |  |
@@ -375,6 +382,18 @@ These parameters are specific to running Mutect2 and the Mutect2 stage of the pa
 | m2_mem, m2_cpu | Integer | Amount of memory (MB) and number of CPUs to use when running Mutect2 | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl), [workflow/pon.wdl](workflow/pon.wdl) | Defaults = 5000, 4 |  |
 | learn_read_orientation_mem | Integer | Amount of memory (MB) to give to LearnReadOrientationModel | [workflow/full.wdl](workflow/full.wdl), [workflow/m2.wdl](workflow/m2.wdl) | Default = 5000 |  |
 | mem_mb, cpu, disk_space | Integer | **Single-job version of Mutect2 only** - Amount of memory (MB), number of CPUs, and amount of disk space required (GB) use when running Mutect2 | [workflow/m2.sj.wdl](workflow/m2.sj.wdl) | Defaults = 5000, 4, 100 |  |
+
+#### U2AF1 Calling parameters
+
+These parameters are specific to calling U2AF1 mutations
+
+| Parameter(s) | Type | Description | Applicable Workflows | Required/Optional/Default | Example |
+| ------------ | ---- | ----------- | -------------------- | ------------------------- | ------- |
+| u2af1_regions_file | File | A file specifying the genomic loci to call and the amino acid change they are associated with. | [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Required | [chip_annotation/chip_mutations/u2af1_vars.txt](chip_annotation/chip_mutations/u2af1_vars.txt) |
+| mutect2_output_vcf, mutect2_ouptut_vcf_index | File | The VCF output from Mutect2. Required so that the U2AF1 variants can be merged in. | [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Required |  |
+| pileup_docker | String | Docker image for running the pileup of the U2AF1 loci. | [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest" |  |
+| merge_docker | String | Docker image for merging the U2AF1 calls with the Mutect2 calls. | [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Default = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest" |  |
+| cpu, mem_mb, disk | Integer | Amount of CPU, memory (MB) and disk space (GB) to use for the U2AF1 workflow. | [workflow/call_u2af1.wdl](workflow/call_u2af1.wdl) | Defaults = 4, 4000, 100 |  |
 
 #### PoN parameters
 

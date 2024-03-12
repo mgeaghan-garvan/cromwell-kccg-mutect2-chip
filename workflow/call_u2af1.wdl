@@ -46,7 +46,6 @@ workflow CallU2AF1 {
         File u2af1_regions_file
         File mutect2_output_vcf
         File mutect2_output_vcf_index
-        Boolean compress_vcfs = false
         
         # Runtime options
         String pileup_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest"
