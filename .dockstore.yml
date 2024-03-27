@@ -70,3 +70,33 @@ workflows:
         email: m.geaghan@garvan.org.au
         role: "Production Bioinformatician"
         affiliation: "Garvan Institute of Medical Research"
+  - name: KCCGMutect2CHIP_Annotate_Cohort
+    subclass: WDL
+    primaryDescriptorPath: /workflow/annotate_cohort.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+  - name: KCCGMutect2CHIP_CHIP_Cohort
+    subclass: WDL
+    primaryDescriptorPath: /workflow/chip_cohort.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
+  - name: KCCGMutect2CHIP_Call_U2AF1
+    subclass: WDL
+    primaryDescriptorPath: /workflow/call_u2af1.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"

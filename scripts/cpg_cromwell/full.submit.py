@@ -4,6 +4,7 @@ Submit the full pipeline to cromwell via hail batch
 import hailtop.batch as hb
 from hailtop.batch import Resource
 from hailtop.batch.job import Job
+from cpg_utils.hail_batch import get_batch
 from cpg_utils.config import get_config
 from cpg_utils.hail_batch import remote_tmpdir
 from analysis_runner.cromwell import (
@@ -68,21 +69,19 @@ def submit_cromwell_workflow(
 
 
 _config = get_config()
-BILLING_PROJECT = _config['hail']['billing_project']
 DATASET = _config['workflow']['dataset']
 ACCESS_LEVEL = _config['workflow']['access_level']
 JOB_NAME = _config['workflow']['name']
 OUTPUT_PREFIX = f'mutect2-chip/{JOB_NAME}'
 DRIVER_IMAGE = _config['workflow']['driver_image']
 
-sb = hb.ServiceBackend(billing_project=BILLING_PROJECT, remote_tmpdir=remote_tmpdir())
-b = hb.Batch(backend=sb, default_image=DRIVER_IMAGE)
+b = get_batch()
 
 input_prefix = 'Mutect2CHIP'
 
 input_dict = {
     f'{input_prefix}.{k}': v
-    for k, v in _config['mutect2_chip']
+    for k, v in _config['mutect2_chip'].items()
 }
 
 submit_j, workflow_id_file = submit_cromwell_workflow(
@@ -94,7 +93,9 @@ submit_j, workflow_id_file = submit_cromwell_workflow(
     output_prefix=OUTPUT_PREFIX,
     cwd='workflow/',
     input_dict=input_dict,
-    libs=[],
+    libs=[
+        ".",
+    ],
     copy_outputs_to_gcp=True,
     driver_image=DRIVER_IMAGE,
 )

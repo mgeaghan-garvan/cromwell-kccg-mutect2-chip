@@ -1,0 +1,12 @@
+{
+    "CHIPCohort.vcf_idx_list": "REQUIRED_FILE",
+    "CHIPCohort.prevalence_threshold": 0.01,
+    "CHIPCohort.chip_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest",
+    "CHIPCohort.bcftools_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest",
+    "CHIPCohort.preemptible": 2,
+    "CHIPCohort.max_retries": 2,
+    "CHIPCohort.small_task_cpu": 1,
+    "CHIPCohort.small_task_mem": 4000,
+    "CHIPCohort.small_task_disk": 50,
+    "CHIPCohort.boot_disk_size": 12
+}

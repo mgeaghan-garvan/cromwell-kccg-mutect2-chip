@@ -1,0 +1,3 @@
+#!/bin/bash
+
+Rscript --vanilla /R/scripts/chip_cohort_filter.R $@
