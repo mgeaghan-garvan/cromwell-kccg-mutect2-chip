@@ -83,6 +83,7 @@ workflow CallU2AF1SingleJob {
 
     output {
         File u2af1_vcf = U2AF1Pileup.pileup_vcf
+        File u2af1_tsv = U2AF1Pileup.pileup_tsv
     }
 }
 
@@ -110,7 +111,7 @@ task U2AF1Pileup {
     command <<<
         set -euo pipefail
         # Run pileup_regions
-        pileup_region ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | \
+        pileup_region ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | tee ~{sample_basename}.u2af1.pileup.tsv | \
         awk \
             -v FS="\t" \
             -v OFS="\t" \
@@ -155,6 +156,7 @@ task U2AF1Pileup {
     }
 
     output {
+        File pileup_tsv = "~{sample_basename}.u2af1.pileup.tsv"
         File pileup_vcf = "~{sample_basename}.u2af1.pileup.vcf"
     }
 }
