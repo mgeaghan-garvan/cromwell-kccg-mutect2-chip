@@ -43,6 +43,10 @@ VALID_KEYS = {
         "mutect2_output_vcf",
         "mutect2_output_vcf_index",
     ],
+    "CallU2AF1SingleJob": [
+        "tumor_reads",
+        "tumor_reads_index",
+    ],
     "CHIP": [
         "tumor_sample_name",
         "input_vcf",
