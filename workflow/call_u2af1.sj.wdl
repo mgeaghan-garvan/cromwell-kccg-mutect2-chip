@@ -46,8 +46,7 @@ workflow CallU2AF1SingleJob {
         File u2af1_regions_file
         
         # Runtime options
-        String pileup_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest"
-        String merge_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
+        String pileup_docker
         Int preemptible = 2
         Int max_retries = 2
         Int cpu = 4
