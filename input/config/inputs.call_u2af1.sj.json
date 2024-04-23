@@ -1,14 +1,14 @@
 {
-    "CallU2AF1.ref_fasta": "REQUIRED_FILE",
-    "CallU2AF1.ref_fai": "REQUIRED_FILE",
-    "CallU2AF1.tumor_reads": "REQUIRED_FILE",
-    "CallU2AF1.tumor_reads_index": "REQUIRED_FILE",
-    "CallU2AF1.u2af1_regions_file": "REQUIRED_FILE",
-    "CallU2AF1.pileup_docker": "REQUIRED_DX_FILE",
-    "CallU2AF1.preemptible": 2,
-    "CallU2AF1.max_retries": 2,
-    "CallU2AF1.cpu": 4,
-    "CallU2AF1.mem_mb": 4000,
-    "CallU2AF1.disk": 100,
-    "CallU2AF1.boot_disk_size": 12
+    "CallU2AF1SingleJob.ref_fasta": "REQUIRED_FILE",
+    "CallU2AF1SingleJob.ref_fai": "REQUIRED_FILE",
+    "CallU2AF1SingleJob.tumor_reads": "REQUIRED_FILE",
+    "CallU2AF1SingleJob.tumor_reads_index": "REQUIRED_FILE",
+    "CallU2AF1SingleJob.u2af1_regions_file": "REQUIRED_FILE",
+    "CallU2AF1SingleJob.pileup_docker": "REQUIRED_DX_FILE",
+    "CallU2AF1SingleJob.preemptible": 2,
+    "CallU2AF1SingleJob.max_retries": 2,
+    "CallU2AF1SingleJob.cpu": 4,
+    "CallU2AF1SingleJob.mem_mb": 4000,
+    "CallU2AF1SingleJob.disk": 100,
+    "CallU2AF1SingleJob.boot_disk_size": 12
 }
