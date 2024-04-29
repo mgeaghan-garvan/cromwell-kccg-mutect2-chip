@@ -126,35 +126,70 @@ task U2AF1Pileup {
     command <<<
         set -euo pipefail
         # Run pileup_regions
-        pileup_region ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | \
+        pileup_region ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | tee ~{sample_basename}.u2af1.pileup.tsv | \
         awk \
             -v FS="\t" \
             -v OFS="\t" \
             -v u2af1_start="~{u2af1_start}" \
             -v u2af1_end="~{u2af1_end}" '
                 { dp[$5]+=$6; ad[$5]+=$7 }
-                $2 >= u2af1_start && $2 <= u2af1_end { pos[$5]=$2 }
+                $2 >= u2af1_start && $2 <= u2af1_end { pos_a[$5]=$2; ref_a[$5]=$3; alt_a[$5]=$4 }
+                END {
+                    for (mut in dp) {
+                        chr = "chr21"
+                        p = pos_a[mut]
+                        ref = ref_a[mut]
+                        alt = alt_a[mut]
+                        print chr, p, ref, alt, mut, dp[mut], ad[mut]
+                    }
+                }
+            ' | tee ~{sample_basename}.u2af1.pileup.merged.tsv | \
+        awk \
+            -v FS="\t" \
+            -v OFS="\t" '
+                {
+                    site = $1 ":" $2 ":" $3
+                    if ($7 > 0) {
+                        ad[site][$4] = $7
+                        ad_total[site] += $7
+                    }
+                    dp[site] = $6
+                }
                 END {
                     print "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", "SAMPLE"
-                    for (i in dp) {
-                        chr = "chr21"
-                        p = pos[i]
+                    for (site in ad) {
+                        split(site, site_a, ":")
+                        chr = site_a[1]
+                        pos = site_a[2]
                         id = "."
-                        ref = $3
-                        alt = $4
+                        ref = site_a[3]
+                        ref_count = dp[site] - ad_total[site]
+                        if (ref_count > 0) {
+                            gt = "0/"
+                        } else {
+                            gt = ""
+                        }
+                        alt_allele_idx = 1
+                        alt = ""
+                        alt_count = ""
+                        for (alt_allele in ad[site]) {
+                            gt = gt alt_allele_idx "/"
+                            alt_allele_idx += 1
+                            alt = alt alt_allele ","
+                            alt_count = alt_count ad[site][alt_allele] ","
+                        }
+                        gt = substr(gt, 1, length(gt) - 1)
+                        if (gt == "1") {
+                            gt = "1/1"
+                        }
+                        alt = substr(alt, 1, length(alt) - 1)
+                        alt_count = substr(alt_count, 1, length(alt_count) - 1)
                         qual = "."
                         filter = "."
                         info = "."
                         format = "GT:DP:AD"
-                        if (ad[i] == 0) {
-                            gt = "0/0"
-                        } else if (ad[i] == dp[i]) {
-                            gt = "1/1"
-                        } else {
-                            gt = "0/1"
-                        }
-                        sample = gt ":" dp[i] ":" ad[i]
-                        print chr, p, id, ref, alt, qual, filter, info, format, sample
+                        sample = gt ":" dp[site] ":" ref_count "," alt_count
+                        print chr, pos, id, ref, alt, qual, filter, info, format, sample
                     }
                 }
             ' > ~{sample_basename}.u2af1.pileup.vcf
@@ -172,6 +207,8 @@ task U2AF1Pileup {
 
     output {
         File pileup_vcf = "~{sample_basename}.u2af1.pileup.vcf"
+        File pileup_tsv = "~{sample_basename}.u2af1.pileup.tsv"
+        File pileup_merged_tsv = "~{sample_basename}.u2af1.pileup.merged.tsv"
     }
 }
 

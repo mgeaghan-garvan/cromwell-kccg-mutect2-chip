@@ -26,15 +26,7 @@ version 1.0
 # Created: 2023/04/04                                                                 #
 # =================================================================================== #
 
-
-struct U2AF1Runtime {
-    Int max_retries
-    Int preemptible
-    Int cpu
-    Int mem_mb
-    Int disk
-    Int boot_disk_size
-}
+import "call_u2af1.wdl" as U2AF1
 
 workflow CallU2AF1SingleJob {
     input {
@@ -70,7 +62,7 @@ workflow CallU2AF1SingleJob {
         "boot_disk_size": boot_disk_size
     }
 
-    call U2AF1Pileup {
+    call U2AF1.U2AF1Pileup {
         input:
             tumor_reads = tumor_reads,
             tumor_reads_index = tumor_reads_index,
@@ -84,79 +76,6 @@ workflow CallU2AF1SingleJob {
     output {
         File u2af1_vcf = U2AF1Pileup.pileup_vcf
         File u2af1_tsv = U2AF1Pileup.pileup_tsv
-    }
-}
-
-# ================ #
-# TASK DEFINITIONS #
-# ================ #
-
-task U2AF1Pileup {
-    input {
-      File tumor_reads
-      File tumor_reads_index
-      File u2af1_regions_file
-      File ref_fasta
-      File ref_fai
-      String docker
-
-      # runtime
-      U2AF1Runtime runtime_params
-    }
-
-    String sample_basename = basename(basename(tumor_reads, ".bam"),".cram")
-    Int u2af1_start = 43092956
-    Int u2af1_end = 43107570
-
-    command <<<
-        set -euo pipefail
-        # Run pileup_regions
-        pileup_region ~{u2af1_regions_file} ~{tumor_reads} ~{ref_fasta} | tee ~{sample_basename}.u2af1.pileup.tsv | \
-        awk \
-            -v FS="\t" \
-            -v OFS="\t" \
-            -v u2af1_start="~{u2af1_start}" \
-            -v u2af1_end="~{u2af1_end}" '
-                { dp[$5]+=$6; ad[$5]+=$7 }
-                $2 >= u2af1_start && $2 <= u2af1_end { pos[$5]=$2 }
-                END {
-                    print "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", "SAMPLE"
-                    for (i in dp) {
-                        chr = "chr21"
-                        p = pos[i]
-                        id = "."
-                        ref = $3
-                        alt = $4
-                        qual = "."
-                        filter = "."
-                        info = "."
-                        format = "GT:DP:AD"
-                        if (ad[i] == 0) {
-                            gt = "0/0"
-                        } else if (ad[i] == dp[i]) {
-                            gt = "1/1"
-                        } else {
-                            gt = "0/1"
-                        }
-                        sample = gt ":" dp[i] ":" ad[i]
-                        print chr, p, id, ref, alt, qual, filter, info, format, sample
-                    }
-                }
-            ' > ~{sample_basename}.u2af1.pileup.vcf
-    >>>
-
-    runtime {
-        docker: docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.mem_mb + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
-        maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
-    }
-
-    output {
-        File pileup_tsv = "~{sample_basename}.u2af1.pileup.tsv"
-        File pileup_vcf = "~{sample_basename}.u2af1.pileup.vcf"
+        File u2af1_merged_tsv = U2AF1Pileup.pileup_merged_tsv
     }
 }
