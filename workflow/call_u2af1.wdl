@@ -186,6 +186,9 @@ task U2AF1Pileup {
                         alt_count = substr(alt_count, 1, length(alt_count) - 1)
                         qual = "."
                         filter = "."
+                        if (alt_count ~ ",") {
+                            filter = "multiallelic"
+                        }
                         info = "."
                         format = "GT:DP:AD"
                         sample = gt ":" dp[site] ":" ref_count "," alt_count
