@@ -315,7 +315,7 @@ annovar <- annovar %>%
 # Load ANNOVAR intermediate files
 # First, generate regex strings for transcript IDs
 if (args$ensembl) {
-  transcript_id_variant_function_regex <- "^(ENST_\\d+)([^\\d].*)?$$"
+  transcript_id_variant_function_regex <- "^(ENST_\\d+)([^\\d].*)?$"
   transcript_id_regex <- "^ENST_\\d+$"
 } else {
   transcript_id_variant_function_regex <- "^(NM_\\d+)([^\\d].*)?$"
