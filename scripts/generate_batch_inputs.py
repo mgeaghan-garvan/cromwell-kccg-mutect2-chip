@@ -37,6 +37,16 @@ VALID_KEYS = {
         "normal_reads",
         "normal_reads_index",
     ],
+    "CallU2AF1": [
+        "tumor_reads",
+        "tumor_reads_index",
+        "mutect2_output_vcf",
+        "mutect2_output_vcf_index",
+    ],
+    "CallU2AF1SingleJob": [
+        "tumor_reads",
+        "tumor_reads_index",
+    ],
     "CHIP": [
         "tumor_sample_name",
         "input_vcf",
@@ -111,6 +121,26 @@ def main(args):
     with open(args.json, 'r') as f:
         config = json.load(f)
     json_basename = os.path.splitext(os.path.basename(args.json))[0]
+    if not args.batch and args.format == 'dx':
+        # DNAnexus jobs aren't required to be batched, so if no batch file is provided,
+        # just convert the single input JSON to a DNAnexus input file and exit
+        sample_json = config.copy()
+        sample_dx = convert_to_dx(sample_json)
+        dx_out = os.path.join(args.output, f"{json_basename}.dx.sh")
+        if os.path.exists(dx_out):
+            raise FileExistsError(f"ERROR: DNAnexus submission script file {dx_out} already exists!")
+        with open(dx_out, 'w') as f:
+            f.write("#!/bin/bash\n")
+            dx_destination = re.sub("/$", "", args.dx_destination)
+            f.write(f"dx run --priority {args.dx_priority} --yes --destination {dx_destination}/ \\\n    ")
+            for k, v in sample_dx.items():
+                f.write(f"-i{k}=\"{v}\" \\\n    ")
+            f.write(args.dx_workflow)
+            f.write("\n")
+        return
+    elif not args.batch:
+        # All other formats require a batch file, so if none is provided, exit
+        raise ValueError("ERROR: Must supply -b/--batch when using -f/--format singlefile or multifile.")
     batch_data = pd.read_table(args.batch, sep = '\s+')
     batch_params = validate_keys(config, batch_data)
     singlefile_array=[]

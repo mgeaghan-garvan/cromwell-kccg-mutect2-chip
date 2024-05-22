@@ -4,6 +4,7 @@ Submit the M2-only, single-job pipeline to cromwell via hail batch
 import hailtop.batch as hb
 from hailtop.batch import Resource
 from hailtop.batch.job import Job
+from cpg_utils.hail_batch import get_batch
 from cpg_utils.config import get_config
 from cpg_utils.hail_batch import remote_tmpdir
 from analysis_runner.cromwell import (
@@ -68,15 +69,13 @@ def submit_cromwell_workflow(
 
 
 _config = get_config()
-BILLING_PROJECT = _config['hail']['billing_project']
 DATASET = _config['workflow']['dataset']
 ACCESS_LEVEL = _config['workflow']['access_level']
 JOB_NAME = _config['workflow']['name']
 OUTPUT_PREFIX = f'mutect2-chip/{JOB_NAME}'
 DRIVER_IMAGE = _config['workflow']['driver_image']
 
-sb = hb.ServiceBackend(billing_project=BILLING_PROJECT, remote_tmpdir=remote_tmpdir())
-b = hb.Batch(backend=sb, default_image=DRIVER_IMAGE)
+b = get_batch()
 
 input_prefix = 'Mutect2SingleJob'
 

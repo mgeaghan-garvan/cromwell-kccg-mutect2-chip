@@ -27,7 +27,7 @@ helpmsg() {
     echo -e "\t--port CROMWELL_PORT:       Port on which Cromwell web service is running.               Default: '${CROMWELL_PORT}'"
     echo -e "\t--wdl WDL_PATH:             Path to WDL file describing workflow to run.                 REQUIRED for 'submit' mode"
     echo -e "\t--input INPUT_JSON:         Path to JSON file describing workflow inputs.                REQUIRED for 'submit' and 'dxsubmit' mode"
-    echo -e "\t--batch BATCH_INPUT_TSV:    Path to TSV file describing inputs for batch runs.           REQUIRED for 'dxsubmit' mode; OPTIONAL for 'submit' mode; if supplied, a batch job will be submitted"
+    echo -e "\t--batch BATCH_INPUT_TSV:    Path to TSV file describing inputs for batch runs.           OPTIONAL for 'submit' and 'dxsubmit' mode; if supplied, a batch job will be submitted"
     echo -e "\t--options OPTIONS_JSON:     Path to JSON file describing workflow options.               REQUIRED for 'submit' mode"
     echo -e "\t--dxworkflow DX_WORKFLOW:   DNAnexus path to workflow.                                   REQUIRED for 'dxsubmit' mode"
     echo -e "\t--dxoutput DX_OUTPUT:       DNAnexus path to place output.                               REQUIRED for 'dxsubmit' mode"
@@ -212,7 +212,7 @@ fi
 
 if [ "${MODE}" == "dxsubmit" ]
 then
-    for SETTING in "${INPUT_JSON}" "${BATCH_INPUT_TSV}" "${DX_WORKFLOW}" "${DX_OUTPUT}" "${DX_PRIORITY}"
+    for SETTING in "${INPUT_JSON}" "${DX_WORKFLOW}" "${DX_OUTPUT}" "${DX_PRIORITY}"
     do
         if [ -z "${SETTING}" ]
         then
@@ -234,8 +234,14 @@ then
     BATCH_DIR="input/config/dx_batch/${RUN_ID}"
     rm -rf ${BATCH_DIR}
     mkdir -p ${BATCH_DIR}
-    python3 scripts/generate_batch_inputs.py -j ${INPUT_JSON} -b ${BATCH_INPUT_TSV} -o ${BATCH_DIR} -f dx --dx_workflow ${DX_WORKFLOW} --dx_destination ${DX_OUTPUT} --dx_priority ${DX_PRIORITY}
-    BATCH_SCRIPTS="${BATCH_DIR}/$(basename ${INPUT_JSON} .json).*.dx.sh"
+    if [ -z "${BATCH_INPUT_TSV}" ]
+    then
+        python3 scripts/generate_batch_inputs.py -j ${INPUT_JSON} -o ${BATCH_DIR} -f dx --dx_workflow ${DX_WORKFLOW} --dx_destination ${DX_OUTPUT} --dx_priority ${DX_PRIORITY}
+        BATCH_SCRIPTS="${BATCH_DIR}/$(basename ${INPUT_JSON} .json).dx.sh"
+    else
+        python3 scripts/generate_batch_inputs.py -j ${INPUT_JSON} -b ${BATCH_INPUT_TSV} -o ${BATCH_DIR} -f dx --dx_workflow ${DX_WORKFLOW} --dx_destination ${DX_OUTPUT} --dx_priority ${DX_PRIORITY}
+        BATCH_SCRIPTS="${BATCH_DIR}/$(basename ${INPUT_JSON} .json).*.dx.sh"
+    fi
 
     # Submit the workflow
     echo "Submitting DNAnexus workflow..." > ${OUTPUT_PATH}

@@ -20,3 +20,5 @@ input/config/batch
 /docker/annovar/annovar/example/
 /docker/annovar/annovar/*.pl
 /docker/annovar/annovar.latest.tar.gz
+/chip_annotation/test_data
+/chip_annotation/chip_mutations/update_chip_variant_definitions.R

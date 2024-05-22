@@ -1,0 +1,3 @@
+sample_id   tumor_reads tumor_reads_index    mutect2_output_vcf  mutect2_output_vcf_index
+SAMPLE_1    TUMOR_SAMPLE_1.bam    TUMOR_SAMPLE_1.bam.bai    SAMPLE1-filtered.vcf.gz    SAMPLE1-filtered.vcf.gz.tbi
+SAMPLE_2    TUMOR_SAMPLE_2.bam    TUMOR_SAMPLE_2.bam.bai    SAMPLE2-filtered.vcf.gz    SAMPLE2-filtered.vcf.gz.tbi
