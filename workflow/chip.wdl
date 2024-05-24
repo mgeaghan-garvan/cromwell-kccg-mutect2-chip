@@ -189,13 +189,17 @@ task CHIPPreFilter {
       then
         # bgzip -c ~{input_vcf} > ~{input_vcf_gz}
         awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' ~{input_vcf} > _tmp_input.vcf
-        bcftools view -r chr21:43092956-43107570 -O z -o ~{u2af1_vcf_gz} _tmp_input.vcf
+        bgzip -c _tmp_input.vcf > _tmp_input.vcf.gz
+        tabix -s 1 -b 2 -e 2 _tmp_input.vcf.gz
+        bcftools view -r chr21:43092956-43107570 -O z -o ~{u2af1_vcf_gz} _tmp_input.vcf.gz
         tabix -s 1 -b 2 -e 2 ~{u2af1_vcf_gz}
         awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ && !($1 == "chr21" && $2 >= 43092956 && $2 <= 43107570) { print $0 }' _tmp_input.vcf | bgzip -c > ~{input_vcf_gz}
       else
         # cp ~{input_vcf} ~{input_vcf_gz}
         zcat ~{input_vcf} | awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' > _tmp_input.vcf
-        bcftools view -r chr21:43092956-43107570 -O z -o ~{u2af1_vcf_gz} _tmp_input.vcf
+        bgzip -c _tmp_input.vcf > _tmp_input.vcf.gz
+        tabix -s 1 -b 2 -e 2 _tmp_input.vcf.gz
+        bcftools view -r chr21:43092956-43107570 -O z -o ~{u2af1_vcf_gz} _tmp_input.vcf.gz
         tabix -s 1 -b 2 -e 2 ~{u2af1_vcf_gz}
         awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ && !($1 == "chr21" && $2 >= 43092956 && $2 <= 43107570) { print $0 }' _tmp_input.vcf | bgzip -c > ~{input_vcf_gz}
       fi
