@@ -146,6 +146,8 @@ workflow CHIP {
         File chip_split_vcf_idx = FinaliseCHIPFilter.chip_annotation_split_vcf_idx
         File chip_csv = CHIPAnnotation.chip_csv
         File chip_rdata = CHIPAnnotation.chip_rdata
+        File u2af1_vcf_gz = CHIPPreFilter.out_u2af1_vcf_gz
+        File u2af1_vcf_gz_idx = CHIPPreFilter.out_u2af1_vcf_gz_idx
     }
 }
 
@@ -164,6 +166,8 @@ task CHIPPreFilter {
     String sample_id = basename(basename(input_vcf, ".gz"), ".vcf")
     String input_vcf_gz = sample_id + ".input_vcf.gz"
     String input_vcf_gz_idx = input_vcf_gz + ".tbi"
+    String u2af1_vcf_gz = sample_id + ".input_vcf.u2af1.gz"
+    String u2af1_vcf_gz_idx = input_vcf_gz + ".tbi"
     String chip_genes_bed = "chip_genes.bed"
     String chip_genes_merged_bed = "chip_genes.merged.bed"
     String chip_genes_vcf = sample_id + ".chip_genes.vcf"
@@ -179,14 +183,21 @@ task CHIPPreFilter {
     command <<<
       set -euo pipefail
       # --- Step 0: Compress VCF if necessary and index ---
+      # --- ADDITIONAL QUICK FIX - FIX INFO FIELD AND EXTRACT U2AF1 VARIANTS ---
       VCF_SUFFIX=$(basename ~{input_vcf} | rev | cut -d "." -f 1 | rev)
       if [ "${VCF_SUFFIX}" != "gz" ]
       then
         # bgzip -c ~{input_vcf} > ~{input_vcf_gz}
-        awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' ~{input_vcf} | bgzip -c > ~{input_vcf_gz}
+        awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' ~{input_vcf} > _tmp_input.vcf
+        bcftools view -r chr21:43092956-43107570 -O z -o ~{u2af1_vcf_gz} _tmp_input.vcf
+        tabix -s 1 -b 2 -e 2 ~{u2af1_vcf_gz}
+        awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ && !($1 == "chr21" && $2 >= 43092956 && $2 <= 43107570) { print $0 }' _tmp_input.vcf | bgzip -c > ~{input_vcf_gz}
       else
         # cp ~{input_vcf} ~{input_vcf_gz}
-        zcat ~{input_vcf} | awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' | bgzip -c > ~{input_vcf_gz}
+        zcat ~{input_vcf} | awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' > _tmp_input.vcf
+        bcftools view -r chr21:43092956-43107570 -O z -o ~{u2af1_vcf_gz} _tmp_input.vcf
+        tabix -s 1 -b 2 -e 2 ~{u2af1_vcf_gz}
+        awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ && !($1 == "chr21" && $2 >= 43092956 && $2 <= 43107570) { print $0 }' _tmp_input.vcf | bgzip -c > ~{input_vcf_gz}
       fi
       tabix -s 1 -b 2 -e 2 ~{input_vcf_gz}
 
@@ -273,6 +284,8 @@ task CHIPPreFilter {
       File out_non_chip_genes_so_filtered_vcf_gz = non_chip_genes_so_filtered_vcf_gz
       File out_non_chip_genes_so_filtered_vcf_gz_idx = non_chip_genes_so_filtered_vcf_gz + ".tbi"
       File out_seq_tsv = seq_tsv
+      File out_u2af1_vcf_gz = u2af1_vcf_gz
+      File out_u2af1_vcf_gz_idx = u2af1_vcf_gz_idx
     }
 }
 
