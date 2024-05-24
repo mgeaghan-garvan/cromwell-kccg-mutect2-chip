@@ -4,7 +4,7 @@ ENV CONDA_ROOT_PREFIX /miniforge
 ENV PATH $CONDA_ROOT_PREFIX/bin:/software/htslib-1.17/build/bin:/software/bcftools-1.17/build/bin:$PATH
 ARG RVERSION=${RVERSION:-4.3.1}
 
-RUN apt-get update && apt-get install -y libbz2-dev liblzma-dev git wget bash bzip2 zip curl gcc zlib1g-dev \
+RUN apt-get update && apt-get install -y libbz2-dev liblzma-dev git wget bash bzip2 zip curl gcc zlib1g-dev gawk \
   && rm -r /var/lib/apt/lists/* \
   && rm -r /var/cache/apt/* \
   && mkdir -p /tmp/miniforge \
