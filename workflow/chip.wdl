@@ -178,14 +178,15 @@ task CHIPPreFilter {
 
     command <<<
       set -euo pipefail
-
       # --- Step 0: Compress VCF if necessary and index ---
       VCF_SUFFIX=$(basename ~{input_vcf} | rev | cut -d "." -f 1 | rev)
       if [ "${VCF_SUFFIX}" != "gz" ]
       then
-        bgzip -c ~{input_vcf} > ~{input_vcf_gz}
+        # bgzip -c ~{input_vcf} > ~{input_vcf_gz}
+        awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' ~{input_vcf} | bgzip -c > ~{input_vcf_gz}
       else
-        cp ~{input_vcf} ~{input_vcf_gz}
+        # cp ~{input_vcf} ~{input_vcf_gz}
+        zcat ~{input_vcf} | awk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { fixedinfo = gensub("^\.\;", "", "g", $8); $8 = fixedinfo; print $0 }' | bgzip -c > ~{input_vcf_gz}
       fi
       tabix -s 1 -b 2 -e 2 ~{input_vcf_gz}
 
