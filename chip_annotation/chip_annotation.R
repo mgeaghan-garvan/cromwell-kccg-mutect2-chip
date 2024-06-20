@@ -527,7 +527,7 @@ df <- df %>%
     )
   )
 
-# --- Apply homopolymer INDEL filter ---
+# --- Apply homopolymer variant filter ---
 
 # Add sequence context columns to ANNOVAR table
 df <- df %>%
@@ -572,14 +572,13 @@ df <- df %>%
       ""
     )
   ) %>%
-  # Add HOMOPOLYMER_INDEL_FILTER column
+  # Add HOMOPOLYMER_VARIANT_FILTER column
   mutate(
-    HOMOPOLYMER_INDEL_FILTER = case_when(
+    HOMOPOLYMER_VARIANT_FILTER = case_when(
       (
         HOMOPOLYMER_FILTER == "homopolymer_variant" &
-          (nchar(REF) > 1 | nchar(ALT) > 1) &
           (AD_ALT < 10 | VAF < 0.1)
-      ) ~ "chip_homopolymer_indel_filter_fail",
+      ) ~ "chip_homopolymer_variant_filter_fail",
       .default = ""
     )
   )
@@ -823,7 +822,7 @@ df <- df %>%
       FILTER,
       HARD_FILTER_AF,
       HARD_FILTER_VAF,
-      HOMOPOLYMER_INDEL_FILTER
+      HOMOPOLYMER_VARIANT_FILTER
     ))
   ) %>%
   ungroup() %>%
@@ -970,7 +969,7 @@ df_filtered <- df_filtered %>%
       FILTER,
       HARD_FILTER_AF,
       HARD_FILTER_VAF,
-      HOMOPOLYMER_INDEL_FILTER,
+      HOMOPOLYMER_VARIANT_FILTER,
       SOMATICISM_FILTER,
       EXONIC_SPLICING_FILTER,
       CHIP_TRANSCRIPT_FILTER
@@ -1031,7 +1030,7 @@ df_final <- df %>%
     HARD_FILTER_AF,
     HARD_FILTER_VAF,
     HOMOPOLYMER_FILTER,
-    HOMOPOLYMER_INDEL_FILTER,
+    HOMOPOLYMER_VARIANT_FILTER,
     SOMATICISM_FILTER,
     CHIP_MUTATION_FILTER,
     PUTATIVE_CHIP_FILTER,
@@ -1236,7 +1235,7 @@ filter_fields <- list(
   chip_gnomad_af_filter_fail = "Variant has a gnomAD AF >= 0.01",
   chip_vaf_filter_fail = "Variant has a VAF < 0.02",
   homopolymer_variant = "Variant is within a homopolymer region",
-  chip_homopolymer_indel_filter_fail = "Variant is an INDEL within a homopolymer region and has AD_ALT < 10 or VAF < 0.1",
+  chip_homopolymer_variant_filter_fail = "Variant is within a homopolymer region and has AD_ALT < 10 or VAF < 0.1",
   not_exonic_or_splicing_variant = "Variant is not exonic or splicing",
   chip_somaticism_filter_fail = "Variant is within a transcript specified in the somaticism_transcripts file and did not pass a binomial test (n = AD_ALT, k = DP, p = 0.5, alpha = 0.001)",
   exonic_or_splicing_variant_not_in_chip_transcript = "Variant is exonic or splicing but is not within a CHIP transcript",
