@@ -48,6 +48,13 @@ EOF
 # Merge overlapping regions
 bedtools merge -i ${CHIP_MUTATIONS_TMP_BED} > ${CHIP_MUTATIONS_BED}
 
+# === STEP 1.5: Correct any mutations that have been mislabelled as multiallelic ===
+INPUT_VCF_BN="$(basename $(basename ${INPUT_VCF} .gz) .vcf)"
+OG_INPUT_VCF="${INPUT_VCF}"
+INPUT_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.corrected.vcf.gz"
+bcftools annotate -x FILTER/multiallelic -k -i 'FILTER~"multiallelic" & SUM(FORMAT/AD[*:2-])=0' -O z -o ${INPUT_VCF} ${OG_INPUT_VCF}
+tabix -f -s 1 -b 2 -e 2 ${INPUT_VCF}
+
 # === STEP 2: Filter input VCF for CHIP gene regions ===
 # INPUT_VCF_BN="$(echo ${INPUT_VCF} | sed -E -e 's/\.vcf(\.gz)?$//g')"
 INPUT_VCF_BN="$(basename $(basename ${INPUT_VCF} .gz) .vcf)"

@@ -205,6 +205,12 @@ task CHIPPreFilter {
       # Merge overlapping regions
       bedtools merge -i ~{chip_genes_bed} > ~{chip_genes_merged_bed}
 
+      # --- Step 1.5: Correct any mutations that have been mislabelled as multiallelic ---
+      mv ~{input_vcf_gz} ~{input_vcf_gz}.tmp.vcf.gz
+      mv ~{input_vcf_gz}.tbi ~{input_vcf_gz}.tmp.vcf.gz.tbi
+      bcftools annotate -x FILTER/multiallelic -k -i 'FILTER~"multiallelic" & SUM(FORMAT/AD[*:2-])=0' -O z -o ~{input_vcf_gz} ~{input_vcf_gz}.tmp.vcf.gz
+      tabix -f -s 1 -b 2 -e 2 ~{input_vcf_gz}
+
       # --- Step 2: Filter the VCF to separate CHIP and non-CHIP genes ---
       # CHIP genes
       bedtools intersect -a ~{input_vcf_gz} -b ~{chip_genes_merged_bed} -wa -header > ~{chip_genes_vcf}
