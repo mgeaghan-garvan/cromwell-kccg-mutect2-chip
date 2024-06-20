@@ -88,12 +88,6 @@ option_list <- list(
     help = "gnomAD population to use for allele frequencies; default behavior is to use all populations ('AF'); options are: 'AF', 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'"
   ),
   make_option(
-    c("-S", "--somaticism_transcripts"),
-    type = "character",
-    default = NULL,
-    help = "Path to file containing somaticism transcript IDs"
-  ),
-  make_option(
     c("-o", "--output_prefix"),
     type = "character",
     default = NULL,
@@ -131,9 +125,6 @@ check_args <- function(args) {
   }
   if (!(args$gnomad_population %in% c("AF", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj"))) {
     stop("Invalid gnomAD population specified")
-  }
-  if (is.null(args$somaticism_transcripts) || !file.exists(args$somaticism_transcripts)) {
-    stop("No somaticism transcripts file specified")
   }
   if (is.null(args$output_prefix)) {
     stop("No output prefix specified")
@@ -379,9 +370,6 @@ annovar_exonic_function <- read_tsv(args$annovar_exonic_function, col_names = FA
     Start = as.integer(Start),
     End = as.integer(End)
   )
-
-# --- Load somaticism transcripts ---
-somaticism_transcripts <- read_lines(args$somaticism_transcripts)
 
 # --- Create main data frame ---
 df <- annovar
@@ -677,7 +665,7 @@ df <- df %>%
   ) %>%
   mutate(
     SOMATICISM_FILTER = case_when(
-      Transcript_no_version %in% somaticism_transcripts & ad_dp_binom_test >= 0.001 ~ "chip_somaticism_filter_fail",
+      ad_dp_binom_test >= 0.001 ~ "chip_somaticism_filter_fail",
       .default = ""
     )
   )
@@ -1237,7 +1225,7 @@ filter_fields <- list(
   homopolymer_variant = "Variant is within a homopolymer region",
   chip_homopolymer_variant_filter_fail = "Variant is within a homopolymer region and has AD_ALT < 10 or VAF < 0.1",
   not_exonic_or_splicing_variant = "Variant is not exonic or splicing",
-  chip_somaticism_filter_fail = "Variant is within a transcript specified in the somaticism_transcripts file and did not pass a binomial test (n = AD_ALT, k = DP, p = 0.5, alpha = 0.001)",
+  chip_somaticism_filter_fail = "Variant did not pass a binomial test (n = AD_ALT, k = DP, p = 0.5, alpha = 0.001)",
   exonic_or_splicing_variant_not_in_chip_transcript = "Variant is exonic or splicing but is not within a CHIP transcript",
   mutation_in_c_terminal = "Variant is within a CHIP gene but is in the C-terminal domain of the protein",
   chip_mutation_match_filter_fail = "Variant does not match a CHIP mutation definition",
