@@ -172,11 +172,13 @@ task U2AF1Pileup {
                         alt_allele_idx = 1
                         alt = ""
                         alt_count = ""
+                        vaf = ""
                         for (alt_allele in ad[site]) {
                             gt = gt alt_allele_idx "/"
                             alt_allele_idx += 1
                             alt = alt alt_allele ","
                             alt_count = alt_count ad[site][alt_allele] ","
+                            vaf = vaf ad[site][alt_allele] / dp[site] ","
                         }
                         gt = substr(gt, 1, length(gt) - 1)
                         if (gt == "1") {
@@ -184,14 +186,15 @@ task U2AF1Pileup {
                         }
                         alt = substr(alt, 1, length(alt) - 1)
                         alt_count = substr(alt_count, 1, length(alt_count) - 1)
+                        vaf = substr(vaf, 1, length(vaf) - 1)
                         qual = "."
                         filter = "."
                         if (alt_count ~ ",") {
                             filter = "multiallelic"
                         }
                         info = "."
-                        format = "GT:DP:AD"
-                        sample = gt ":" dp[site] ":" ref_count "," alt_count
+                        format = "GT:DP:AD:AF"
+                        sample = gt ":" dp[site] ":" ref_count "," alt_count ":" vaf
                         print chr, pos, id, ref, alt, qual, filter, info, format, sample
                     }
                 }

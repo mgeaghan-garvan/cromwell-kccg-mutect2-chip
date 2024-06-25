@@ -466,8 +466,8 @@ df <- df %>%
     AD_REF_ALT = map2_chr(SAMPLE_split, AD_i, ~ .x[.y]),
     DP = map2_chr(SAMPLE_split, DP_i, ~ .x[.y]),
     AF = map2_chr(SAMPLE_split, AF_i, ~ .x[.y]),
-    F1R2_REF_ALT = map2_chr(SAMPLE_split, F1R2_i, ~ .x[.y]),
-    F2R1_REF_ALT = map2_chr(SAMPLE_split, F2R1_i, ~ .x[.y])
+    F1R2_REF_ALT = map2_chr(SAMPLE_split, F1R2_i, ~ .x[.y][1]),  # F1R2 and F2R1 may not be present, the [1] index is to ensure that the result is a character vector
+    F2R1_REF_ALT = map2_chr(SAMPLE_split, F2R1_i, ~ .x[.y][1])
   ) %>%
   mutate(
     AD_REF_ALT = str_split(AD_REF_ALT, ","),
@@ -475,12 +475,12 @@ df <- df %>%
     F2R1_REF_ALT = str_split(F2R1_REF_ALT, ",")
   ) %>%
   mutate(
-    AD_REF = map_chr(AD_REF_ALT, ~ .x[[1]]),
-    AD_ALT = map_chr(AD_REF_ALT, ~ .x[[2]]),
-    F1R2_REF = map_chr(F1R2_REF_ALT, ~ .x[[1]]),
-    F1R2_ALT = map_chr(F1R2_REF_ALT, ~ .x[[2]]),
-    F2R1_REF = map_chr(F2R1_REF_ALT, ~ .x[[1]]),
-    F2R1_ALT = map_chr(F2R1_REF_ALT, ~ .x[[2]])
+    AD_REF = map_chr(AD_REF_ALT, ~ .x[1]),
+    AD_ALT = map_chr(AD_REF_ALT, ~ .x[2]),
+    F1R2_REF = map_chr(F1R2_REF_ALT, ~ .x[1]),
+    F1R2_ALT = map_chr(F1R2_REF_ALT, ~ .x[2]),
+    F2R1_REF = map_chr(F2R1_REF_ALT, ~ .x[1]),
+    F2R1_ALT = map_chr(F2R1_REF_ALT, ~ .x[2])
   ) %>%
   mutate(
     AD_REF = as.integer(AD_REF),
@@ -786,10 +786,10 @@ df <- df %>%
         (
           AD_ALT < 5 |
           VAF > 0.2 |
-          F1R2_REF < 2 |
-          F1R2_ALT < 2 |
-          F2R1_REF < 2 |
-          F2R1_ALT < 2
+          (!is.na(F1R2_REF) & F1R2_REF < 2) |
+          (!is.na(F1R2_ALT) & F1R2_ALT < 2) |
+          (!is.na(F2R1_REF) & F2R1_REF < 2) |
+          (!is.na(F2R1_ALT) & F2R1_ALT < 2)
         ) ~ "chip_putative_filter_fail",
       .default = ""
     )
