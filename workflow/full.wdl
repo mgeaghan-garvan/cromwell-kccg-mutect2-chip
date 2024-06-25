@@ -88,7 +88,6 @@ workflow Mutect2CHIP {
 
         # CHIP Annotation settings
         File chip_mutations_csv
-        File somaticism_filter_transcripts
         Boolean run_chip_detection = true
         Boolean treat_missing_as_rare = true
         Boolean use_gnomad_genome = true
@@ -283,7 +282,6 @@ workflow Mutect2CHIP {
                 chip_docker = chip_docker,
                 ref_fasta = ref_fasta,
                 chip_mutations_csv = chip_mutations_csv,
-                somaticism_filter_transcripts = somaticism_filter_transcripts,
                 preemptible = preemptible,
                 max_retries = max_retries,
                 boot_disk_size = boot_disk_size

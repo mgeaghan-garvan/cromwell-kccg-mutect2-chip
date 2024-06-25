@@ -3,10 +3,9 @@
 INPUT_VCF=${1}
 CHIP_MUTATIONS_CSV=${2}
 REF_FASTA=${3}
-SOMATICISM_TRANSCRIPTS=${4}
-ANNOVAR_DB=${5}
-ANNOVAR_CONTAINER=${6}
-CHIP_CONTAINER=${7}
+ANNOVAR_DB=${4}
+ANNOVAR_CONTAINER=${5}
+CHIP_CONTAINER=${6}
 
 TEMP_DIR=$(mktemp -d)
 OUT_DIR=output
@@ -152,7 +151,6 @@ ${CHIP_DOCKER_CMD} annotate_chip \
     --annovar ${ANNOVAR_PREFIX}.hg38_multianno.txt \
     --annovar_function ${ANNOVAR_PREFIX}.refGene.variant_function \
     --annovar_exonic_function ${ANNOVAR_PREFIX}.refGene.exonic_variant_function \
-    --somaticism_transcripts ${SOMATICISM_TRANSCRIPTS} \
     --output_prefix ${CHIP_ANNOTATION_PREFIX}
 
 # BGZIP and tabix the CHIP annotations

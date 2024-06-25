@@ -18,7 +18,6 @@
     "CHIP.chip_docker": "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest",
     "CHIP.ref_fasta": "REQUIRED_FILE",
     "CHIP.chip_mutations_csv": "REQUIRED_FILE",
-    "CHIP.somaticism_filter_transcripts": "REQUIRED_FILE",
     "CHIP.ref_name": "hg38",
     "CHIP.preemptible": 2,
     "CHIP.max_retries": 2,

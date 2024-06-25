@@ -46,7 +46,6 @@ workflow CHIP {
         String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
         File ref_fasta
         File chip_mutations_csv
-        File somaticism_filter_transcripts
         # runtime parameters
         Int? preemptible
         Int? max_retries
@@ -107,7 +106,6 @@ workflow CHIP {
             annovar_variant_function = var_func_input,
             annovar_exonic_function = var_exonic_func_input,
             chip_mutations_csv = chip_mutations_csv,
-            somaticism_filter_transcripts = somaticism_filter_transcripts,
             seq_context_tsv = CHIPPreFilter.out_seq_tsv,
             input_vcf_header = CHIPPreFilter.out_chip_genes_norm_no_info_filtered_vcf_header,
             sample_id = tumor_sample_name,
@@ -287,7 +285,6 @@ task CHIPAnnotation {
       File annovar_variant_function
       File annovar_exonic_function
       File chip_mutations_csv
-      File somaticism_filter_transcripts
       File seq_context_tsv
       File input_vcf_header
       String sample_id
@@ -318,7 +315,6 @@ task CHIPAnnotation {
         --annovar ~{annovar_txt_input} \
         --annovar_function ~{annovar_variant_function} \
         --annovar_exonic_function ~{annovar_exonic_function} \
-        --somaticism_transcripts ~{somaticism_filter_transcripts} \
         ~{ensembl_param} \
         ~{gnomad_param} \
         ~{missing_af_param} \
