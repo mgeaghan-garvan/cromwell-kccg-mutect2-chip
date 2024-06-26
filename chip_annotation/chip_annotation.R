@@ -88,12 +88,6 @@ option_list <- list(
     help = "gnomAD population to use for allele frequencies; default behavior is to use all populations ('AF'); options are: 'AF', 'AF_afr', 'AF_sas', 'AF_amr', 'AF_eas', 'AF_nfe', 'AF_fin', 'AF_asj'"
   ),
   make_option(
-    c("-S", "--somaticism_transcripts"),
-    type = "character",
-    default = NULL,
-    help = "Path to file containing somaticism transcript IDs"
-  ),
-  make_option(
     c("-o", "--output_prefix"),
     type = "character",
     default = NULL,
@@ -131,9 +125,6 @@ check_args <- function(args) {
   }
   if (!(args$gnomad_population %in% c("AF", "AF_afr", "AF_sas", "AF_amr", "AF_eas", "AF_nfe", "AF_fin", "AF_asj"))) {
     stop("Invalid gnomAD population specified")
-  }
-  if (is.null(args$somaticism_transcripts) || !file.exists(args$somaticism_transcripts)) {
-    stop("No somaticism transcripts file specified")
   }
   if (is.null(args$output_prefix)) {
     stop("No output prefix specified")
@@ -380,9 +371,6 @@ annovar_exonic_function <- read_tsv(args$annovar_exonic_function, col_names = FA
     End = as.integer(End)
   )
 
-# --- Load somaticism transcripts ---
-somaticism_transcripts <- read_lines(args$somaticism_transcripts)
-
 # --- Create main data frame ---
 df <- annovar
 
@@ -478,8 +466,8 @@ df <- df %>%
     AD_REF_ALT = map2_chr(SAMPLE_split, AD_i, ~ .x[.y]),
     DP = map2_chr(SAMPLE_split, DP_i, ~ .x[.y]),
     AF = map2_chr(SAMPLE_split, AF_i, ~ .x[.y]),
-    F1R2_REF_ALT = map2_chr(SAMPLE_split, F1R2_i, ~ .x[.y]),
-    F2R1_REF_ALT = map2_chr(SAMPLE_split, F2R1_i, ~ .x[.y])
+    F1R2_REF_ALT = map2_chr(SAMPLE_split, F1R2_i, ~ .x[.y][1]),  # F1R2 and F2R1 may not be present, the [1] index is to ensure that the result is a character vector
+    F2R1_REF_ALT = map2_chr(SAMPLE_split, F2R1_i, ~ .x[.y][1])
   ) %>%
   mutate(
     AD_REF_ALT = str_split(AD_REF_ALT, ","),
@@ -487,12 +475,12 @@ df <- df %>%
     F2R1_REF_ALT = str_split(F2R1_REF_ALT, ",")
   ) %>%
   mutate(
-    AD_REF = map_chr(AD_REF_ALT, ~ .x[[1]]),
-    AD_ALT = map_chr(AD_REF_ALT, ~ .x[[2]]),
-    F1R2_REF = map_chr(F1R2_REF_ALT, ~ .x[[1]]),
-    F1R2_ALT = map_chr(F1R2_REF_ALT, ~ .x[[2]]),
-    F2R1_REF = map_chr(F2R1_REF_ALT, ~ .x[[1]]),
-    F2R1_ALT = map_chr(F2R1_REF_ALT, ~ .x[[2]])
+    AD_REF = map_chr(AD_REF_ALT, ~ .x[1]),
+    AD_ALT = map_chr(AD_REF_ALT, ~ .x[2]),
+    F1R2_REF = map_chr(F1R2_REF_ALT, ~ .x[1]),
+    F1R2_ALT = map_chr(F1R2_REF_ALT, ~ .x[2]),
+    F2R1_REF = map_chr(F2R1_REF_ALT, ~ .x[1]),
+    F2R1_ALT = map_chr(F2R1_REF_ALT, ~ .x[2])
   ) %>%
   mutate(
     AD_REF = as.integer(AD_REF),
@@ -527,7 +515,7 @@ df <- df %>%
     )
   )
 
-# --- Apply homopolymer INDEL filter ---
+# --- Apply homopolymer variant filter ---
 
 # Add sequence context columns to ANNOVAR table
 df <- df %>%
@@ -572,14 +560,13 @@ df <- df %>%
       ""
     )
   ) %>%
-  # Add HOMOPOLYMER_INDEL_FILTER column
+  # Add HOMOPOLYMER_VARIANT_FILTER column
   mutate(
-    HOMOPOLYMER_INDEL_FILTER = case_when(
+    HOMOPOLYMER_VARIANT_FILTER = case_when(
       (
         HOMOPOLYMER_FILTER == "homopolymer_variant" &
-          (nchar(REF) > 1 | nchar(ALT) > 1) &
           (AD_ALT < 10 | VAF < 0.1)
-      ) ~ "chip_homopolymer_indel_filter_fail",
+      ) ~ "chip_homopolymer_variant_filter_fail",
       .default = ""
     )
   )
@@ -678,7 +665,7 @@ df <- df %>%
   ) %>%
   mutate(
     SOMATICISM_FILTER = case_when(
-      Transcript_no_version %in% somaticism_transcripts & ad_dp_binom_test >= 0.001 ~ "chip_somaticism_filter_fail",
+      ad_dp_binom_test >= 0.001 ~ "chip_somaticism_filter_fail",
       .default = ""
     )
   )
@@ -799,10 +786,10 @@ df <- df %>%
         (
           AD_ALT < 5 |
           VAF > 0.2 |
-          F1R2_REF < 2 |
-          F1R2_ALT < 2 |
-          F2R1_REF < 2 |
-          F2R1_ALT < 2
+          (!is.na(F1R2_REF) & F1R2_REF < 2) |
+          (!is.na(F1R2_ALT) & F1R2_ALT < 2) |
+          (!is.na(F2R1_REF) & F2R1_REF < 2) |
+          (!is.na(F2R1_ALT) & F2R1_ALT < 2)
         ) ~ "chip_putative_filter_fail",
       .default = ""
     )
@@ -823,7 +810,7 @@ df <- df %>%
       FILTER,
       HARD_FILTER_AF,
       HARD_FILTER_VAF,
-      HOMOPOLYMER_INDEL_FILTER
+      HOMOPOLYMER_VARIANT_FILTER
     ))
   ) %>%
   ungroup() %>%
@@ -970,7 +957,7 @@ df_filtered <- df_filtered %>%
       FILTER,
       HARD_FILTER_AF,
       HARD_FILTER_VAF,
-      HOMOPOLYMER_INDEL_FILTER,
+      HOMOPOLYMER_VARIANT_FILTER,
       SOMATICISM_FILTER,
       EXONIC_SPLICING_FILTER,
       CHIP_TRANSCRIPT_FILTER
@@ -1031,7 +1018,7 @@ df_final <- df %>%
     HARD_FILTER_AF,
     HARD_FILTER_VAF,
     HOMOPOLYMER_FILTER,
-    HOMOPOLYMER_INDEL_FILTER,
+    HOMOPOLYMER_VARIANT_FILTER,
     SOMATICISM_FILTER,
     CHIP_MUTATION_FILTER,
     PUTATIVE_CHIP_FILTER,
@@ -1236,9 +1223,9 @@ filter_fields <- list(
   chip_gnomad_af_filter_fail = "Variant has a gnomAD AF >= 0.01",
   chip_vaf_filter_fail = "Variant has a VAF < 0.02",
   homopolymer_variant = "Variant is within a homopolymer region",
-  chip_homopolymer_indel_filter_fail = "Variant is an INDEL within a homopolymer region and has AD_ALT < 10 or VAF < 0.1",
+  chip_homopolymer_variant_filter_fail = "Variant is within a homopolymer region and has AD_ALT < 10 or VAF < 0.1",
   not_exonic_or_splicing_variant = "Variant is not exonic or splicing",
-  chip_somaticism_filter_fail = "Variant is within a transcript specified in the somaticism_transcripts file and did not pass a binomial test (n = AD_ALT, k = DP, p = 0.5, alpha = 0.001)",
+  chip_somaticism_filter_fail = "Variant did not pass a binomial test (n = AD_ALT, k = DP, p = 0.5, alpha = 0.001)",
   exonic_or_splicing_variant_not_in_chip_transcript = "Variant is exonic or splicing but is not within a CHIP transcript",
   mutation_in_c_terminal = "Variant is within a CHIP gene but is in the C-terminal domain of the protein",
   chip_mutation_match_filter_fail = "Variant does not match a CHIP mutation definition",

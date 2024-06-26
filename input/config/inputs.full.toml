@@ -52,7 +52,6 @@ spliceai_mask = false
 spliceai_docker = 'australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/spliceai@sha256:617682496a3f475c69ccdfe593156b79dd1ba21e02481ed1d0d8b740f3422530'
 run_chip_detection = true
 chip_mutations_csv = 'REQUIRED_FILE'
-somaticism_filter_transcripts = 'REQUIRED_FILE'
 treat_missing_as_rare = true
 use_gnomad_genome = true
 use_ensembl_annotation = false

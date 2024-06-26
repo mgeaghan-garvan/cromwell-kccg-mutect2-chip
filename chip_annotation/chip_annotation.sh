@@ -3,10 +3,9 @@
 INPUT_VCF=${1}
 CHIP_MUTATIONS_CSV=${2}
 REF_FASTA=${3}
-SOMATICISM_TRANSCRIPTS=${4}
-ANNOVAR_DB=${5}
-ANNOVAR_CONTAINER=${6}
-CHIP_CONTAINER=${7}
+ANNOVAR_DB=${4}
+ANNOVAR_CONTAINER=${5}
+CHIP_CONTAINER=${6}
 
 TEMP_DIR=$(mktemp -d)
 OUT_DIR=output
@@ -47,6 +46,13 @@ EOF
 
 # Merge overlapping regions
 bedtools merge -i ${CHIP_MUTATIONS_TMP_BED} > ${CHIP_MUTATIONS_BED}
+
+# === STEP 1.5: Correct any mutations that have been mislabelled as multiallelic ===
+INPUT_VCF_BN="$(basename $(basename ${INPUT_VCF} .gz) .vcf)"
+OG_INPUT_VCF="${INPUT_VCF}"
+INPUT_VCF="${TEMP_DIR}/${INPUT_VCF_BN}.corrected.vcf.gz"
+bcftools annotate -x FILTER/multiallelic -k -i 'FILTER~"multiallelic" & SUM(FORMAT/AD[*:2-])=0' -O z -o ${INPUT_VCF} ${OG_INPUT_VCF}
+tabix -f -s 1 -b 2 -e 2 ${INPUT_VCF}
 
 # === STEP 2: Filter input VCF for CHIP gene regions ===
 # INPUT_VCF_BN="$(echo ${INPUT_VCF} | sed -E -e 's/\.vcf(\.gz)?$//g')"
@@ -145,7 +151,6 @@ ${CHIP_DOCKER_CMD} annotate_chip \
     --annovar ${ANNOVAR_PREFIX}.hg38_multianno.txt \
     --annovar_function ${ANNOVAR_PREFIX}.refGene.variant_function \
     --annovar_exonic_function ${ANNOVAR_PREFIX}.refGene.exonic_variant_function \
-    --somaticism_transcripts ${SOMATICISM_TRANSCRIPTS} \
     --output_prefix ${CHIP_ANNOTATION_PREFIX}
 
 # BGZIP and tabix the CHIP annotations
