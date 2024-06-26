@@ -300,7 +300,8 @@ parse_aa_change <- function(aa_change, exonic_func) {
     }
   } else if (is.na(info_list$mutation_protein_info$ref_start) ||
              is.na(info_list$mutation_protein_info$alt) ||
-             info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt
+             info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt ||
+             !is.na(info_list$mutation_protein_info$dupdelins)
              ) {
     # Remaining variants (where ref and alt AAs don't match) are classed as 'nonsynonymous'
     info_list$mutation_class <- "nonsynonymous"
@@ -532,11 +533,24 @@ chip_def_match_funcs <- list(
   },
   indel_range = function(...) {
     # Handle indel ranges
-    # args <- list(...)
-    # chip_info <- args$chip_info
-    # aa_change_info <- args$aa_change_info
-    # gene_detail_info <- args$gene_detail_info
-    # mut_class <- args$mut
+    args <- list(...)
+    chip_info <- args$chip_info
+    aa_change_info <- args$aa_change_info
+    gene_detail_info <- args$gene_detail_info
+    mut_class <- args$mut
+
+    if (!is.na(aa_change_info$mutation_protein_info$dupdelins) &&
+        !is.na(aa_change_info$mutation_protein_info$start) &&
+        !is.na(aa_change_info$mutation_protein_info$end) &&
+        (
+          (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$start && aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$end) ||
+          (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$end && aa_change_info$mutation_protein_info$end <= chip_info$mutation_info$end) ||
+          (aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$start && aa_change_info$mutation_protein_info$end >= chip_info$mutation_info$end)
+        )) {
+      # Passes if mutation amino acid range overlaps with defined CHIP mutation amino acid range
+      return("")
+    }
+    return("chip_mutation_match_filter_fail")
   },
   coding_range = function(...) {
     # Handle coding sequence ranges
