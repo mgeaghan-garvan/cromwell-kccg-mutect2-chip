@@ -46,7 +46,6 @@ workflow CHIP {
         String chip_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_annotation:latest"
         File ref_fasta
         File chip_mutations_csv
-        File somaticism_filter_transcripts
         # runtime parameters
         Int? preemptible
         Int? max_retries
@@ -107,7 +106,6 @@ workflow CHIP {
             annovar_variant_function = var_func_input,
             annovar_exonic_function = var_exonic_func_input,
             chip_mutations_csv = chip_mutations_csv,
-            somaticism_filter_transcripts = somaticism_filter_transcripts,
             seq_context_tsv = CHIPPreFilter.out_seq_tsv,
             input_vcf_header = CHIPPreFilter.out_chip_genes_norm_no_info_filtered_vcf_header,
             sample_id = tumor_sample_name,
@@ -205,6 +203,12 @@ task CHIPPreFilter {
       # Merge overlapping regions
       bedtools merge -i ~{chip_genes_bed} > ~{chip_genes_merged_bed}
 
+      # --- Step 1.5: Correct any mutations that have been mislabelled as multiallelic ---
+      mv ~{input_vcf_gz} ~{input_vcf_gz}.tmp.vcf.gz
+      mv ~{input_vcf_gz}.tbi ~{input_vcf_gz}.tmp.vcf.gz.tbi
+      bcftools annotate -x FILTER/multiallelic -k -i 'FILTER~"multiallelic" & SUM(FORMAT/AD[*:2-])=0' -O z -o ~{input_vcf_gz} ~{input_vcf_gz}.tmp.vcf.gz
+      tabix -f -s 1 -b 2 -e 2 ~{input_vcf_gz}
+
       # --- Step 2: Filter the VCF to separate CHIP and non-CHIP genes ---
       # CHIP genes
       bedtools intersect -a ~{input_vcf_gz} -b ~{chip_genes_merged_bed} -wa -header > ~{chip_genes_vcf}
@@ -281,7 +285,6 @@ task CHIPAnnotation {
       File annovar_variant_function
       File annovar_exonic_function
       File chip_mutations_csv
-      File somaticism_filter_transcripts
       File seq_context_tsv
       File input_vcf_header
       String sample_id
@@ -312,7 +315,6 @@ task CHIPAnnotation {
         --annovar ~{annovar_txt_input} \
         --annovar_function ~{annovar_variant_function} \
         --annovar_exonic_function ~{annovar_exonic_function} \
-        --somaticism_transcripts ~{somaticism_filter_transcripts} \
         ~{ensembl_param} \
         ~{gnomad_param} \
         ~{missing_af_param} \

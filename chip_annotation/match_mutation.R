@@ -29,6 +29,7 @@ chip_def_regex_list <- list(
   deletion = "^([A-Z])(\\d+)(_([A-Z])(\\d+))?(del)$",
   insertion = "^([A-Z])(\\d+)_([A-Z])(\\d+)(ins)([A-Z]+)?$",
   deletion_insertion = "^([A-Z])(\\d+)(_([A-Z])(\\d+))?(delins)([A-Z]+)$",
+  indel_range = "^(\\d+)\\-(\\d+)(del|ins|delins)$",
   coding_range = "^c\\.(\\d+)-(\\d+)$",
   coding_insertion = "^c\\.(\\d+)_(\\d+)(ins)$",
   frameshift = "^([A-Z])(\\d+)fs$",
@@ -79,6 +80,11 @@ chip_def_regex_groups <- list(
     ref_end = c(4, 1),
     alt = 7,
     dupdelins = 6
+  ),
+  indel_range = list(
+    start = 1,
+    end = 2,
+    dupdelins = 3
   ),
   coding_range = list(
     start = 1,
@@ -294,7 +300,8 @@ parse_aa_change <- function(aa_change, exonic_func) {
     }
   } else if (is.na(info_list$mutation_protein_info$ref_start) ||
              is.na(info_list$mutation_protein_info$alt) ||
-             info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt
+             info_list$mutation_protein_info$ref_start != info_list$mutation_protein_info$alt ||
+             !is.na(info_list$mutation_protein_info$dupdelins)
              ) {
     # Remaining variants (where ref and alt AAs don't match) are classed as 'nonsynonymous'
     info_list$mutation_class <- "nonsynonymous"
@@ -521,6 +528,27 @@ chip_def_match_funcs <- list(
       } else {
         return("chip_mutation_match_filter_fail")
       }
+    }
+    return("chip_mutation_match_filter_fail")
+  },
+  indel_range = function(...) {
+    # Handle indel ranges
+    args <- list(...)
+    chip_info <- args$chip_info
+    aa_change_info <- args$aa_change_info
+    gene_detail_info <- args$gene_detail_info
+    mut_class <- args$mut
+
+    if (!is.na(aa_change_info$mutation_protein_info$dupdelins) &&
+        !is.na(aa_change_info$mutation_protein_info$start) &&
+        !is.na(aa_change_info$mutation_protein_info$end) &&
+        (
+          (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$start && aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$end) ||
+          (chip_info$mutation_info$start <= aa_change_info$mutation_protein_info$end && aa_change_info$mutation_protein_info$end <= chip_info$mutation_info$end) ||
+          (aa_change_info$mutation_protein_info$start <= chip_info$mutation_info$start && aa_change_info$mutation_protein_info$end >= chip_info$mutation_info$end)
+        )) {
+      # Passes if mutation amino acid range overlaps with defined CHIP mutation amino acid range
+      return("")
     }
     return("chip_mutation_match_filter_fail")
   },
