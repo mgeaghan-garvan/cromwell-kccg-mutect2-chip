@@ -23,6 +23,7 @@ version 1.0
 # =============================================================== #
 
 import "m2.wdl" as Mutect2
+import "call_u2af1.wdl" as U2AF1
 import "vep.wdl" as VEP
 import "annovar.wdl" as Annovar
 import "spliceai.wdl" as SpliceAI
@@ -56,7 +57,13 @@ workflow Mutect2CHIP {
         Boolean? compress_vcfs
         File? gga_vcf
         File? gga_vcf_idx
-        
+
+        # U2AF1 settings
+        Boolean u2af1 = true
+        File u2af1_regions_file
+        String pileup_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest"
+        String merge_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
+
         # VEP settings
         Boolean vep = false
         File? vep_cache_archive
@@ -181,13 +188,38 @@ workflow Mutect2CHIP {
             small_input_to_output_multiplier = small_input_to_output_multiplier
     }
 
+    # Optionally run U2AF1 workflow
+    if (u2af1 && defined(u2af1_regions_file)) {
+        call U2AF1.CallU2AF1 as U2AF1_wf {
+            input:
+                tumor_reads = tumor_reads,
+                tumor_reads_index = tumor_reads_index,
+                mutect2_output_vcf = Mutect2_wf.filtered_vcf,
+                mutect2_output_vcf_index = Mutect2_wf.filtered_vcf_idx,
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                u2af1_regions_file = u2af1_regions_file,
+                pileup_docker = pileup_docker,
+                merge_docker = merge_docker,
+                preemptible = preemptible,
+                max_retries = max_retries,
+                cpu = small_task_cpu,
+                mem_mb = small_task_mem,
+                disk = small_task_disk,
+                boot_disk_size = boot_disk_size
+        }
+    }
+
+    File vep_input_vcf = select_first([U2AF1_wf.merged_vcf, Mutect2_wf.filtered_vcf])
+    File vep_input_vcf_idx = select_first([U2AF1_wf.merged_vcf_idx, Mutect2_wf.filtered_vcf_idx])
+
     # Optionally run VEP
     if (vep && defined(vep_cache_archive)) {
         File vep_cache_archive_file = select_first([vep_cache_archive, "CACHE_FILE_NOT_SUPPLIED"])
         call VEP.VEP as VEP_wf {
             input:
-                input_vcf = Mutect2_wf.filtered_vcf,
-                input_vcf_idx = Mutect2_wf.filtered_vcf_idx,
+                input_vcf = vep_input_vcf,
+                input_vcf_idx = vep_input_vcf_idx,
                 vep_species = vep_species,
                 vep_assembly = vep_assembly,
                 vep_cache_archive = vep_cache_archive_file,
@@ -210,7 +242,7 @@ workflow Mutect2CHIP {
         }
     }
 
-    File annovar_input_vcf = select_first([VEP_wf.out_vep_vcf, Mutect2_wf.filtered_vcf])
+    File annovar_input_vcf = select_first([VEP_wf.out_vep_vcf, vep_input_vcf])
     File annovar_db_archive_file = select_first([annovar_db_archive, "ANNOVAR_ARCHIVE_NOT_SUPPLIED"])
 
     # Optionally run Annovar
@@ -298,6 +330,8 @@ workflow Mutect2CHIP {
         File? bamout_index = Mutect2_wf.bamout_index
         File? maf_segments = Mutect2_wf.maf_segments
         File? read_orientation_model_params = Mutect2_wf.read_orientation_model_params
+        File? out_u2af1_vcf = U2AF1_wf.merged_vcf,
+        File? out_u2af1_vcf_idx = U2AF1_wf.merged_vcf_idx,
         File? out_vep_vcf = VEP_wf.out_vep_vcf
         File? out_annovar_vcf = Annovar_wf.out_annovar_vcf
         File? out_annovar_table = Annovar_wf.out_annovar_table

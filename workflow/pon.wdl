@@ -50,6 +50,12 @@ workflow Mutect2_Panel {
         Int? min_contig_size
         Int? create_panel_scatter_count
 
+        # U2AF1 settings
+        Boolean u2af1 = true
+        File u2af1_regions_file
+        String pileup_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/u2af1:latest"
+        String merge_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/chip_pre_post_filter:latest"
+
         # Runtime options
         String gatk_docker = "australia-southeast1-docker.pkg.dev/pb-dev-312200/somvar-images/gatk@sha256:0359ae4f32f2f541ca86a8cd30ef730bbaf8c306b9d53d2d520262d3e84b3b2b"  # :4.2.1.0
         File? gatk_override
@@ -119,11 +125,32 @@ workflow Mutect2_Panel {
                     m2_mem = m2_mem,
                     m2_cpu = m2_cpu
             }
+
+            if (u2af1 && defined(u2af1_regions_file)) {
+                call U2AF1.CallU2AF1 as U2AF1_wf {
+                    input:
+                        tumor_reads = normal_bam,
+                        tumor_reads_index = normal_bai,
+                        mutect2_output_vcf = Mutect2.filtered_vcf,
+                        mutect2_output_vcf_index = Mutect2.filtered_vcf_idx,
+                        ref_fasta = ref_fasta,
+                        ref_fai = ref_fai,
+                        u2af1_regions_file = u2af1_regions_file,
+                        pileup_docker = pileup_docker,
+                        merge_docker = merge_docker,
+                        preemptible = preemptible,
+                        max_retries = max_retries,
+                        cpu = small_task_cpu,
+                        mem_mb = small_task_mem,
+                        disk = small_task_disk,
+                        boot_disk_size = boot_disk_size
+                }
+            }
         }
     }
 
-    Array[File] m2_vcfs_out = select_first([Mutect2.filtered_vcf, []])
-    Array[File] m2_vcfs_idx_out = select_first([Mutect2.filtered_vcf_idx, []])
+    Array[File] m2_vcfs_out = select_first([U2AF1_wf.merged_vcf, Mutect2.filtered_vcf, []])
+    Array[File] m2_vcfs_idx_out = select_first([U2AF1_wf.merged_vcf_idx, Mutect2.filtered_vcf_idx, []])
     Array[File] pon_input_vcfs = flatten([vcf_idx_pairs[0], m2_vcfs_out])
     Array[File] pon_input_vcfs_idx = flatten([vcf_idx_pairs[1], m2_vcfs_idx_out])
 
