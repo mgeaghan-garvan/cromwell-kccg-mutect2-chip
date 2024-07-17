@@ -330,8 +330,8 @@ workflow Mutect2CHIP {
         File? bamout_index = Mutect2_wf.bamout_index
         File? maf_segments = Mutect2_wf.maf_segments
         File? read_orientation_model_params = Mutect2_wf.read_orientation_model_params
-        File? out_u2af1_vcf = U2AF1_wf.merged_vcf,
-        File? out_u2af1_vcf_idx = U2AF1_wf.merged_vcf_idx,
+        File? out_u2af1_vcf = U2AF1_wf.merged_vcf
+        File? out_u2af1_vcf_idx = U2AF1_wf.merged_vcf_idx
         File? out_vep_vcf = VEP_wf.out_vep_vcf
         File? out_annovar_vcf = Annovar_wf.out_annovar_vcf
         File? out_annovar_table = Annovar_wf.out_annovar_table

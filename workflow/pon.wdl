@@ -29,6 +29,7 @@ version 1.0
 #  which the wdl hard-codes to 0 because GenomicsDBImport can't handle MNPs
 
 import "m2.wdl" as m2
+import "call_u2af1.wdl" as U2AF1
 
 workflow Mutect2_Panel {
     input {
@@ -146,11 +147,14 @@ workflow Mutect2_Panel {
                         boot_disk_size = boot_disk_size
                 }
             }
+
+            File m2_or_u2af1_vcf = select_first([U2AF1_wf.merged_vcf, Mutect2.filtered_vcf])
+            File m2_or_u2af1_vcf_idx = select_first([U2AF1_wf.merged_vcf_idx, Mutect2.filtered_vcf_idx])
         }
     }
 
-    Array[File] m2_vcfs_out = select_first([U2AF1_wf.merged_vcf, Mutect2.filtered_vcf, []])
-    Array[File] m2_vcfs_idx_out = select_first([U2AF1_wf.merged_vcf_idx, Mutect2.filtered_vcf_idx, []])
+    Array[File] m2_vcfs_out = select_first([m2_or_u2af1_vcf, []])
+    Array[File] m2_vcfs_idx_out = select_first([m2_or_u2af1_vcf_idx, []])
     Array[File] pon_input_vcfs = flatten([vcf_idx_pairs[0], m2_vcfs_out])
     Array[File] pon_input_vcfs_idx = flatten([vcf_idx_pairs[1], m2_vcfs_idx_out])
 
