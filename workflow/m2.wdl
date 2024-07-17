@@ -235,6 +235,9 @@ workflow Mutect2 {
         }
     }
 
+    Array[File] m2_tumor_pileups = select_all(M2.tumor_pileups)
+    Array[File] m2_normal_pileups = select_all(M2.normal_pileups)
+
     Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
     Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
 
@@ -281,7 +284,7 @@ workflow Mutect2 {
     if (defined(variants_for_contamination)) {
         call MergePileupSummaries as MergeTumorPileups {
             input:
-                input_tables = flatten(M2.tumor_pileups),
+                input_tables = m2_tumor_pileups,
                 output_name = output_basename,
                 ref_dict = ref_dict,
                 runtime_params = standard_runtime
@@ -290,7 +293,7 @@ workflow Mutect2 {
         if (defined(normal_bam)){
             call MergePileupSummaries as MergeNormalPileups {
                 input:
-                    input_tables = flatten(M2.normal_pileups),
+                    input_tables = m2_normal_pileups,
                     output_name = output_basename,
                     ref_dict = ref_dict,
                     runtime_params = standard_runtime
@@ -358,7 +361,6 @@ workflow Mutect2 {
         File filtered_vcf_idx = filter_output_vcf_idx  # select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx])
         File filtering_stats = Filter.filtering_stats
         File mutect_stats = MergeStats.merged_stats
-        String tumor_sample = M2.tumor_sample[0]  # M2 is scattered over intervals, all entries in the Array[String] "tumor_sample" will be identical
         File? contamination_table = CalculateContamination.contamination_table
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
@@ -559,12 +561,10 @@ task M2 {
         File unfiltered_vcf = "~{output_vcf}"
         File unfiltered_vcf_idx = "~{output_vcf_idx}"
         File output_bamOut = "bamout.bam"
-        String tumor_sample = read_string("tumor_name.txt")
-        String normal_sample = read_string("normal_name.txt")
         File stats = "~{output_stats}"
         File f1r2_counts = "f1r2.tar.gz"
-        Array[File] tumor_pileups = glob("*tumor-pileups.table")
-        Array[File] normal_pileups = glob("*normal-pileups.table")
+        File? tumor_pileups = "tumor-pileups.table"
+        File? normal_pileups = "normal-pileups.table"
     }
 }
 
