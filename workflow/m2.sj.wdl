@@ -163,7 +163,6 @@ workflow Mutect2SingleJob {
         File filtered_vcf_idx = M2UKB.filter_output_vcf_idx
         File filtering_stats = M2UKB.filtering_stats
         File mutect_stats = M2UKB.mutect_output_stats
-        String tumor_sample = M2UKB.tumor_sample
         File? bamout = M2UKB.merged_bam_out
         File? bamout_index = M2UKB.merged_bam_out_index
         File read_orientation_model_params = M2UKB.artifact_prior_table
@@ -325,7 +324,6 @@ task M2UKB {
         File filter_output_vcf_idx = filtered_vcf_idx
         File filtering_stats = "~{output_name}.filtering.stats"
         File mutect_output_stats = mutect_stats
-        String tumor_sample = read_string("tumor_name.txt")
         File? merged_bam_out = "~{unfiltered_name}.out.bam"
         File? merged_bam_out_index = "~{unfiltered_name}.out.bai"
         File artifact_prior_table = output_name + "-artifact-priors.tar.gz"

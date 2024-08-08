@@ -259,7 +259,7 @@ workflow Mutect2CHIP {
     
     # Optionally run CHIP
     if (run_chip_detection && defined(annovar_db_archive)) {
-        String tumor_sample_name = Mutect2_wf.tumor_sample
+        String tumor_sample_name = basename(basename(chip_detection_input_vcf, ".gz"), ".vcf")
         call CHIP.CHIP as CHIP_wf {
             input:
                 input_vcf = chip_detection_input_vcf,
