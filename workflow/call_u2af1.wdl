@@ -188,7 +188,7 @@ task U2AF1Pileup {
                         alt_count = substr(alt_count, 1, length(alt_count) - 1)
                         vaf = substr(vaf, 1, length(vaf) - 1)
                         qual = "."
-                        filter = "."
+                        filter = "PASS"
                         if (alt_count ~ ",") {
                             filter = "multiallelic"
                         }

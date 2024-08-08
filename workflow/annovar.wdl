@@ -97,7 +97,7 @@ task Annovar_task {
 
     String tmp_dir = "/tmp"
 
-    command {
+    command <<<
       set -euo pipefail
 
       # Extract and flatten the annovar db archive
@@ -121,7 +121,10 @@ task Annovar_task {
         -vcfinput \
         -polish \
         ~{annovar_additional_arguments}
-    }
+
+      mv ~{file_prefix}.hg38_multianno.vcf ~{file_prefix}.hg38_multianno.vcf.bad
+      gawk -v FS="\t" -v OFS="\t" '$0 ~ /^#/ { print $0 } $0 !~ /^#/ { $8 = gensub("^\.;", "", "g", $8); print $0 }' ~{file_prefix}.hg38_multianno.vcf.bad > ~{file_prefix}.hg38_multianno.vcf
+    >>>
 
     runtime {
       docker: annovar_docker

@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 
 RUN apt-get update \
-  && apt-get install -y perl \
+  && apt-get install -y perl gawk \
   && rm -r /var/lib/apt/lists/* \
   && rm -r /var/cache/apt/* \
   && mkdir -p /annovar
