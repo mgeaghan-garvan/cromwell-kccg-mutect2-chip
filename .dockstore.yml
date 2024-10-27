@@ -100,3 +100,13 @@ workflows:
         email: m.geaghan@garvan.org.au
         role: "Production Bioinformatician"
         affiliation: "Garvan Institute of Medical Research"
+  - name: KCCGMutect2CHIP_ExtractPass
+    subclass: WDL
+    primaryDescriptorPath: /workflow/extract_pass.wdl
+    publish: true
+    authors:
+      - name: "Michael Geaghan"
+        orcid: "0000-0002-4350-8600"
+        email: m.geaghan@garvan.org.au
+        role: "Production Bioinformatician"
+        affiliation: "Garvan Institute of Medical Research"
